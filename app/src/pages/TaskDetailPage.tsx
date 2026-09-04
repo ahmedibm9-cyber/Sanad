@@ -27,9 +27,9 @@ import ProjectFormModal from '../components/projects/ProjectFormModal'
 import type { WorkItemStatus, Document, ProjectNote, ReportIssue } from '../types'
 
 const STATUS_OPTIONS: { value: WorkItemStatus; label: string; colorClass: string; labelAr: string }[] = [
-  { value: 'in_progress', label: 'In Progress', labelAr: 'قيد التنفيذ', colorClass: 'bg-blue-100 text-blue-700' },
-  { value: 'completed', label: 'Completed', labelAr: 'مكتملة', colorClass: 'bg-green-100 text-green-700' },
-  { value: 'cancelled', label: 'Cancelled', labelAr: 'ملغاة', colorClass: 'bg-red-100 text-red-700' },
+  { value: 'in_progress', label: 'In Progress', labelAr: 'قيد التنفيذ', colorClass: 'bg-blue-50 text-blue-700' },
+  { value: 'completed', label: 'Completed', labelAr: 'مكتملة', colorClass: 'bg-green-50 text-green-700' },
+  { value: 'cancelled', label: 'Cancelled', labelAr: 'ملغاة', colorClass: 'bg-red-50 text-red-700' },
   { value: 'archived', label: 'Archived', labelAr: 'مؤرشفة', colorClass: 'bg-gray-100 text-gray-600' },
 ]
 
@@ -139,11 +139,11 @@ export default function TaskDetailPage() {
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
           <button onClick={() => setShowConvertModal(true)} className="btn-secondary">
-            <ArrowRightLeft className="w-4 h-4 mr-1.5" />
+            <ArrowRightLeft className="w-4 h-4 ms-1.5" />
             {t('Convert to Project', 'تحويل إلى مشروع')}
           </button>
           <button onClick={() => setShowEditForm(true)} className="btn-secondary">
-            <Edit3 className="w-4 h-4 mr-1.5" />
+            <Edit3 className="w-4 h-4 ms-1.5" />
             {t('Edit', 'تعديل')}
           </button>
         </div>
@@ -171,17 +171,17 @@ export default function TaskDetailPage() {
                 <Icon className="w-4 h-4" />
                 {t(tab.label, tab.labelAr)}
                 {tab.id === 'documents' && (
-                  <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 ml-0.5">
+                  <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 ms-0.5">
                     {taskDocs.length}
                   </span>
                 )}
                 {tab.id === 'attachments' && (
-                  <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 ml-0.5">
+                  <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 ms-0.5">
                     {attachments.length}
                   </span>
                 )}
                 {tab.id === 'issues' && (
-                  <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 ml-0.5">
+                  <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 ms-0.5">
                     {taskIssues.length}
                   </span>
                 )}

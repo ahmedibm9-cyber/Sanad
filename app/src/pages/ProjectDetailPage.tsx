@@ -29,9 +29,9 @@ import ProjectFormModal from '../components/projects/ProjectFormModal'
 import type { WorkItemStatus, WorkItem, Document, ProjectNote, ReportIssue } from '../types'
 
 const STATUS_OPTIONS: { value: WorkItemStatus; label: string; colorClass: string; labelAr: string }[] = [
-  { value: 'in_progress', label: 'In Progress', labelAr: 'قيد التنفيذ', colorClass: 'bg-blue-100 text-blue-700' },
-  { value: 'completed', label: 'Completed', labelAr: 'مكتملة', colorClass: 'bg-green-100 text-green-700' },
-  { value: 'cancelled', label: 'Cancelled', labelAr: 'ملغاة', colorClass: 'bg-red-100 text-red-700' },
+  { value: 'in_progress', label: 'In Progress', labelAr: 'قيد التنفيذ', colorClass: 'bg-blue-50 text-blue-700' },
+  { value: 'completed', label: 'Completed', labelAr: 'مكتملة', colorClass: 'bg-green-50 text-green-700' },
+  { value: 'cancelled', label: 'Cancelled', labelAr: 'ملغاة', colorClass: 'bg-red-50 text-red-700' },
   { value: 'archived', label: 'Archived', labelAr: 'مؤرشفة', colorClass: 'bg-gray-100 text-gray-600' },
 ]
 
@@ -245,29 +245,29 @@ export default function ProjectDetailPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-gray-100 bg-sand-50/50">
-                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
+                        <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
                           {t('Material', 'المادة')}
                         </th>
-                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
+                        <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
                           {t('Qty', 'الكمية')}
                         </th>
-                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
+                        <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
                           {t('Unit Price', 'سعر الوحدة')}
                         </th>
-                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
+                        <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
                           {t('Total', 'الإجمالي')}
                         </th>
-                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
+                        <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
                           {t('Packing', 'التعبئة')}
                         </th>
-                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
+                        <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
                           {t('Origin', 'المنشأ')}
                         </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {project.materials.map((mat) => (
-                        <tr key={mat.id} className="hover:bg-sand-50/50 transition-colors">
+                        <tr key={mat.id} className="table-row-hover">
                           <td className="px-5 py-3">
                             <p className="text-sm font-medium text-brand-900">{mat.materialName}</p>
                             {mat.grade && <p className="text-xs text-gray-400">{mat.grade}</p>}
@@ -380,7 +380,7 @@ export default function ProjectDetailPage() {
                 <ChevronDown className="w-3 h-3 ml-1.5" />
               </button>
               {showInvoiceDropdown && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-30 py-1">
+                <div className="absolute end-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
                   <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase">{t('Invoice', 'الفاتورة')}</div>
                   {(['QUOT','PINV','TINV','CINV'] as const).map(type => (
                     <button key={type} onClick={() => { setShowInvoiceDropdown(false); navigate(`/documents/new/form?type=${type}&projectId=${project.id}`) }}
@@ -403,7 +403,7 @@ export default function ProjectDetailPage() {
             </div>
           </div>
           {documents.length === 0 ? (
-            <div className="card py-16 text-center">
+            <div className="card empty-state">
               <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-400">{t('No documents yet', 'لا توجد مستندات بعد')}</p>
             </div>
@@ -412,22 +412,22 @@ export default function ProjectDetailPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100 bg-sand-50/50">
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Number', 'الرقم')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Type', 'النوع')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Date', 'التاريخ')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Status', 'الحالة')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Prepared by', 'أعده')}
                     </th>
-                    <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-end text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Actions', 'الإجراءات')}
                     </th>
                   </tr>
@@ -436,7 +436,7 @@ export default function ProjectDetailPage() {
                   {documents.map((doc) => {
                     const typeLabel = DOC_TYPE_LABELS[doc.type]
                     return (
-                      <tr key={doc.id} className="hover:bg-sand-50/50 transition-colors">
+                      <tr key={doc.id} className="table-row-hover">
                         <td className="px-5 py-3.5">
                           <Link
                             to={`/documents/${doc.id}/preview`}
@@ -470,7 +470,7 @@ export default function ProjectDetailPage() {
                         <td className="px-5 py-3.5 text-sm text-gray-600">
                           {doc.preparedBy || '—'}
                         </td>
-                        <td className="px-5 py-3.5 text-right">
+                        <td className="px-5 py-3.5 text-end">
                           <div className="flex items-center justify-end gap-1">
                             <button className="btn-ghost p-1.5" title={t('Print', 'طباعة')} onClick={() => window.print()}>
                               <Printer className="w-4 h-4" />
@@ -505,7 +505,7 @@ export default function ProjectDetailPage() {
             </button>
           </div>
           {attachments.length === 0 ? (
-            <div className="card py-16 text-center">
+            <div className="card empty-state">
               <Paperclip className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-400">{t('No attachments', 'لا توجد مرفقات')}</p>
             </div>
@@ -514,26 +514,26 @@ export default function ProjectDetailPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100 bg-sand-50/50">
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('File Name', 'اسم الملف')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Size', 'الحجم')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Uploaded By', 'رفعه')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Date', 'التاريخ')}
                     </th>
-                    <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-end text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Actions', 'الإجراءات')}
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {attachments.map((att) => (
-                    <tr key={att.id} className="hover:bg-sand-50/50 transition-colors">
+                    <tr key={att.id} className="table-row-hover">
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
                           <Paperclip className="w-4 h-4 text-gray-400" />
@@ -553,7 +553,7 @@ export default function ProjectDetailPage() {
                           year: 'numeric',
                         })}
                       </td>
-                      <td className="px-5 py-3.5 text-right">
+                      <td className="px-5 py-3.5 text-end">
                         <div className="flex items-center justify-end gap-1">
                           <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => alert(t('Download will be available in production.', 'سيتوفر التحميل في الإنتاج.'))}>
                             <Download className="w-4 h-4" />
@@ -605,7 +605,7 @@ export default function ProjectDetailPage() {
             </div>
           )}
           {reportIssues.length === 0 ? (
-            <div className="card py-16 text-center">
+            <div className="card empty-state">
               <AlertTriangle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-400">{t('No issues reported', 'لا توجد مشكلات مبلّغ عنها')}</p>
             </div>

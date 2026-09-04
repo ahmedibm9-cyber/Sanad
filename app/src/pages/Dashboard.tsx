@@ -177,7 +177,7 @@ export default function Dashboard() {
             <Link
               key={w.title}
               to={w.link}
-              className="card p-5 hover:shadow-md transition-shadow group"
+              className="card p-5 hover:border-gray-300 transition-colors group"
             >
               <div className="flex items-start justify-between">
                 <div className={`p-2.5 rounded-lg ${w.iconBg}`}>
@@ -217,9 +217,11 @@ export default function Dashboard() {
             </Link>
           </div>
           {recentActivity.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">
-              {t('No recent activity', 'لا يوجد نشاط حديث')}
-            </p>
+            <div className="empty-state">
+              <p className="text-sm text-gray-400">
+                {t('No recent activity', 'لا يوجد نشاط حديث')}
+              </p>
+            </div>
           ) : (
             <div className="space-y-3">
               {recentActivity.map((entry) => {
@@ -273,9 +275,9 @@ export default function Dashboard() {
             </h2>
             <div className="space-y-3">
               {[
-                { label: t('In Progress', 'قيد التنفيذ'), count: activeProjects.length, color: 'bg-blue-500', textColor: 'text-blue-700', bgColor: 'bg-blue-100' },
-                { label: t('Completed', 'مكتملة'), count: completedProjects.length, color: 'bg-green-500', textColor: 'text-green-700', bgColor: 'bg-green-100' },
-                { label: t('Cancelled', 'ملغاة'), count: allProjects.filter((p) => p.status === 'cancelled').length, color: 'bg-red-500', textColor: 'text-red-700', bgColor: 'bg-red-100' },
+                { label: t('In Progress', 'قيد التنفيذ'), count: activeProjects.length, color: 'bg-blue-500', textColor: 'text-blue-700', bgColor: 'bg-blue-50' },
+                { label: t('Completed', 'مكتملة'), count: completedProjects.length, color: 'bg-green-500', textColor: 'text-green-700', bgColor: 'bg-green-50' },
+                { label: t('Cancelled', 'ملغاة'), count: allProjects.filter((p) => p.status === 'cancelled').length, color: 'bg-red-500', textColor: 'text-red-700', bgColor: 'bg-red-50' },
                 { label: t('Archived', 'مؤرشفة'), count: allProjects.filter((p) => p.status === 'archived').length, color: 'bg-gray-400', textColor: 'text-gray-600', bgColor: 'bg-gray-100' },
               ].map((item) => {
                 const pct = allProjects.length > 0 ? (item.count / allProjects.length) * 100 : 0
@@ -311,9 +313,11 @@ export default function Dashboard() {
               </Link>
             </div>
             {activeProjects.length === 0 ? (
-              <p className="text-sm text-gray-400 py-4 text-center">
-                {t('No active shipments', 'لا توجد شحنات نشطة')}
-              </p>
+              <div className="empty-state">
+                <p className="text-sm text-gray-400">
+                  {t('No active shipments', 'لا توجد شحنات نشطة')}
+                </p>
+              </div>
             ) : (
               <div className="space-y-2.5">
                 {activeProjects.slice(0, 5).map((proj) => {
@@ -334,7 +338,7 @@ export default function Dashboard() {
                           {totalQty} {t('MT', 'طن')} &middot; {proj.destinationCountry || '—'}
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-end">
                         <p className="text-sm font-semibold text-brand-900">
                           {totalValue.toLocaleString()} {proj.currency || 'SAR'}
                         </p>

@@ -64,7 +64,7 @@ export default function CustomersPage() {
           <p className="text-sm text-gray-500 mt-1">{t(`${customers.length} customers for ${currentCompany.shortName}`, `${customers.length} عميل لـ ${currentCompany.shortName}`)}</p>
         </div>
         <button onClick={() => { setEditingCustomer(null); setShowForm(true) }} className="btn-primary">
-          <Plus size={16} className="mr-1.5" />{t('Add Customer', 'إضافة عميل')}
+          <Plus size={16} className="ms-1.5" />{t('Add Customer', 'إضافة عميل')}
         </button>
       </div>
 
@@ -78,13 +78,13 @@ export default function CustomersPage() {
       </div>
 
       <div className="relative mb-4">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input type="text" className="input-field pl-9" placeholder={t('Search by name, contact, phone, email, country...', 'بحث بالاسم، جهة الاتصال، الهاتف، البريد، الدولة...')} value={search} onChange={e => setSearch(e.target.value)} />
+        <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input type="text" className="input-field ps-9" placeholder={t('Search by name, contact, phone, email, country...', 'بحث بالاسم، جهة الاتصال، الهاتف، البريد، الدولة...')} value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       <div className="card overflow-hidden">
         {filteredCustomers.length === 0 ? (
-          <div className="p-12 text-center">
+          <div className="empty-state">
             <Users size={40} className="mx-auto text-gray-300 mb-3" />
             <p className="text-gray-500 text-sm">{search ? t('No customers match your search.', 'لا توجد عملاء يطابق بحثك.') : t('No customers yet. Add your first customer.', 'لا يوجد عملاء بعد. أضف أول عميل.')}</p>
           </div>
@@ -93,17 +93,17 @@ export default function CustomersPage() {
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Name', 'الاسم')}</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Contact', 'جهة الاتصال')}</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Phone', 'الهاتف')}</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Country', 'الدولة')}</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Email', 'البريد')}</th>
-                  <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Actions', 'الإجراءات')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Name', 'الاسم')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Contact', 'جهة الاتصال')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Phone', 'الهاتف')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Country', 'الدولة')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Email', 'البريد')}</th>
+                  <th className="text-end text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Actions', 'الإجراءات')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredCustomers.map(customer => (
-                  <tr key={customer.id} className="hover:bg-brand-50/40 transition-colors">
+                  <tr key={customer.id} className="table-row-hover">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center text-brand-700 text-xs font-bold shrink-0">
@@ -135,14 +135,14 @@ export default function CustomersPage() {
       </div>
 
       {filteredCustomers.length > 0 && (
-        <p className="text-xs text-gray-400 mt-3 text-right">{t(`Showing ${filteredCustomers.length} of ${customers.length} customers`, `عرض ${filteredCustomers.length} من ${customers.length} عميل`)}</p>
+        <p className="text-xs text-gray-400 mt-3 text-end">{t(`Showing ${filteredCustomers.length} of ${customers.length} customers`, `عرض ${filteredCustomers.length} من ${customers.length} عميل`)}</p>
       )}
 
       {/* View Customer Detail Modal */}
       {viewingCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setViewingCustomer(null)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="flex items-start justify-between px-6 py-4 border-b border-gray-100">
               <div>
                 <h2 className="text-lg font-semibold text-brand-900">{viewingCustomer.name}</h2>
@@ -163,7 +163,7 @@ export default function CustomersPage() {
               {viewingCustomer.notes && <div><p className="text-xs text-gray-400">{t('Notes', 'ملاحظات')}</p><p className="text-sm text-gray-600">{viewingCustomer.notes}</p></div>}
             </div>
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
-              <button onClick={() => { setEditingCustomer(viewingCustomer); setViewingCustomer(null); setShowForm(true) }} className="btn-primary"><Pencil size={14} className="mr-1.5" />{t('Edit', 'تعديل')}</button>
+              <button onClick={() => { setEditingCustomer(viewingCustomer); setViewingCustomer(null); setShowForm(true) }} className="btn-primary"><Pencil size={14} className="ms-1.5" />{t('Edit', 'تعديل')}</button>
             </div>
           </div>
         </div>

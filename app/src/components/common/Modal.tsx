@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 
 interface ModalProps {
@@ -20,29 +20,47 @@ const sizeClasses = {
 }
 
 export default function Modal({ open, onClose, title, subtitle, children, size = 'md', footer }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden'
+      // Focus the panel when opened
+      requestAnimationFrame(() => panelRef.current?.focus())
     } else {
       document.body.style.overflow = ''
     }
     return () => { document.body.style.overflow = '' }
   }, [open])
 
+  // Escape to close
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [open, onClose])
+
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative bg-white rounded-2xl shadow-2xl w-full ${sizeClasses[size]} max-h-[90vh] flex flex-col`}>
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby={title ? 'modal-title' : undefined}>
+      <div className="backdrop" onClick={onClose} aria-hidden="true" />
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className={`modal-panel ${sizeClasses[size]} outline-none`}
+      >
         {/* Header */}
         {(title || subtitle) && (
-          <div className="flex items-start justify-between px-6 py-4 border-b border-gray-100">
+          <div className="flex items-start justify-between px-6 py-4 border-b border-gray-100 shrink-0">
             <div>
-              {title && <h2 className="text-lg font-semibold text-brand-900">{title}</h2>}
+              {title && <h2 id="modal-title" className="text-lg font-semibold text-gray-900">{title}</h2>}
               {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
             </div>
-            <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors">
+            <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close">
               <X size={18} />
             </button>
           </div>
@@ -53,7 +71,7 @@ export default function Modal({ open, onClose, title, subtitle, children, size =
         </div>
         {/* Footer */}
         {footer && (
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 shrink-0">
             {footer}
           </div>
         )}

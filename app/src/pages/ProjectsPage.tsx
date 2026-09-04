@@ -22,9 +22,9 @@ import ProjectFormModal from '../components/projects/ProjectFormModal'
 import type { WorkItemStatus, WorkItem } from '../types'
 
 const STATUS_OPTIONS: { value: WorkItemStatus; label: string; colorClass: string }[] = [
-  { value: 'in_progress', label: 'In Progress', colorClass: 'bg-blue-100 text-blue-700' },
-  { value: 'completed', label: 'Completed', colorClass: 'bg-green-100 text-green-700' },
-  { value: 'cancelled', label: 'Cancelled', colorClass: 'bg-red-100 text-red-700' },
+  { value: 'in_progress', label: 'In Progress', colorClass: 'bg-blue-50 text-blue-700' },
+  { value: 'completed', label: 'Completed', colorClass: 'bg-green-50 text-green-700' },
+  { value: 'cancelled', label: 'Cancelled', colorClass: 'bg-red-50 text-red-700' },
   { value: 'archived', label: 'Archived', colorClass: 'bg-gray-100 text-gray-600' },
 ]
 
@@ -128,7 +128,7 @@ export default function ProjectsPage() {
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Search */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               value={searchQuery}
@@ -153,7 +153,7 @@ export default function ProjectsPage() {
               )}
             </button>
             {showStatusFilter && (
-              <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-2">
+              <div className="absolute top-full start-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-20 p-2">
                 {STATUS_OPTIONS.map((opt) => (
                   <label
                     key={opt.value}
@@ -247,7 +247,7 @@ export default function ProjectsPage() {
           </h2>
         </div>
         {filteredProjects.length === 0 && archivedProjects.length === 0 ? (
-          <div className="py-16 text-center">
+          <div className="empty-state">
             <FolderOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-400">{t('No projects found', 'لم يتم العثور على مشاريع')}</p>
           </div>
@@ -256,22 +256,22 @@ export default function ProjectsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-sand-50/50">
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                     {t('Project', 'المشروع')}
                   </th>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                     {t('Customer', 'العميل')}
                   </th>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                     {t('Destination', 'الوجهة')}
                   </th>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                     {t('Status', 'الحالة')}
                   </th>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                     {t('Value', 'القيمة')}
                   </th>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                     {t('Date', 'التاريخ')}
                   </th>
                   <th className="w-10 px-5 py-3" />
@@ -287,7 +287,7 @@ export default function ProjectsPage() {
                   return (
                     <tr
                       key={project.id}
-                      className="hover:bg-sand-50/50 transition-colors"
+                      className="table-row-hover"
                     >
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
@@ -388,16 +388,16 @@ export default function ProjectsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100 bg-sand-50/30">
-                    <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
+                    <th className="text-start text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
                       {t('Project', 'المشروع')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
+                    <th className="text-start text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
                       {t('Customer', 'العميل')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
+                    <th className="text-start text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
                       {t('Destination', 'الوجهة')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
+                    <th className="text-start text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
                       {t('Date', 'التاريخ')}
                     </th>
                     <th className="w-10 px-5 py-2.5" />
@@ -407,7 +407,7 @@ export default function ProjectsPage() {
                   {archivedProjects.map((project) => (
                     <tr
                       key={project.id}
-                      className="hover:bg-sand-50/30 transition-colors opacity-70"
+                      className="table-row-hover opacity-70"
                     >
                       <td className="px-5 py-3">
                         <Link
@@ -476,7 +476,7 @@ function ProjectCard({ project, t }: { project: WorkItem; t: (en: string, ar: st
   const totalQty = project.materials.reduce((s, m) => s + m.quantity, 0)
 
   return (
-    <Link to={`/projects/${project.id}`} className="card p-4 hover:shadow-md transition-shadow group">
+    <Link to={`/projects/${project.id}`} className="card p-4 hover:border-gray-300 transition-colors group">
       <div className="flex items-start justify-between mb-2">
         <span className={`status-badge ${statusOpt.colorClass}`}>
           {t(

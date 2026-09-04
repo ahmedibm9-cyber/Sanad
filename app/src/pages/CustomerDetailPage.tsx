@@ -105,7 +105,7 @@ export default function CustomerDetailPage() {
       <div className="card p-6 mb-6">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 bg-brand-100 rounded-xl flex items-center justify-center text-brand-700 text-xl font-bold shrink-0">
+            <div className="w-14 h-14 bg-brand-100 rounded-lg flex items-center justify-center text-brand-700 text-xl font-bold shrink-0">
               {customer.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
             </div>
             <div>
@@ -119,7 +119,7 @@ export default function CustomerDetailPage() {
               <div className="flex items-center gap-4 mt-2 flex-wrap">
                 {customer.country && (
                   <span className="status-badge bg-brand-50 text-brand-700 border border-brand-200">
-                    <MapPin size={12} className="mr-1" />
+                    <MapPin size={12} className="ms-1" />
                     {customer.city ? `${customer.city}, ` : ''}{customer.country}
                   </span>
                 )}
@@ -131,7 +131,7 @@ export default function CustomerDetailPage() {
             </div>
           </div>
           <button onClick={() => setShowEditForm(true)} className="btn-secondary">
-            <Edit3 size={14} className="mr-1.5" />
+            <Edit3 size={14} className="ms-1.5" />
             {t('Edit', 'تعديل')}
           </button>
         </div>
@@ -152,7 +152,7 @@ export default function CustomerDetailPage() {
             {tab.icon}
             {t(tab.label.en, tab.label.ar)}
             {tab.count !== undefined && (
-              <span className="ml-1 bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded-full">
+              <span className="ms-1 bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded-full">
                 {tab.count}
               </span>
             )}
@@ -165,7 +165,7 @@ export default function CustomerDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Contact Details */}
           <div className="card p-5">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+            <h3 className="section-title mb-4">
               {t('Contact Details', 'بيانات الاتصال')}
             </h3>
             <div className="space-y-3">
@@ -201,7 +201,7 @@ export default function CustomerDetailPage() {
 
           {/* Address & Location */}
           <div className="card p-5">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+            <h3 className="section-title mb-4">
               {t('Address & Location', 'العنوان والموقع')}
             </h3>
             <div className="space-y-3">
@@ -241,7 +241,7 @@ export default function CustomerDetailPage() {
 
           {/* Summary Stats */}
           <div className="card p-5 md:col-span-2">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+            <h3 className="section-title mb-4">
               {t('Business Summary', 'ملخص الأعمال')}
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -273,7 +273,7 @@ export default function CustomerDetailPage() {
           {/* Notes */}
           {customer.notes && (
             <div className="card p-5 md:col-span-2">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              <h3 className="section-title mb-2">
                 {t('Notes', 'ملاحظات')}
               </h3>
               <p className="text-sm text-gray-700">{customer.notes}</p>
@@ -285,7 +285,7 @@ export default function CustomerDetailPage() {
       {activeTab === 'projects' && (
         <div className="space-y-3">
           {relatedProjects.length === 0 ? (
-            <div className="card p-8 text-center">
+            <div className="card empty-state p-8">
               <FolderOpen size={40} className="mx-auto text-gray-300 mb-3" />
               <p className="text-gray-500 text-sm">
                 {t('No projects found for this customer.', 'لا توجد مشاريع لهذا العميل.')}
@@ -347,7 +347,7 @@ export default function CustomerDetailPage() {
       {activeTab === 'documents' && (
         <div className="space-y-3">
           {relatedDocuments.length === 0 ? (
-            <div className="card p-8 text-center">
+            <div className="card empty-state p-8">
               <FileText size={40} className="mx-auto text-gray-300 mb-3" />
               <p className="text-gray-500 text-sm">
                 {t('No documents found for this customer.', 'لا توجد مستندات لهذا العميل.')}
@@ -358,19 +358,19 @@ export default function CustomerDetailPage() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Document Type', 'نوع المستند')}
                     </th>
-                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Number', 'الرقم')}
                     </th>
-                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Project', 'المشروع')}
                     </th>
-                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Date', 'التاريخ')}
                     </th>
-                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Status', 'الحالة')}
                     </th>
                     <th className="w-10 px-5 py-3" />
@@ -419,7 +419,7 @@ export default function CustomerDetailPage() {
       {activeTab === 'history' && (
         <div className="space-y-3">
           {projectHistory.length === 0 ? (
-            <div className="card p-8 text-center">
+            <div className="card empty-state p-8">
               <Clock size={40} className="mx-auto text-gray-300 mb-3" />
               <p className="text-gray-500 text-sm">
                 {t('No export history for this customer.', 'لا يوجد سجل تصدير لهذا العميل.')}

@@ -222,10 +222,10 @@ export default function SettingsPage() {
     const [uploaded, setUploaded] = useState(false)
     const [fileName, setFileName] = useState('')
     return (
-      <label className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-brand-400 transition-colors cursor-pointer bg-gray-50 hover:bg-brand-50/30 block">
+      <label className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-brand-400 transition-colors cursor-pointer bg-gray-50 hover:bg-brand-50/30 block">
         <input type="file" className="hidden" accept="image/png,image/jpeg,image/svg+xml" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setFileName(f.name); setUploaded(true) } }} />
         <div className="flex flex-col items-center gap-2">
-          <div className="p-3 bg-brand-100 rounded-xl">
+          <div className="p-3 bg-brand-100 rounded-lg">
             <Icon className="w-6 h-6 text-brand-600" />
           </div>
           <div>
@@ -937,7 +937,7 @@ export default function SettingsPage() {
             />
 
             {/* Signature & Stamp toggles */}
-            <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
               <h4 className="text-sm font-semibold text-gray-700">{t('Display Options', 'خيارات العرض')}</h4>
               <div className="flex items-center justify-between">
                 <div>
@@ -1010,7 +1010,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Auto backup toggle */}
-            <div className="bg-gray-50 rounded-xl p-4">
+            <div className="bg-gray-50 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-gray-700">{t('Automatic Backup', 'النسخ الاحتياطي التلقائي')}</p>
@@ -1037,7 +1037,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Last backup */}
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-center gap-3">
               <div className="p-2 bg-emerald-100 rounded-lg">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600" />
               </div>
@@ -1051,7 +1051,7 @@ export default function SettingsPage() {
 
             {/* Backup success banner */}
             {backupSuccess && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3 animate-in fade-in">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-center gap-3 animate-in fade-in">
                 <div className="p-2 bg-emerald-100 rounded-lg">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                 </div>
@@ -1146,9 +1146,9 @@ export default function SettingsPage() {
             </div>
 
             {/* License Status */}
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-5">
               <div className="flex items-start gap-3">
-                <div className="p-2.5 bg-emerald-100 rounded-xl">
+                <div className="p-2.5 bg-emerald-100 rounded-lg">
                   <Shield className="w-5 h-5 text-emerald-600" />
                 </div>
                 <div className="flex-1">
@@ -1192,7 +1192,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Upgrade notice */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium text-amber-800">{t('Renewal Reminder', 'تذكير بالتجديد')}</p>

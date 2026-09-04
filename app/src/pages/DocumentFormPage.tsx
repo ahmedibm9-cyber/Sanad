@@ -219,7 +219,7 @@ export default function DocumentFormPage() {
   /* ── common header ──────────────────────────────────── */
   const CommonFields = () => (
     <div className="card p-6 mb-6">
-      <h3 className="text-lg font-semibold text-brand-900 mb-4 flex items-center gap-2">
+      <h2 className="text-lg font-semibold text-brand-900 mb-4 flex items-center gap-2">
         <FileText size={18} />
         {t('Document Information', 'معلومات المستند')}
       </h3>

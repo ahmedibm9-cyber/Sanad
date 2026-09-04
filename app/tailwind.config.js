@@ -39,6 +39,30 @@ export default {
         sans: ['Inter', 'Noto Sans Arabic', 'system-ui', 'sans-serif'],
         arabic: ['Noto Sans Arabic', 'Inter', 'system-ui', 'sans-serif'],
       },
+      animation: {
+        'fade-in': 'fadeIn 150ms ease-out',
+        'fade-out': 'fadeOut 120ms ease-in',
+        'slide-in': 'slideIn 160ms ease-out',
+        'slide-down': 'slideDown 120ms ease-out',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        fadeOut: {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0' },
+        },
+        slideIn: {
+          '0%': { opacity: '0', transform: 'translateY(4px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideDown: {
+          '0%': { opacity: '0', transform: 'translateY(-4px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
     },
   },
   plugins: [],

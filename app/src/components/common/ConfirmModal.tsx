@@ -28,18 +28,23 @@ export default function ConfirmModal({ open, onClose, onConfirm, title, message,
   return (
     <Modal open={open} onClose={onClose} size="sm" footer={
       <>
-        <button onClick={onClose} className="btn-secondary">{cancelLabel}</button>
-        <button onClick={onConfirm} className={v.btnClass} disabled={loading}>
-          {loading ? 'Processing...' : confirmLabel}
+        <button onClick={onClose} className="btn-secondary" disabled={loading}>{cancelLabel}</button>
+        <button onClick={onConfirm} className={v.btnClass} disabled={loading} aria-label={confirmLabel}>
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Processing...
+            </span>
+          ) : confirmLabel}
         </button>
       </>
     }>
       <div className="flex flex-col items-center text-center py-4">
-        <div className={`p-3 ${v.iconBg} rounded-2xl mb-4`}>
-          <Icon className={`w-8 h-8 ${v.iconColor}`} />
+        <div className={`p-3 ${v.iconBg} rounded-lg mb-4`}>
+          <Icon className={`w-7 h-7 ${v.iconColor}`} aria-hidden="true" />
         </div>
-        <h3 className="text-lg font-semibold text-brand-900 mb-2">{title}</h3>
-        <p className="text-sm text-gray-600 mb-2">{message}</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+        <p className="text-sm text-gray-600 mb-1">{message}</p>
         {details && <p className="text-xs text-gray-400 max-w-sm">{details}</p>}
       </div>
     </Modal>

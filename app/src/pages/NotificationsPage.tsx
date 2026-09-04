@@ -111,7 +111,7 @@ export default function NotificationsPage() {
             disabled={unreadCount === 0}
             className="btn-secondary disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <CheckCheck className="w-4 h-4 mr-2" />
+            <CheckCheck className="w-4 h-4 ms-2" />
             {t('Mark All as Read', 'تعيين الكل كمقروء')}
           </button>
         </div>
@@ -150,16 +150,16 @@ export default function NotificationsPage() {
             <div
               key={n.id}
               onClick={() => handleMarkAsRead(n.id)}
-              className={`card p-4 cursor-pointer transition-all hover:shadow-md border-l-4 ${
+              className={`card p-4 cursor-pointer transition-all border-s-4 ${
                 !n.read
-                  ? `${typeBgColors[n.type] || 'bg-gray-50 border-gray-200'} border-l-brand-600`
-                  : 'bg-white border-l-transparent hover:bg-gray-50/50'
+                  ? `${typeBgColors[n.type] || 'bg-gray-50 border-gray-200'} border-s-brand-600`
+                  : 'bg-white border-s-transparent hover:bg-gray-50/50'
               }`}
             >
               <div className="flex items-start gap-4">
                 {/* Icon */}
-                <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${
-                  !n.read ? 'bg-white shadow-sm' : 'bg-gray-50'
+                <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
+                  !n.read ? 'bg-white' : 'bg-gray-50'
                 }`}>
                   {typeIcons[n.type] || <Bell className="w-5 h-5 text-gray-400" />}
                 </div>
@@ -188,7 +188,7 @@ export default function NotificationsPage() {
                   {/* Meta */}
                   <div className="flex items-center gap-3 mt-2">
                     {n.entityType && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                      <span className="status-badge bg-gray-100 text-gray-600">
                         {n.entityType}
                       </span>
                     )}
@@ -199,8 +199,8 @@ export default function NotificationsPage() {
           ))}
 
           {filtered.length === 0 && (
-            <div className="card p-12 text-center">
-              <Bell className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+            <div className="card empty-state py-12">
+              <Bell className="w-10 h-10 text-gray-300 mb-3" />
               <p className="text-gray-400 font-medium">
                 {t('No notifications match your filters.', 'لا توجد إشعارات مطابقة لمرشّحاتك.')}
               </p>

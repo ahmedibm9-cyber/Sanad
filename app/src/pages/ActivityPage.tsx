@@ -109,24 +109,24 @@ export default function ActivityPage() {
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
             <div className="relative">
               <label className="label-field">{t('User Search', 'بحث المستخدم')}</label>
-              <Search className="absolute left-3 top-8 w-4 h-4 text-gray-400" />
+              <Search className="absolute start-3 top-8 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder={t('User name...', 'اسم المستخدم...')}
                 value={userSearch}
                 onChange={e => setUserSearch(e.target.value)}
-                className="input-field pl-9"
+                className="input-field ps-9"
               />
             </div>
             <div className="relative">
               <label className="label-field">{t('Document / Entity', 'المستند / الكيان')}</label>
-              <Search className="absolute left-3 top-8 w-4 h-4 text-gray-400" />
+              <Search className="absolute start-3 top-8 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder={t('Reference...', 'المرجع...')}
                 value={entitySearch}
                 onChange={e => setEntitySearch(e.target.value)}
-                className="input-field pl-9"
+                className="input-field ps-9"
               />
             </div>
             <div>
@@ -173,11 +173,11 @@ export default function ActivityPage() {
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/80">
                 <th className="w-8 px-4 py-3"></th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Timestamp', 'الوقت')}</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('User', 'المستخدم')}</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Action', 'الإجراء')}</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Entity', 'الكيان')}</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Reference', 'المرجع')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Timestamp', 'الوقت')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('User', 'المستخدم')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Action', 'الإجراء')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Entity', 'الكيان')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Reference', 'المرجع')}</th>
               </tr>
             </thead>
             <tbody>
@@ -198,8 +198,8 @@ export default function ActivityPage() {
                 return (
                   <Fragment key={entry.id}>
                     <tr
-                      className={`border-b border-gray-100 transition-colors ${
-                        hasBeforeAfter ? 'cursor-pointer hover:bg-gray-50' : ''
+                      className={`border-b border-gray-100 table-row-hover ${
+                        hasBeforeAfter ? 'cursor-pointer' : ''
                       }`}
                       onClick={hasBeforeAfter ? () => toggleExpand(entry.id) : undefined}
                     >
@@ -229,7 +229,7 @@ export default function ActivityPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`status-badge ${actionColors[entry.action] || 'bg-gray-100 text-gray-800'}`}>
-                          <span className="mr-1">{actionIcons[entry.action]}</span>
+                          <span className="ms-1">{actionIcons[entry.action]}</span>
                           {entry.action}
                         </span>
                       </td>
@@ -284,8 +284,10 @@ export default function ActivityPage() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
-                    {t('No activity entries match your filters.', 'لا توجد سجلات مطابقة لمرشّحاتك.')}
+                  <td colSpan={6} className="px-4 py-12 empty-state">
+                    <p className="text-gray-400">
+                      {t('No activity entries match your filters.', 'لا توجد سجلات مطابقة لمرشّحاتك.')}
+                    </p>
                   </td>
                 </tr>
               )}

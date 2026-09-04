@@ -75,7 +75,7 @@ export default function TrashPage() {
       {/* Header */}
       <div className="flex-shrink-0 px-6 pt-6 pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
             <Trash2 className="w-5 h-5 text-red-600" />
           </div>
           <div>
@@ -88,7 +88,7 @@ export default function TrashPage() {
       </div>
 
       {restoredMsg && (
-        <div className="mx-6 mb-4 flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
+        <div className="mx-6 mb-4 flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
           <CheckCircle size={16} />
           {t(`"${restoredMsg}" has been restored.`, `تم استعادة "${restoredMsg}".`)}
         </div>
@@ -98,13 +98,13 @@ export default function TrashPage() {
       <div className="flex-shrink-0 px-6 pb-4">
         <div className="flex items-end gap-3">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder={t('Search by name, type, or user...', 'بحث بالاسم أو النوع أو المستخدم...')}
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="input-field pl-10"
+              className="input-field ps-10"
             />
           </div>
           <div>
@@ -131,16 +131,16 @@ export default function TrashPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/80">
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Entity Name', 'اسم الكيان')}</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Entity Type', 'نوع الكيان')}</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Deleted By', 'حذفه')}</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Deleted Date', 'تاريخ الحذف')}</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Actions', 'الإجراءات')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Entity Name', 'اسم الكيان')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Entity Type', 'نوع الكيان')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Deleted By', 'حذفه')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Deleted Date', 'تاريخ الحذف')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Actions', 'الإجراءات')}</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(entry => (
-                <tr key={entry.id} className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+                <tr key={entry.id} className="border-b border-gray-100 table-row-hover">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <span>{entityTypeIcons[entry.entityType] || '📄'}</span>
@@ -169,9 +169,11 @@ export default function TrashPage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-gray-400">
-                    <Trash2 className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                    <p>{t('Trash is empty or no items match your filters.', 'السلة فارغة أو لا توجد عناصر مطابقة.')}</p>
+                  <td colSpan={5} className="px-4 py-12 empty-state">
+                    <Trash2 className="w-8 h-8 mb-2 text-gray-300" />
+                    <p className="text-gray-400">
+                      {t('Trash is empty or no items match your filters.', 'السلة فارغة أو لا توجد عناصر مطابقة.')}
+                    </p>
                   </td>
                 </tr>
               )}
@@ -183,7 +185,7 @@ export default function TrashPage() {
       {/* Confirmation Modal */}
       {confirmRestore && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="card w-full max-w-md mx-4 shadow-2xl">
+          <div className="card w-full max-w-md mx-4">
             <div className="px-6 py-5">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">

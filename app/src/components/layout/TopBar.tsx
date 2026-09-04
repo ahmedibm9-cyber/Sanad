@@ -2,28 +2,42 @@ import { useLanguage } from '../../contexts/LanguageContext'
 import { useCompany } from '../../contexts/CompanyContext'
 import { useApp } from '../../contexts/AppContext'
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, Globe, User, ChevronDown } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
+import { Search, Bell, Globe, ChevronDown } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { notifications as mockNotifications } from '../../data/mockData'
 
 export default function TopBar() {
-  const { language, setLanguage, t } = useLanguage()
+  const { language, setLanguage, t, dir } = useLanguage()
   const { currentCompany } = useCompany()
   const { currentUser, setCurrentUser } = useApp()
   const navigate = useNavigate()
+  const isRtl = dir === 'rtl'
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [langOpen, setLangOpen] = useState(false)
   const unreadCount = mockNotifications.filter(n => !n.read).length
   const userMenuRef = useRef<HTMLDivElement>(null)
   const langRef = useRef<HTMLDivElement>(null)
 
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) setUserMenuOpen(false)
+    if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false)
+  }, [])
+
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) setUserMenuOpen(false)
-      if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false)
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [handleClickOutside])
+
+  // Keyboard shortcut for search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        document.getElementById('global-search')?.focus()
+      }
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
   }, [])
 
   const users = [
@@ -34,51 +48,51 @@ export default function TopBar() {
   ]
 
   return (
-    <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0">
-      {/* Search */}
+    <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0" role="banner">
+      {/* Left: Search */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2 text-brand-700 font-bold text-lg"
-        >
-          <div className="w-7 h-7 bg-brand-700 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-xs">S</span>
-          </div>
-          <span className="hidden lg:inline">SANAD</span>
-        </button>
-        <div className="hidden md:flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 w-80 ml-4">
-          <Search size={16} className="text-gray-400 shrink-0" />
+        <div className="hidden md:flex items-center bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 w-72 transition-colors focus-within:border-brand-400 focus-within:bg-white focus-within:ring-1 focus-within:ring-brand-400">
+          <Search size={15} className="text-gray-400 shrink-0" aria-hidden="true" />
           <input
-            type="text"
-            placeholder={t('Search projects, customers, materials...', 'ابحث عن المشاريع والعملاء والمواد...')}
-            className="ml-2 bg-transparent text-sm w-full focus:outline-none text-gray-700 placeholder-gray-400"
+            id="global-search"
+            type="search"
+            placeholder={t('Search...', 'بحث...')}
+            className={`${isRtl ? 'mr-2 pr-1 pl-0' : 'ml-2 pl-1 pr-0'} bg-transparent text-sm w-full focus:outline-none text-gray-700 placeholder-gray-400`}
+            aria-label={t('Global search', 'بحث عام')}
           />
-          <kbd className="text-[10px] text-gray-400 bg-white border border-gray-200 px-1.5 py-0.5 rounded ml-2 shrink-0">⌘K</kbd>
+          <kbd className="text-[10px] text-gray-400 bg-white border border-gray-200 px-1.5 py-0.5 rounded shrink-0" aria-hidden="true">⌘K</kbd>
         </div>
       </div>
 
-      {/* Right side */}
-      <div className="flex items-center gap-2">
+      {/* Right: Actions */}
+      <div className="flex items-center gap-1">
         {/* Language Switcher */}
         <div ref={langRef} className="relative">
           <button
             onClick={() => setLangOpen(!langOpen)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
+            aria-label={t('Switch language', 'تبديل اللغة')}
+            aria-expanded={langOpen}
+            aria-haspopup="listbox"
           >
-            <Globe size={16} />
-            <span className="hidden sm:inline">{language === 'en' ? 'EN' : 'AR'}</span>
+            <Globe size={16} aria-hidden="true" />
+            <span className="hidden sm:inline font-medium">{language === 'en' ? 'EN' : 'AR'}</span>
           </button>
           {langOpen && (
-            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50 w-32">
+            <div className="absolute top-full mt-1 dropdown-panel w-32" role="listbox">
               <button
                 onClick={() => { setLanguage('en'); setLangOpen(false) }}
-                className={`w-full px-3 py-2 text-sm text-left hover:bg-gray-50 ${language === 'en' ? 'bg-brand-50 text-brand-700 font-medium' : ''}`}
+                className={`w-full px-3 py-2 text-sm text-left hover:bg-gray-50 transition-colors ${language === 'en' ? 'bg-brand-50 text-brand-700 font-medium' : 'text-gray-700'}`}
+                role="option"
+                aria-selected={language === 'en'}
               >
                 English
               </button>
               <button
                 onClick={() => { setLanguage('ar'); setLangOpen(false) }}
-                className={`w-full px-3 py-2 text-sm text-right hover:bg-gray-50 ${language === 'ar' ? 'bg-brand-50 text-brand-700 font-medium' : ''}`}
+                className={`w-full px-3 py-2 text-sm text-right hover:bg-gray-50 transition-colors ${language === 'ar' ? 'bg-brand-50 text-brand-700 font-medium' : 'text-gray-700'}`}
+                role="option"
+                aria-selected={language === 'ar'}
               >
                 العربية
               </button>
@@ -89,11 +103,12 @@ export default function TopBar() {
         {/* Notifications */}
         <button
           onClick={() => navigate('/notifications')}
-          className="relative p-2 text-gray-500 hover:bg-gray-50 rounded-lg transition-colors"
+          className="relative p-2 text-gray-500 hover:bg-gray-50 rounded-md transition-colors"
+          aria-label={t('Notifications', 'الإشعارات')}
         >
-          <Bell size={18} />
+          <Bell size={18} aria-hidden="true" />
           {unreadCount > 0 && (
-            <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+            <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold" aria-label={`${unreadCount} unread`}>
               {unreadCount}
             </span>
           )}
@@ -103,40 +118,47 @@ export default function TopBar() {
         <div ref={userMenuRef} className="relative">
           <button
             onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-2 py-1 hover:bg-gray-50 rounded-md transition-colors"
+            aria-label={t('User menu', 'قائمة المستخدم')}
+            aria-expanded={userMenuOpen}
+            aria-haspopup="menu"
           >
-            <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center text-brand-700 text-xs font-bold">
+            <div className="w-7 h-7 bg-brand-100 rounded-full flex items-center justify-center text-brand-700 text-xs font-bold shrink-0" aria-hidden="true">
               {currentUser.name.split(' ').map(n => n[0]).join('')}
             </div>
             <div className="hidden md:block text-left">
               <p className="text-sm font-medium text-gray-800 leading-tight">{currentUser.name}</p>
-              <p className="text-xs text-gray-400 leading-tight capitalize">{currentUser.role}</p>
+              <p className="text-[11px] text-gray-400 leading-tight capitalize">{currentUser.role}</p>
             </div>
-            <ChevronDown size={14} className="text-gray-400 hidden md:block" />
+            <ChevronDown size={14} className={`text-gray-400 hidden md:block transition-transform duration-150 ${userMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
           </button>
           {userMenuOpen && (
-            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50 w-56">
+            <div className="absolute top-full mt-1 dropdown-panel w-56" role="menu">
               <div className="px-3 py-2 border-b border-gray-100">
-                <p className="text-xs text-gray-400">{t('Switch User (Demo)', 'تبديل المستخدم (عرض تجريبي)')}</p>
+                <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wider">{t('Switch User (Demo)', 'تبديل المستخدم (عرض تجريبي)')}</p>
               </div>
               {users.map((u) => (
                 <button
                   key={u.id}
                   onClick={() => { setCurrentUser(u); setUserMenuOpen(false) }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 ${u.id === currentUser.id ? 'bg-brand-50' : ''}`}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${u.id === currentUser.id ? 'bg-brand-50' : ''}`}
+                  role="menuitem"
                 >
-                  <div className="w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-600">
+                  <div className="w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 shrink-0" aria-hidden="true">
                     {u.name.split(' ').map(n => n[0]).join('')}
                   </div>
-                  <div className="text-left">
-                    <div className="font-medium text-gray-800">{u.name}</div>
-                    <div className="text-xs text-gray-400 capitalize">{u.role}</div>
+                  <div className="text-left min-w-0">
+                    <div className="font-medium text-gray-800 truncate">{u.name}</div>
+                    <div className="text-[11px] text-gray-400 capitalize">{u.role}</div>
                   </div>
                 </button>
               ))}
-              <div className="border-t border-gray-100 px-3 py-2">
-                <button onClick={() => { navigate('/users'); setUserMenuOpen(false) }}
-                  className="text-xs text-brand-600 hover:text-brand-700 font-medium">
+              <div className="border-t border-gray-100">
+                <button
+                  onClick={() => { navigate('/users'); setUserMenuOpen(false) }}
+                  className="w-full text-left px-3 py-2 text-xs text-brand-600 hover:text-brand-700 hover:bg-gray-50 font-medium transition-colors"
+                  role="menuitem"
+                >
                   {t('Manage Users', 'إدارة المستخدمين')}
                 </button>
               </div>

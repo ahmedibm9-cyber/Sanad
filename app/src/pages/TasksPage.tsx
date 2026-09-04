@@ -23,9 +23,9 @@ import ConfirmModal from '../components/common/ConfirmModal'
 import type { WorkItemStatus, WorkItem } from '../types'
 
 const STATUS_OPTIONS: { value: WorkItemStatus; label: string; labelAr: string; colorClass: string }[] = [
-  { value: 'in_progress', label: 'In Progress', labelAr: 'قيد التنفيذ', colorClass: 'bg-blue-100 text-blue-700' },
-  { value: 'completed', label: 'Completed', labelAr: 'مكتملة', colorClass: 'bg-green-100 text-green-700' },
-  { value: 'cancelled', label: 'Cancelled', labelAr: 'ملغاة', colorClass: 'bg-red-100 text-red-700' },
+  { value: 'in_progress', label: 'In Progress', labelAr: 'قيد التنفيذ', colorClass: 'bg-blue-50 text-blue-700' },
+  { value: 'completed', label: 'Completed', labelAr: 'مكتملة', colorClass: 'bg-green-50 text-green-700' },
+  { value: 'cancelled', label: 'Cancelled', labelAr: 'ملغاة', colorClass: 'bg-red-50 text-red-700' },
   { value: 'archived', label: 'Archived', labelAr: 'مؤرشفة', colorClass: 'bg-gray-100 text-gray-600' },
 ]
 
@@ -114,11 +114,11 @@ export default function TasksPage() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => { if (taskItems.length > 0) setConvertingTask(taskItems[0]) }} className="btn-secondary">
-            <ArrowRightLeft className="w-4 h-4 mr-1.5" />
+            <ArrowRightLeft className="w-4 h-4 ms-1.5" />
             {t('Convert to Project', 'تحويل إلى مشروع')}
           </button>
           <button onClick={() => setShowTaskForm(true)} className="btn-primary">
-            <Plus className="w-4 h-4 mr-1.5" />
+            <Plus className="w-4 h-4 ms-1.5" />
             {t('New Task', 'مهمة جديدة')}
           </button>
         </div>
@@ -129,13 +129,13 @@ export default function TasksPage() {
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Search */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('Search tasks...', 'بحث في المهام...')}
-              className="input-field pl-10"
+              className="input-field ps-10"
             />
           </div>
 
@@ -145,16 +145,16 @@ export default function TasksPage() {
               className="btn-secondary relative"
               onClick={() => setShowStatusFilter(!showStatusFilter)}
             >
-              <Filter className="w-4 h-4 mr-1.5" />
+              <Filter className="w-4 h-4 ms-1.5" />
               {t('Status', 'الحالة')}
               {selectedStatuses.length > 0 && (
-                <span className="ml-1.5 bg-brand-700 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                <span className="ms-1.5 bg-brand-700 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   {selectedStatuses.length}
                 </span>
               )}
             </button>
             {showStatusFilter && (
-              <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-2">
+              <div className="absolute top-full start-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-sm z-20 p-2">
                 {STATUS_OPTIONS.map((opt) => (
                   <label
                     key={opt.value}
@@ -205,17 +205,17 @@ export default function TasksPage() {
                   onClick={() => toggleStatus(s)}
                 >
                   {opt?.label}
-                  <X className="w-3 h-3 ml-1" />
+                  <X className="w-3 h-3 me-1" />
                 </span>
               )
             })}
             {selectedCustomerId && (
               <span className="status-badge bg-purple-100 text-purple-700 cursor-pointer" onClick={() => setSelectedCustomerId('')}>
                 {customers.find((c) => c.id === selectedCustomerId)?.name}
-                <X className="w-3 h-3 ml-1" />
+                <X className="w-3 h-3 me-1" />
               </span>
             )}
-            <button className="text-xs text-brand-600 hover:text-brand-800 ml-2" onClick={clearFilters}>
+            <button className="text-xs text-brand-600 hover:text-brand-800 ms-2" onClick={clearFilters}>
               {t('Clear all', 'مسح الكل')}
             </button>
           </div>
@@ -227,11 +227,11 @@ export default function TasksPage() {
         <div className="px-5 py-3 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-brand-900">
             {t('All Tasks', 'جميع المهام')}
-            <span className="ml-2 text-gray-400 font-normal">({filteredTasks.length})</span>
+            <span className="ms-2 text-gray-400 font-normal">({filteredTasks.length})</span>
           </h2>
         </div>
         {filteredTasks.length === 0 && archivedTasks.length === 0 ? (
-          <div className="py-16 text-center">
+          <div className="empty-state">
             <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-400">{t('No tasks found', 'لم يتم العثور على مهام')}</p>
           </div>
@@ -240,19 +240,19 @@ export default function TasksPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-sand-50/50">
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                     {t('Task', 'المهمة')}
                   </th>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                     {t('Customer', 'العميل')}
                   </th>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                     {t('Status', 'الحالة')}
                   </th>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                     {t('Created by', 'أنشأه')}
                   </th>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                     {t('Date', 'التاريخ')}
                   </th>
                   <th className="w-10 px-5 py-3" />
@@ -264,7 +264,7 @@ export default function TasksPage() {
                   return (
                     <tr
                       key={task.id}
-                      className="hover:bg-sand-50/50 transition-colors"
+                      className="table-row-hover"
                     >
                       <td className="px-5 py-3.5">
                         <Link
@@ -340,13 +340,13 @@ export default function TasksPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100 bg-sand-50/30">
-                    <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
+                    <th className="text-start text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
                       {t('Task', 'المهمة')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
+                    <th className="text-start text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
                       {t('Customer', 'العميل')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
+                    <th className="text-start text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
                       {t('Date', 'التاريخ')}
                     </th>
                     <th className="w-10 px-5 py-2.5" />
@@ -356,7 +356,7 @@ export default function TasksPage() {
                   {archivedTasks.map((task) => (
                     <tr
                       key={task.id}
-                      className="hover:bg-sand-50/30 transition-colors opacity-70"
+                      className="table-row-hover opacity-70"
                     >
                       <td className="px-5 py-3">
                         <Link
