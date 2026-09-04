@@ -1,0 +1,69 @@
+# SANAD — Decisions Log
+
+## Confirmed
+
+- Product name: SANAD.
+- Web app.
+- Self-hosted per client, not SaaS.
+- Primary database: Supabase.
+- Object storage: Cloudflare R2.
+- Central DB from first beta.
+- Arabic RTL + English LTR UI.
+- Separate Arabic and English generated documents preferred.
+- Admin owns deployment and all companies.
+- User can have different permissions in different companies.
+- Viewer is read-only except Note and Report Issue.
+- Viewer download is configurable.
+- Factory Code is the only shared business dataset.
+- All other business data isolated by company.
+- To-do is personal and distinct from Task.
+- Task is small work; Project is larger work.
+- Task converts to Project in place.
+- Task and Project have same major capabilities.
+- Project = one real external export/shipping operation + one company + one shipment.
+- Project may contain multiple materials.
+- Task/Project statuses: In Progress, Cancelled, Completed, Archived.
+- Status filter is multi-select checklist.
+- Projects can be pinned.
+- Archived Projects appear in collapsible bottom group.
+- Notes and Report Issues apply to whole Task/Project.
+- Report Issue statuses: Open, Under Review, Resolved, Rejected.
+- Severity: Low, Medium, High, Critical.
+- Shared Project Data Layer is core architecture.
+- Shared conflicts require confirmation.
+- Propagation requires separate checklist confirmation.
+- Documents update in place with same number.
+- No visible version/revision clutter.
+- Audit keeps old/new values.
+- Latest selling price is suggested on future use.
+- Material TDS/MSDS/COA stored once in Material Library.
+- COA currently treated as material-level reusable file.
+- No supplier relationship in Project tracking.
+- Invoice menu: QUOT, PINV, TINV, CINV.
+- Other docs: PKL, DN, BL.
+- Quotation has distinct fields.
+- Document date automatic.
+- Document number manually supplied.
+- No forced auto serial.
+- Document number unique inside company.
+- VAT default 0.
+- VAT rates configurable.
+- Current rule: 15% Tax Invoice → QR; 0% → no QR.
+- Prepared By editable.
+- Signature/stamp visibility configurable per document.
+- Transparent PNG logo/stamp/signature.
+- Two minimal document template families.
+- High-quality digital PDF required.
+- Factory Code has no row edit mode.
+- Factory Code smart update never deletes old records.
+- Factory Code filtered/full Excel export.
+- Audit includes views/downloads/PDF/exports; not every search.
+- All normal deletions go to Trash.
+- In-app notifications from V1 and configurable.
+- Reports export PDF + Excel.
+- Backup manual + automatic + offline + online.
+- Licensing infrastructure from V1.
+- License verification online to vendor server.
+- WhatsApp out of scope.
+- SANAD limited to external export/shipping operations/documentation.
+- Confirmation modal only for consequential actions.

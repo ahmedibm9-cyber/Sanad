@@ -1,0 +1,133 @@
+import { useState, useMemo } from 'react'
+import { useLanguage } from '../contexts/LanguageContext'
+import { useCompany } from '../contexts/CompanyContext'
+import { getMaterialsByCompany } from '../data/mockData'
+import MaterialFormModal from '../components/materials/MaterialFormModal'
+import ConfirmModal from '../components/common/ConfirmModal'
+import type { Material } from '../types'
+import { Package, Search, Plus, FileText, Pencil, Trash2, ExternalLink } from 'lucide-react'
+
+export default function MaterialsPage() {
+  const { t } = useLanguage()
+  const { currentCompany } = useCompany()
+  const [search, setSearch] = useState('')
+  const [materials, setMaterials] = useState<Material[]>(() => getMaterialsByCompany(currentCompany.id))
+  const [showForm, setShowForm] = useState(false)
+  const [editingMaterial, setEditingMaterial] = useState<Material | null>(null)
+  const [deletingMaterial, setDeletingMaterial] = useState<Material | null>(null)
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return materials
+    const q = search.toLowerCase()
+    return materials.filter(m =>
+      m.name.toLowerCase().includes(q) || m.grade?.toLowerCase().includes(q) ||
+      m.manufacturer?.toLowerCase().includes(q) || m.origin?.toLowerCase().includes(q) ||
+      m.hsCode?.toLowerCase().includes(q) || m.defaultPacking?.toLowerCase().includes(q)
+    )
+  }, [materials, search])
+
+  const manufacturers = useMemo(() => new Set(materials.map(m => m.manufacturer).filter(Boolean)).size, [materials])
+  const origins = useMemo(() => new Set(materials.map(m => m.origin).filter(Boolean)).size, [materials])
+
+  const handleSave = (data: Partial<Material>) => {
+    if (editingMaterial) {
+      setMaterials(prev => prev.map(m => m.id === editingMaterial.id ? { ...m, ...data } as Material : m))
+    } else {
+      const newMat: Material = {
+        id: `mat-new-${Date.now()}`, companyId: currentCompany.id,
+        name: data.name || 'New Material', grade: data.grade, manufacturer: data.manufacturer,
+        origin: data.origin, hsCode: data.hsCode, defaultPacking: data.defaultPacking,
+        lastSellingPrice: data.lastSellingPrice, currency: data.currency,
+        tdsFile: data.tdsFile, msdsFile: data.msdsFile, coaFile: data.coaFile,
+        createdAt: new Date().toISOString().split('T')[0],
+      }
+      setMaterials(prev => [newMat, ...prev])
+    }
+  }
+
+  const handleDelete = () => {
+    if (deletingMaterial) {
+      setMaterials(prev => prev.filter(m => m.id !== deletingMaterial.id))
+      setDeletingMaterial(null)
+    }
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-brand-900">{t('Materials Library', 'مكتبة المواد')}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t(`${materials.length} materials across ${manufacturers} manufacturers from ${origins} origins`, `${materials.length} مادة من ${manufacturers} مصنّع و ${origins} أصل`)}</p>
+        </div>
+        <button onClick={() => { setEditingMaterial(null); setShowForm(true) }} className="btn-primary"><Plus size={16} className="mr-1.5" />{t('Add Material', 'إضافة مادة')}</button>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="card px-4 py-3 text-center"><Package size={20} className="mx-auto text-brand-500 mb-1" /><p className="text-lg font-bold text-brand-700">{materials.length}</p><p className="text-xs text-gray-500">{t('Total Materials', 'إجمالي المواد')}</p></div>
+        <div className="card px-4 py-3 text-center"><p className="text-lg font-bold text-brand-700">{manufacturers}</p><p className="text-xs text-gray-500">{t('Manufacturers', 'المصنّعون')}</p></div>
+        <div className="card px-4 py-3 text-center"><p className="text-lg font-bold text-brand-700">{origins}</p><p className="text-xs text-gray-500">{t('Origins', 'الأصول')}</p></div>
+        <div className="card px-4 py-3 text-center"><FileText size={20} className="mx-auto text-brand-500 mb-1" /><p className="text-lg font-bold text-brand-700">{materials.filter(m => m.tdsFile).length}</p><p className="text-xs text-gray-500">{t('With TDS', 'بملف TDS')}</p></div>
+      </div>
+
+      <div className="relative mb-4">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input type="text" className="input-field pl-9" placeholder={t('Search materials by name, grade, manufacturer, HS code...', 'بحث بالاسم أو المستوى أو المصنّع أو كود HS...')} value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
+
+      <div className="card overflow-hidden">
+        {filtered.length === 0 ? (
+          <div className="p-12 text-center"><Package size={40} className="mx-auto text-gray-300 mb-3" /><p className="text-gray-500 text-sm">{search ? t('No materials match your search.', 'لا توجد مواد تطابق بحثك.') : t('No materials yet.', 'لا توجد مواد بعد.')}</p></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Material', 'المادة')}</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Grade', 'المستوى')}</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Manufacturer', 'المصنّع')}</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Origin', 'الأصل')}</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('HS Code', 'كود HS')}</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Packing', 'التعبئة')}</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Last Price', 'آخر سعر')}</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Files', 'الملفات')}</th>
+                  <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Actions', 'الإجراءات')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map(m => (
+                  <tr key={m.id} className="hover:bg-brand-50/40 transition-colors">
+                    <td className="px-5 py-3.5"><span className="text-sm font-semibold text-brand-900">{m.name}</span></td>
+                    <td className="px-5 py-3.5 text-sm text-gray-600">{m.grade || '—'}</td>
+                    <td className="px-5 py-3.5 text-sm text-gray-600">{m.manufacturer || '—'}</td>
+                    <td className="px-5 py-3.5"><span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{m.origin || '—'}</span></td>
+                    <td className="px-5 py-3.5 text-sm text-gray-500 font-mono">{m.hsCode || '—'}</td>
+                    <td className="px-5 py-3.5 text-sm text-gray-600">{m.defaultPacking || '—'}</td>
+                    <td className="px-5 py-3.5 text-sm font-medium text-brand-800">{m.lastSellingPrice ? `${m.currency || 'SAR'} ${m.lastSellingPrice.toLocaleString()}` : '—'}</td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-1.5">
+                        {m.tdsFile && <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">TDS</span>}
+                        {m.msdsFile && <span className="text-[10px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded font-medium">MSDS</span>}
+                        {m.coaFile && <span className="text-[10px] bg-green-50 text-green-600 px-1.5 py-0.5 rounded font-medium">COA</span>}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => { setEditingMaterial(m); setShowForm(true) }} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600" title={t('Edit', 'تعديل')}><Pencil size={15} /></button>
+                        <button onClick={() => setDeletingMaterial(m)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-red-600" title={t('Delete', 'حذف')}><Trash2 size={15} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {filtered.length > 0 && <p className="text-xs text-gray-400 mt-3 text-right">{t(`Showing ${filtered.length} of ${materials.length} materials`, `عرض ${filtered.length} من ${materials.length} مادة`)}</p>}
+
+      <MaterialFormModal open={showForm} onClose={() => { setShowForm(false); setEditingMaterial(null) }} onSave={handleSave} material={editingMaterial} />
+      <ConfirmModal open={!!deletingMaterial} onClose={() => setDeletingMaterial(null)} onConfirm={handleDelete} title={t('Move to Trash', 'نقل إلى سلة المهملات')} message={t(`Are you sure you want to move "${deletingMaterial?.name}" to trash?`, `هل أنت متأكد من نقل "${deletingMaterial?.name}" إلى سلة المهملات؟`)} details={t('This action can be undone from Trash.', 'يمكن التراجع من سلة المهملات.')} confirmLabel={t('Move to Trash', 'نقل إلى سلة المهملات')} cancelLabel={t('Cancel', 'إلغاء')} variant="danger" />
+    </div>
+  )
+}
