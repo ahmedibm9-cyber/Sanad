@@ -6,6 +6,7 @@ import { Search, Bell, Globe, ChevronDown } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { notifications as mockNotifications } from '../../data/mockData'
 import GlobalSearch from '../common/GlobalSearch'
+import NotificationPanel from '../common/NotificationPanel'
 
 export default function TopBar() {
   const { language, setLanguage, t, dir } = useLanguage()
@@ -15,7 +16,8 @@ export default function TopBar() {
   const isRtl = dir === 'rtl'
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [langOpen, setLangOpen] = useState(false)
-  const unreadCount = mockNotifications.filter(n => !n.read).length
+  const [notifPanelOpen, setNotifPanelOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(mockNotifications.filter(n => !n.read).length)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const langRef = useRef<HTMLDivElement>(null)
 
@@ -106,7 +108,7 @@ export default function TopBar() {
 
         {/* Notifications */}
         <button
-          onClick={() => navigate('/notifications')}
+          onClick={() => setNotifPanelOpen(!notifPanelOpen)}
           className="relative p-2 text-gray-500 hover:bg-gray-50 rounded-md transition-colors"
           aria-label={t('Notifications', 'الإشعارات')}
         >
@@ -173,6 +175,13 @@ export default function TopBar() {
 
       {/* Global Search Overlay */}
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+
+      {/* Notification Panel */}
+      <NotificationPanel
+        open={notifPanelOpen}
+        onClose={() => setNotifPanelOpen(false)}
+        onStateChange={() => setUnreadCount(mockNotifications.filter(n => !n.read).length)}
+      />
     </header>
   )
 }

@@ -95,8 +95,8 @@ export default function MaterialsPage() {
                   <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Grade', 'المستوى')}</th>
                   <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Manufacturer', 'المصنّع')}</th>
                   <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Origin', 'الأصل')}</th>
-                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('HS Code', 'كود HS')}</th>
-                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Packing', 'التعبئة')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden lg:table-cell">{t('HS Code', 'كود HS')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden lg:table-cell">{t('Packing', 'التعبئة')}</th>
                   <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Last Price', 'آخر سعر')}</th>
                   <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Files', 'الملفات')}</th>
                   <th className="text-end text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Actions', 'الإجراءات')}</th>
@@ -109,8 +109,8 @@ export default function MaterialsPage() {
                     <td className="px-5 py-3.5 text-sm text-gray-600">{m.grade || '—'}</td>
                     <td className="px-5 py-3.5 text-sm text-gray-600">{m.manufacturer || '—'}</td>
                     <td className="px-5 py-3.5"><span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{m.origin || '—'}</span></td>
-                    <td className="px-5 py-3.5 text-sm text-gray-500 font-mono">{m.hsCode || '—'}</td>
-                    <td className="px-5 py-3.5 text-sm text-gray-600">{m.defaultPacking || '—'}</td>
+                    <td className="px-5 py-3.5 text-sm text-gray-500 font-mono hidden lg:table-cell">{m.hsCode || '—'}</td>
+                    <td className="px-5 py-3.5 text-sm text-gray-600 hidden lg:table-cell">{m.defaultPacking || '—'}</td>
                     <td className="px-5 py-3.5 text-sm font-medium text-brand-800">{m.lastSellingPrice ? `${m.currency || 'SAR'} ${m.lastSellingPrice.toLocaleString()}` : '—'}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-1.5">

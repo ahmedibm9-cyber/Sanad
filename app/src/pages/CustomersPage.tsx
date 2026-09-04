@@ -106,7 +106,7 @@ export default function CustomersPage() {
                   <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Contact', 'جهة الاتصال')}</th>
                   <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Phone', 'الهاتف')}</th>
                   <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Country', 'الدولة')}</th>
-                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Email', 'البريد')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden lg:table-cell">{t('Email', 'البريد')}</th>
                   <th className="text-end text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Actions', 'الإجراءات')}</th>
                 </tr>
               </thead>
@@ -127,7 +127,7 @@ export default function CustomersPage() {
                     <td className="px-5 py-3.5 text-sm text-gray-700">{customer.contactPerson || '—'}</td>
                     <td className="px-5 py-3.5">{customer.phone ? <span className="text-sm text-gray-700 inline-flex items-center gap-1.5"><Phone size={12} className="text-gray-400" />{customer.phone}</span> : <span className="text-gray-300">—</span>}</td>
                     <td className="px-5 py-3.5">{customer.country ? <span className="status-badge bg-brand-50 text-brand-700 border border-brand-200">{customer.country}</span> : <span className="text-gray-300">—</span>}</td>
-                    <td className="px-5 py-3.5">{customer.email ? <span className="text-sm text-gray-700 inline-flex items-center gap-1.5"><Mail size={12} className="text-gray-400" />{customer.email}</span> : <span className="text-gray-300">—</span>}</td>
+                    <td className="px-5 py-3.5 hidden lg:table-cell">{customer.email ? <span className="text-sm text-gray-700 inline-flex items-center gap-1.5"><Mail size={12} className="text-gray-400" />{customer.email}</span> : <span className="text-gray-300">—</span>}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => setViewingCustomer(customer)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600" title={t('View', 'عرض')}><Eye size={15} /></button>

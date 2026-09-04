@@ -231,7 +231,7 @@ export default function CustomerDetailPage() {
                     <FileText size={14} className="text-gray-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400">VAT Number</p>
+                    <p className="text-xs text-gray-400">{t('VAT Number', 'الرقم الضريبي')}</p>
                     <p className="text-sm font-medium text-gray-800">{customer.vatNumber}</p>
                   </div>
                 </div>

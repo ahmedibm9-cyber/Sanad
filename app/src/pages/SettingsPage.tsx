@@ -264,6 +264,7 @@ export default function SettingsPage() {
     label,
     placeholder,
     itemLabel,
+    description,
   }: {
     items: string[]
     onAdd: () => void
@@ -275,9 +276,11 @@ export default function SettingsPage() {
     label: string
     placeholder: string
     itemLabel?: (item: string) => string
+    description?: string
   }) => (
     <div className="space-y-2">
       <FieldLabel>{label}</FieldLabel>
+      {description && <p className="text-xs text-gray-400 -mt-1">{description}</p>}
       <div className="flex flex-wrap gap-2">
         {items.map((item) => (
           <div key={item} className="flex items-center gap-1 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 group hover:border-brand-300 transition-colors">
@@ -339,6 +342,7 @@ export default function SettingsPage() {
   const VatRateListManager = () => (
     <div className="space-y-2">
       <FieldLabel>{t('Available VAT Rates (%)', 'نسب ضريبة القيمة المضافة المتاحة')}</FieldLabel>
+      <p className="text-xs text-gray-400 -mt-1">{t('Tax rates available for selection in documents', 'النسب الضريبية المتاحة للاختيار في المستندات')}</p>
       <div className="flex flex-wrap gap-2">
         {vatRates.map((rate) => (
           <div key={rate} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 group hover:border-brand-300 transition-colors">
@@ -854,6 +858,7 @@ export default function SettingsPage() {
               setShowAdd={setShowAddCurrency}
               label={t('Available Currencies', 'العملات المتاحة')}
               placeholder={t('e.g. JPY', 'مثل JPY')}
+              description={t('Available currencies for document generation and pricing', 'العملات المتاحة لإنشاء المستندات والأسعار')}
             />
 
             {/* Weight Units - with manage */}
@@ -874,6 +879,7 @@ export default function SettingsPage() {
               setShowAdd={setShowAddWeightUnit}
               label={t('Available Weight Units', 'وحدات الوزن المتاحة')}
               placeholder={t('e.g. G', 'مثل G')}
+              description={t('Weight units available for quantity specifications', 'وحدات الوزن المتاحة لمواصفات الكمية')}
             />
 
             {/* Packing Units - with manage */}
@@ -894,6 +900,7 @@ export default function SettingsPage() {
               setShowAdd={setShowAddPackingUnit}
               label={t('Available Packing Units', 'وحدات التعبئة المتاحة')}
               placeholder={t('e.g. Pallets', 'مثل Pallets')}
+              description={t('Packing types available for shipment documents', 'أنواع التعبئة المتاحة لمستندات الشحن')}
             />
 
             {/* Payment Terms - with manage */}
@@ -914,6 +921,7 @@ export default function SettingsPage() {
               setShowAdd={setShowAddPaymentTerm}
               label={t('Available Payment Terms', 'شروط الدفع المتاحة')}
               placeholder={t('e.g. Net 120 days', 'مثل Net 120 days')}
+              description={t('Payment terms available for selection in documents', 'شروط الدفع المتاحة للاختيار في المستندات')}
             />
 
             {/* Delivery Terms - with manage */}
@@ -934,6 +942,7 @@ export default function SettingsPage() {
               setShowAdd={setShowAddDeliveryTerm}
               label={t('Available Delivery Terms', 'شروط التسليم المتاحة')}
               placeholder={t('e.g. DES', 'مثل DES')}
+              description={t('Incoterms available for trade document specifications', 'شروط التجارة المتاحة لمواصفات المستندات التجارية')}
             />
 
             {/* Signature & Stamp toggles */}

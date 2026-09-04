@@ -310,10 +310,10 @@ export default function ProjectsPage() {
                   <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                     {t('Status', 'الحالة')}
                   </th>
-                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3 hidden lg:table-cell">
                     {t('Value', 'القيمة')}
                   </th>
-                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3 hidden lg:table-cell">
                     {t('Date', 'التاريخ')}
                   </th>
                   <th className="w-10 px-5 py-3" />
@@ -370,12 +370,12 @@ export default function ProjectsPage() {
                           )}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-sm font-medium text-brand-900">
+                      <td className="px-5 py-3.5 text-sm font-medium text-brand-900 hidden lg:table-cell">
                         {totalValue > 0
                           ? formatCurrency(totalValue, project.currency || 'SAR')
                           : '—'}
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-5 py-3.5 hidden lg:table-cell">
                         <div className="flex items-center gap-1 text-xs text-gray-400">
                           <Calendar className="w-3.5 h-3.5" />
                           {new Date(project.createdAt).toLocaleDateString('en-US', {
@@ -480,7 +480,7 @@ export default function ProjectsPage() {
                     <th className="text-start text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
                       {t('Destination', 'الوجهة')}
                     </th>
-                    <th className="text-start text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
+                    <th className="text-start text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5 hidden lg:table-cell">
                       {t('Date', 'التاريخ')}
                     </th>
                     <th className="w-10 px-5 py-2.5" />
@@ -506,7 +506,7 @@ export default function ProjectsPage() {
                       <td className="px-5 py-3 text-sm text-gray-500">
                         {project.destinationCountry || '—'}
                       </td>
-                      <td className="px-5 py-3 text-xs text-gray-400">
+                      <td className="px-5 py-3 text-xs text-gray-400 hidden lg:table-cell">
                         {new Date(project.createdAt).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',

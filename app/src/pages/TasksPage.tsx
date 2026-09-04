@@ -204,7 +204,7 @@ export default function TasksPage() {
                   className={`status-badge ${opt?.colorClass} cursor-pointer`}
                   onClick={() => toggleStatus(s)}
                 >
-                  {opt?.label}
+                  {opt ? t(opt.label, opt.labelAr) : ''}
                   <X className="w-3 h-3 me-1" />
                 </span>
               )

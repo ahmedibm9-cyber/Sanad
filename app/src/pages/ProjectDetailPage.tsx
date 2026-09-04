@@ -623,8 +623,10 @@ export default function ProjectDetailPage() {
                 <div>
                   <label className="label-field">{t('Severity', 'الخطورة')}</label>
                   <select className="select-field" value={issueSeverity} onChange={e => setIssueSeverity(e.target.value as any)}>
-                    <option value="low">Low</option><option value="medium">Medium</option>
-                    <option value="high">High</option><option value="critical">Critical</option>
+                    <option value="low">{t('Low', 'منخفضة')}</option>
+                    <option value="medium">{t('Medium', 'متوسطة')}</option>
+                    <option value="high">{t('High', 'عالية')}</option>
+                    <option value="critical">{t('Critical', 'حرجة')}</option>
                   </select>
                 </div>
               </div>
@@ -655,10 +657,10 @@ export default function ProjectDetailPage() {
                           value={issue.severity}
                           onChange={e => updateIssue(issue.id, 'severity', e.target.value)}
                         >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                          <option value="critical">Critical</option>
+                          <option value="low">{t('Low', 'منخفضة')}</option>
+                          <option value="medium">{t('Medium', 'متوسطة')}</option>
+                          <option value="high">{t('High', 'عالية')}</option>
+                          <option value="critical">{t('Critical', 'حرجة')}</option>
                         </select>
                       </div>
                       <div>
@@ -668,10 +670,10 @@ export default function ProjectDetailPage() {
                           value={issue.status}
                           onChange={e => updateIssue(issue.id, 'status', e.target.value)}
                         >
-                          <option value="open">Open</option>
-                          <option value="under_review">Under Review</option>
-                          <option value="resolved">Resolved</option>
-                          <option value="rejected">Rejected</option>
+                          <option value="open">{t('Open', 'مفتوحة')}</option>
+                          <option value="under_review">{t('Under Review', 'قيد المراجعة')}</option>
+                          <option value="resolved">{t('Resolved', 'تم الحل')}</option>
+                          <option value="rejected">{t('Rejected', 'مرفوضة')}</option>
                         </select>
                       </div>
                     </div>

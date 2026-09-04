@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import {
   Users,
   Plus,
@@ -182,6 +182,38 @@ const ROLE_COLORS: Record<string, string> = {
   admin: 'bg-purple-100 text-purple-700',
   user: 'bg-blue-100 text-blue-700',
   viewer: 'bg-gray-100 text-gray-600',
+}
+
+// ─── Indeterminate Checkbox Component ────────────────────────
+function IndeterminateCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+  label,
+}: {
+  checked: boolean
+  indeterminate: boolean
+  onChange: () => void
+  label: string
+}) {
+  const ref = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.indeterminate = indeterminate
+    }
+  }, [indeterminate])
+  return (
+    <label className="flex items-center gap-2 cursor-pointer select-none">
+      <input
+        ref={ref}
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        className="w-3.5 h-3.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+      />
+      <span className="text-xs font-medium text-brand-600 hover:text-brand-800 transition-colors">{label}</span>
+    </label>
+  )
 }
 
 export default function UsersPage() {
@@ -607,15 +639,14 @@ export default function UsersPage() {
                               {checkedInGroup}/{allInGroup}
                             </span>
                             {isEditing && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  toggleGroup(group.key)
-                                }}
-                                className="ms-auto text-xs text-brand-600 hover:text-brand-800 font-medium"
-                              >
-                                {checkedInGroup === allInGroup ? t('None', 'لا شيء') : t('All', 'الكل')}
-                              </button>
+                              <div className="ms-auto" onClick={(e) => e.stopPropagation()}>
+                                <IndeterminateCheckbox
+                                  checked={checkedInGroup === allInGroup}
+                                  indeterminate={checkedInGroup > 0 && checkedInGroup < allInGroup}
+                                  onChange={() => toggleGroup(group.key)}
+                                  label={t('Select All', 'تحديد الكل')}
+                                />
+                              </div>
                             )}
                           </button>
 

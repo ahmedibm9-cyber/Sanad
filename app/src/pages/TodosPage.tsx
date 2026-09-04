@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useApp } from '../contexts/AppContext'
 import { getTodosForUser } from '../data/mockData'
@@ -25,6 +25,16 @@ export default function TodosPage() {
   const [formDate, setFormDate] = useState('')
   const [formTime, setFormTime] = useState('')
   const [formPriority, setFormPriority] = useState<'low' | 'medium' | 'high'>('medium')
+
+  // Voice input state
+  const [voiceState, setVoiceState] = useState<'idle' | 'listening' | 'processing' | 'transcript'>('idle')
+  const [voiceTranscript, setVoiceTranscript] = useState('')
+  const voiceTimers = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  // Cleanup voice timers on unmount
+  useEffect(() => {
+    return () => { voiceTimers.current.forEach(clearTimeout) }
+  }, [])
 
   const filteredTodos = useMemo(() => {
     return todos.filter((td) => {
@@ -85,10 +95,38 @@ export default function TodosPage() {
   }
 
   function handleVoiceInput() {
-    alert(t(
-      'Voice input is not available in this demo. In production, this would use the Web Speech API.',
-      'إدخال الصوت غير متاح في هذا العرض. في الإنتاج، سيتم استخدام Web Speech API.'
-    ))
+    // Clear any existing timers
+    voiceTimers.current.forEach(clearTimeout)
+    voiceTimers.current = []
+
+    // Start listening
+    setVoiceState('listening')
+    setVoiceTranscript('')
+
+    // After 1s, show processing state
+    const t1 = setTimeout(() => {
+      setVoiceState('processing')
+    }, 1000)
+    voiceTimers.current.push(t1)
+
+    // After 3s total, show transcript and set form title
+    const t2 = setTimeout(() => {
+      const mockText = t(
+        'Review the quarterly shipping schedule for Al-Baraka',
+        'مراجعة جدول الشحن الفصلي لشركة البركة'
+      )
+      setVoiceTranscript(mockText)
+      setFormTitle(mockText)
+      setVoiceState('transcript')
+    }, 3000)
+    voiceTimers.current.push(t2)
+
+    // After 5s total, reset to idle
+    const t3 = setTimeout(() => {
+      setVoiceState('idle')
+      setVoiceTranscript('')
+    }, 5000)
+    voiceTimers.current.push(t3)
   }
 
   function formatDate(dateStr?: string) {
@@ -221,12 +259,27 @@ export default function TodosPage() {
               </button>
               <button
                 type="button"
-                className="btn-ghost"
+                className={`btn-ghost ${
+                  voiceState === 'listening' || voiceState === 'processing'
+                    ? 'bg-red-50 text-red-600 animate-pulse'
+                    : voiceState === 'transcript'
+                    ? 'bg-green-50 text-green-600'
+                    : ''
+                }`}
                 onClick={handleVoiceInput}
                 title={t('Voice Input', 'إدخال صوتي')}
+                disabled={voiceState === 'listening' || voiceState === 'processing'}
               >
                 <Mic size={18} />
-                <span className="ms-1.5 hidden sm:inline">{t('Voice', 'صوتي')}</span>
+                <span className="ms-1.5 hidden sm:inline">
+                  {voiceState === 'listening'
+                    ? t('Listening...', 'جاري الاستماع...')
+                    : voiceState === 'processing'
+                    ? t('Processing...', 'جاري المعالجة...')
+                    : voiceState === 'transcript'
+                    ? t('Done!', 'تم!')
+                    : t('Voice', 'صوتي')}
+                </span>
               </button>
             </div>
           </form>
@@ -367,8 +420,15 @@ export default function TodosPage() {
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={handleVoiceInput}
-                    className="btn-ghost p-1.5"
+                    className={`btn-ghost p-1.5 ${
+                      voiceState === 'listening' || voiceState === 'processing'
+                        ? 'text-red-500 animate-pulse'
+                        : voiceState === 'transcript'
+                        ? 'text-green-500'
+                        : ''
+                    }`}
                     title={t('Voice Input', 'إدخال صوتي')}
+                    disabled={voiceState === 'listening' || voiceState === 'processing'}
                   >
                     <Mic size={14} />
                   </button>
