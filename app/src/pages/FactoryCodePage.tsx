@@ -73,7 +73,7 @@ export default function FactoryCodePage() {
       <div className="flex-shrink-0 px-6 pt-6 pb-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{t('Factory Code Database', 'قاعدة أكواد المصانع')}</h1>
+            <h1 className="text-2xl font-bold text-brand-900">{t('Factory Code Database', 'قاعدة أكواد المصانع')}</h1>
             <p className="text-sm text-gray-500 mt-1">
               {t('Browse and manage factory registration codes', 'تصفح وأدر أكواد تسجيل المصانع')}
             </p>
@@ -83,15 +83,15 @@ export default function FactoryCodePage() {
               <span className="text-sm text-green-600 font-medium">{exportMsg}</span>
             )}
             <button onClick={handleExportFiltered} className="btn-secondary">
-              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              <FileSpreadsheet className="w-4 h-4 me-2" />
               {t('Export Filtered Excel', 'تصدير المُصفّى')}
             </button>
             <button onClick={handleExportFull} className="btn-secondary">
-              <Database className="w-4 h-4 mr-2" />
+              <Database className="w-4 h-4 me-2" />
               {t('Export Full Database', 'تصدير قاعدة البيانات الكاملة')}
             </button>
             <button onClick={handleOpenUpload} className="btn-primary">
-              <Upload className="w-4 h-4 mr-2" />
+              <Upload className="w-4 h-4 me-2" />
               {t('Admin Upload Updated Excel', 'رفع ملف محدّث (مسؤول)')}
             </button>
           </div>
@@ -100,13 +100,13 @@ export default function FactoryCodePage() {
         {/* Search bar + count */}
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder={t('Search by code, name, city, activity, product, HS code...', 'بحث بالاسم أو الكود أو المدينة...')}
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="input-field pl-10"
+              className="input-field ps-10"
             />
           </div>
           <span className="text-sm text-gray-500 whitespace-nowrap">
@@ -121,18 +121,18 @@ export default function FactoryCodePage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/80">
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Factory Code', 'كود المصنع')}</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Factory Name', 'اسم المصنع')}</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('City', 'المدينة')}</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Region', 'المنطقة')}</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Activity', 'النشاط')}</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Product', 'المنتج')}</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('HS Code', 'كود النظام المنسق')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Factory Code', 'كود المصنع')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Factory Name', 'اسم المصنع')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('City', 'المدينة')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Region', 'المنطقة')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Activity', 'النشاط')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Product', 'المنتج')}</th>
+                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('HS Code', 'كود النظام المنسق')}</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(fc => (
-                <tr key={fc.id} className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+                <tr key={fc.id} className="border-b border-gray-100 table-row-hover">
                   <td className="px-4 py-3 font-mono text-brand-700 font-medium">{fc.factoryCode}</td>
                   <td className="px-4 py-3">
                     <div className="font-medium text-gray-900">{fc.factoryName}</div>
@@ -151,7 +151,7 @@ export default function FactoryCodePage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
+                  <td colSpan={7} className="empty-state py-12 text-center text-gray-400">
                     {t('No factory codes match your search.', 'لا توجد أكواد مطابقة لبحثك.')}
                   </td>
                 </tr>
@@ -164,10 +164,10 @@ export default function FactoryCodePage() {
       {/* Upload Modal */}
       {uploadOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="card w-full max-w-2xl mx-4 shadow-2xl">
+          <div className="card w-full max-w-2xl mx-4">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-bold text-gray-900">
+              <h2 className="text-lg font-bold text-brand-900">
                 {t('Upload Updated Factory Code Excel', 'رفع ملف أكواد المصانع المحدّث')}
               </h2>
               <button onClick={handleCloseUpload} className="btn-ghost p-1.5">
@@ -210,7 +210,7 @@ export default function FactoryCodePage() {
                       'اختر ملف أكواد المصانع المحدّث (.xlsx). سيتحقق النظام من الصيغة ومقارنتها مع قاعدة البيانات الحالية.'
                     )}
                   </p>
-                  <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors">
+                  <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors">
                     <Upload className="w-8 h-8 text-gray-400 mb-2" />
                     <span className="text-sm font-medium text-gray-600">
                       {t('Click to select file', 'انقر لاختيار الملف')}
@@ -256,10 +256,10 @@ export default function FactoryCodePage() {
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="bg-gray-50 border-b border-gray-200">
-                          <th className="text-left px-3 py-2 font-semibold text-gray-600">{t('Factory Code', 'كود المصنع')}</th>
-                          <th className="text-left px-3 py-2 font-semibold text-gray-600">{t('Factory Name', 'اسم المصنع')}</th>
-                          <th className="text-left px-3 py-2 font-semibold text-gray-600">{t('City', 'المدينة')}</th>
-                          <th className="text-left px-3 py-2 font-semibold text-gray-600">{t('Activity', 'النشاط')}</th>
+                          <th className="text-start px-3 py-2 font-semibold text-gray-600">{t('Factory Code', 'كود المصنع')}</th>
+                          <th className="text-start px-3 py-2 font-semibold text-gray-600">{t('Factory Name', 'اسم المصنع')}</th>
+                          <th className="text-start px-3 py-2 font-semibold text-gray-600">{t('City', 'المدينة')}</th>
+                          <th className="text-start px-3 py-2 font-semibold text-gray-600">{t('Activity', 'النشاط')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -348,7 +348,7 @@ export default function FactoryCodePage() {
                     {t('Cancel', 'إلغاء')}
                   </button>
                   <button onClick={handleApplyUpdate} className="btn-primary">
-                    <CheckCircle className="w-4 h-4 mr-2" />
+                    <CheckCircle className="w-4 h-4 me-2" />
                     {t('Apply Smart Update', 'تطبيق التحديث الذكي')}
                   </button>
                 </>

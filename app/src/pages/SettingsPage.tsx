@@ -442,7 +442,7 @@ export default function SettingsPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-brand-900 mb-1">{t('Company Identity', 'هوية الشركة')}</h3>
+              <h2 className="text-lg font-semibold text-brand-900 mb-1">{t('Company Identity', 'هوية الشركة')}</h2>
               <p className="text-sm text-gray-500">{t('Basic company information and branding assets', 'المعلومات الأساسية للشركة وأصول العلامة التجارية')}</p>
             </div>
 
@@ -493,7 +493,7 @@ export default function SettingsPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-brand-900 mb-1">{t('Legal & Registration', 'القانونية والتسجيل')}</h3>
+              <h2 className="text-lg font-semibold text-brand-900 mb-1">{t('Legal & Registration', 'القانونية والتسجيل')}</h2>
               <p className="text-sm text-gray-500">{t('Registration numbers, tax information, and address', 'أرقام التسجيل والمعلومات الضريبية والعنوان')}</p>
             </div>
 
@@ -543,7 +543,7 @@ export default function SettingsPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-brand-900 mb-1">{t('Contact Information', 'معلومات التواصل')}</h3>
+              <h2 className="text-lg font-semibold text-brand-900 mb-1">{t('Contact Information', 'معلومات التواصل')}</h2>
               <p className="text-sm text-gray-500">{t('Phone numbers, email, and website', 'أرقام الهاتف والبريد الإلكتروني والموقع')}</p>
             </div>
 
@@ -581,7 +581,7 @@ export default function SettingsPage() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-brand-900 mb-1">{t('Banking Details', 'التفاصيل المصرفية')}</h3>
+                <h2 className="text-lg font-semibold text-brand-900 mb-1">{t('Banking Details', 'التفاصيل المصرفية')}</h2>
                 <p className="text-sm text-gray-500">{t('Bank account information for invoices and payments', 'معلومات الحساب المصرفي للفواتير والمدفوعات')}</p>
               </div>
               <button
@@ -612,7 +612,7 @@ export default function SettingsPage() {
                     <h4 className="text-sm font-semibold text-gray-700">
                       {account.bankName || `${t('Account', 'حساب')} ${idx + 1}`}
                       {idx === 0 && (
-                        <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-brand-100 text-brand-700 rounded font-medium">
+                        <span className="ms-2 text-[10px] px-1.5 py-0.5 bg-brand-100 text-brand-700 rounded font-medium">
                           {t('Primary', 'رئيسي')}
                         </span>
                       )}
@@ -775,7 +775,7 @@ export default function SettingsPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-brand-900 mb-1">{t('Document Defaults', 'الإعدادات الافتراضية للمستندات')}</h3>
+              <h2 className="text-lg font-semibold text-brand-900 mb-1">{t('Document Defaults', 'الإعدادات الافتراضية للمستندات')}</h2>
               <p className="text-sm text-gray-500">{t('Default settings applied to new documents', 'الإعدادات الافتراضية المطبقة على المستندات الجديدة')}</p>
             </div>
 
@@ -969,7 +969,7 @@ export default function SettingsPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-brand-900 mb-1">{t('Notification Preferences', 'تفضيلات الإشعارات')}</h3>
+              <h2 className="text-lg font-semibold text-brand-900 mb-1">{t('Notification Preferences', 'تفضيلات الإشعارات')}</h2>
               <p className="text-sm text-gray-500">{t('Choose which notifications you want to receive', 'اختر الإشعارات التي تريد تلقيها')}</p>
             </div>
 
@@ -1005,7 +1005,7 @@ export default function SettingsPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-brand-900 mb-1">{t('Backup & Restore', 'النسخ الاحتياطي والاستعادة')}</h3>
+              <h2 className="text-lg font-semibold text-brand-900 mb-1">{t('Backup & Restore', 'النسخ الاحتياطي والاستعادة')}</h2>
               <p className="text-sm text-gray-500">{t('Configure automatic backups and data recovery', 'تكوين النسخ الاحتياطي التلقائي واستعادة البيانات')}</p>
             </div>
 
@@ -1141,7 +1141,7 @@ export default function SettingsPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-brand-900 mb-1">{t('Licensing & Subscription', 'التراخيص والاشتراك')}</h3>
+              <h2 className="text-lg font-semibold text-brand-900 mb-1">{t('Licensing & Subscription', 'التراخيص والاشتراك')}</h2>
               <p className="text-sm text-gray-500">{t('License status and key management', 'حالة الترخيص وإدارة المفاتيح')}</p>
             </div>
 
@@ -1248,9 +1248,9 @@ export default function SettingsPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-left ${
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-start ${
                     isActive
-                      ? 'bg-brand-50 text-brand-700 shadow-sm'
+                      ? 'bg-brand-50 text-brand-700 border border-brand-200'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >

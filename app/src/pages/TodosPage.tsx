@@ -133,7 +133,7 @@ export default function TodosPage() {
           onClick={() => setShowForm(!showForm)}
           className="btn-primary"
         >
-          <Plus size={16} className="mr-1.5" />
+          <Plus size={16} className="ms-1.5" />
           {t('New To-do', 'مهمة جديدة')}
         </button>
       </div>
@@ -169,7 +169,7 @@ export default function TodosPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="label-field">
-                  <Calendar size={14} className="inline mr-1" />
+                  <Calendar size={14} className="inline ms-1" />
                   {t('Due Date', 'تاريخ الاستحقاق')}
                 </label>
                 <input
@@ -181,7 +181,7 @@ export default function TodosPage() {
               </div>
               <div>
                 <label className="label-field">
-                  <Clock size={14} className="inline mr-1" />
+                  <Clock size={14} className="inline ms-1" />
                   {t('Due Time', 'وقت الاستحقاق')}
                 </label>
                 <input
@@ -193,7 +193,7 @@ export default function TodosPage() {
               </div>
               <div>
                 <label className="label-field">
-                  <Filter size={14} className="inline mr-1" />
+                  <Filter size={14} className="inline ms-1" />
                   {t('Priority', 'الأولوية')}
                 </label>
                 <select
@@ -209,7 +209,7 @@ export default function TodosPage() {
             </div>
             <div className="flex items-center gap-3">
               <button type="submit" className="btn-primary">
-                <Plus size={16} className="mr-1.5" />
+                <Plus size={16} className="ms-1.5" />
                 {t('Add To-do', 'إضافة المهمة')}
               </button>
               <button
@@ -226,7 +226,7 @@ export default function TodosPage() {
                 title={t('Voice Input', 'إدخال صوتي')}
               >
                 <Mic size={18} />
-                <span className="ml-1.5 hidden sm:inline">{t('Voice', 'صوتي')}</span>
+                <span className="ms-1.5 hidden sm:inline">{t('Voice', 'صوتي')}</span>
               </button>
             </div>
           </form>
@@ -258,7 +258,7 @@ export default function TodosPage() {
           <option value="pending">{t('Pending', 'معلقة')}</option>
           <option value="done">{t('Completed', 'مكتملة')}</option>
         </select>
-        <span className="text-xs text-gray-400 ml-auto">
+        <span className="text-xs text-gray-400 ms-auto">
           {t(`${filteredTodos.length} shown`, `${filteredTodos.length} معروض`)}
         </span>
       </div>
@@ -266,7 +266,7 @@ export default function TodosPage() {
       {/* Todo List */}
       <div className="space-y-2">
         {filteredTodos.length === 0 && (
-          <div className="card p-8 text-center">
+          <div className="card p-8 text-center empty-state">
             <CheckSquare size={40} className="mx-auto text-gray-300 mb-3" />
             <p className="text-gray-500 text-sm">
               {t('No to-dos match your filters.', 'لا توجد مهام تطابق مرشحاتك.')}
@@ -283,7 +283,7 @@ export default function TodosPage() {
               key={todo.id}
               className={`card p-4 transition-all ${
                 todo.done ? 'opacity-60' : ''
-              } ${overdue ? 'border-l-4 border-l-red-400' : ''}`}
+              } ${overdue ? 'border-s-4 border-s-red-400' : ''}`}
             >
               <div className="flex items-start gap-3">
                 {/* Done checkbox */}
@@ -317,7 +317,7 @@ export default function TodosPage() {
                     </span>
                     {overdue && (
                       <span className="status-badge bg-red-100 text-red-700 border border-red-200">
-                        <AlertTriangle size={12} className="mr-1" />
+                        <AlertTriangle size={12} className="ms-1" />
                         {t('Overdue', 'متأخرة')}
                       </span>
                     )}
@@ -355,7 +355,7 @@ export default function TodosPage() {
                         {isExpanded ? t('Hide details', 'إخفاء التفاصيل') : t('Show details', 'عرض التفاصيل')}
                       </button>
                       {isExpanded && (
-                        <p className="text-sm text-gray-600 mt-2 pl-1 border-l-2 border-gray-200 ml-1">
+                        <p className="text-sm text-gray-600 mt-2 ps-1 border-s-2 border-gray-200 ms-1">
                           {todo.description}
                         </p>
                       )}

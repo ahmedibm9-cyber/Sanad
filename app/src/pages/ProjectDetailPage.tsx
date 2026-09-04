@@ -96,7 +96,7 @@ export default function ProjectDetailPage() {
       <div className="text-center py-20">
         <p className="text-gray-400 text-lg">{t('Project not found', 'المشروع غير موجود')}</p>
         <Link to="/projects" className="btn-primary mt-4 inline-flex">
-          <ArrowLeft className="w-4 h-4 mr-1.5" />
+          <ArrowLeft className="w-4 h-4 me-1.5" />
           {t('Back to Projects', 'العودة للمشاريع')}
         </Link>
       </div>
@@ -144,7 +144,7 @@ export default function ProjectDetailPage() {
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
           <button className="btn-secondary" onClick={() => setShowEditForm(true)}>
-            <Edit3 className="w-4 h-4 mr-1.5" />
+            <Edit3 className="w-4 h-4 me-1.5" />
             {t('Edit', 'تعديل')}
           </button>
           <button className="btn-ghost" onClick={() => window.print()}>
@@ -178,17 +178,17 @@ export default function ProjectDetailPage() {
                 <Icon className="w-4 h-4" />
                 {t(tab.label, tab.labelAr)}
                 {tab.id === 'documents' && (
-                  <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 ml-0.5">
+                  <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 ms-0.5">
                     {project.documents.length}
                   </span>
                 )}
                 {tab.id === 'attachments' && (
-                  <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 ml-0.5">
+                  <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 ms-0.5">
                     {project.attachments.length}
                   </span>
                 )}
                 {tab.id === 'issues' && (
-                  <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 ml-0.5">
+                  <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 ms-0.5">
                     {project.reportIssues.length}
                   </span>
                 )}
@@ -238,7 +238,7 @@ export default function ProjectDetailPage() {
                 <div className="px-5 py-3 border-b border-gray-100">
                   <h3 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
                     {t('Materials', 'المواد')}
-                    <span className="ml-2 text-gray-400 font-normal normal-case">({project.materials.length})</span>
+                    <span className="ms-2 text-gray-400 font-normal normal-case">({project.materials.length})</span>
                   </h3>
                 </div>
                 <div className="overflow-x-auto">
@@ -375,9 +375,9 @@ export default function ProjectDetailPage() {
             </h3>
             <div className="relative">
               <button onClick={() => setShowInvoiceDropdown(!showInvoiceDropdown)} className="btn-primary">
-                <Plus className="w-4 h-4 mr-1.5" />
+                <Plus className="w-4 h-4 me-1.5" />
                 {t('New Document', 'مستند جديد')}
-                <ChevronDown className="w-3 h-3 ml-1.5" />
+                <ChevronDown className="w-3 h-3 ms-1.5" />
               </button>
               {showInvoiceDropdown && (
                 <div className="absolute end-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
@@ -500,7 +500,7 @@ export default function ProjectDetailPage() {
               {t('Attachments', 'المرفقات')} ({attachments.length})
             </h3>
             <button onClick={() => setShowAttachmentModal(true)} className="btn-primary">
-              <Plus className="w-4 h-4 mr-1.5" />
+              <Plus className="w-4 h-4 me-1.5" />
               {t('Upload', 'رفع')}
             </button>
           </div>
@@ -579,7 +579,7 @@ export default function ProjectDetailPage() {
               {t('Reported Issues', 'المشكلات المبلّغ عنها')} ({reportIssues.length})
             </h3>
             <button onClick={() => setShowIssueForm(!showIssueForm)} className="btn-primary">
-              <Plus className="w-4 h-4 mr-1.5" />
+              <Plus className="w-4 h-4 me-1.5" />
               {t('Report Issue', 'إبلاغ عن مشكلة')}
             </button>
           </div>
@@ -628,7 +628,7 @@ export default function ProjectDetailPage() {
                   <div key={issue.id} className="card p-4">
                     <div className="flex items-start justify-between">
                       <p className="text-sm text-gray-700 flex-1">{issue.description}</p>
-                      <div className="flex items-center gap-2 ml-4">
+                      <div className="flex items-center gap-2 ms-4">
                         <span className={`status-badge ${severityColors[issue.severity] || ''}`}>
                           {issue.severity}
                         </span>
@@ -663,7 +663,7 @@ export default function ProjectDetailPage() {
               {t('Project Notes', 'ملاحظات المشروع')} ({projectNotes.length})
             </h3>
             <button onClick={() => setShowNoteForm(!showNoteForm)} className="btn-primary">
-              <Plus className="w-4 h-4 mr-1.5" />
+              <Plus className="w-4 h-4 me-1.5" />
               {t('Add Note', 'إضافة ملاحظة')}
             </button>
           </div>
@@ -680,7 +680,7 @@ export default function ProjectDetailPage() {
             </div>
           )}
           {projectNotes.length === 0 ? (
-            <div className="card py-16 text-center">
+            <div className="card empty-state">
               <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-400">{t('No notes yet', 'لا توجد ملاحظات بعد')}</p>
             </div>

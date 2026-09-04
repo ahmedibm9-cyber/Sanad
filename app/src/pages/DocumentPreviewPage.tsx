@@ -153,15 +153,15 @@ function TemplateA({ data, lang }: { data: DocPreviewData; lang: 'en' | 'ar' }) 
       <div className="grid grid-cols-3 gap-4 mb-5 text-[10px]">
         <div>
           <span className="text-gray-500">{isAr ? 'شرطة التجارة:' : 'Incoterm:'}</span>
-          <span className="font-semibold ml-1">{d.incoterm}</span>
+          <span className="font-semibold ms-1">{d.incoterm}</span>
         </div>
         <div>
           <span className="text-gray-500">{isAr ? 'ميناء التحميل:' : 'Port of Loading:'}</span>
-          <span className="font-semibold ml-1">{d.portOfLoading}</span>
+          <span className="font-semibold ms-1">{d.portOfLoading}</span>
         </div>
         <div>
           <span className="text-gray-500">{isAr ? 'ميناء التفريغ:' : 'Port of Discharge:'}</span>
-          <span className="font-semibold ml-1">{d.portOfDischarge}</span>
+          <span className="font-semibold ms-1">{d.portOfDischarge}</span>
         </div>
       </div>
 
@@ -307,7 +307,7 @@ function TemplateB({ data, lang }: { data: DocPreviewData; lang: 'en' | 'ar' }) 
             </div>
           </div>
           <div className={`text-${isAr ? 'left' : 'right'} shrink-0`}>
-            <div className="w-14 h-14 bg-brand-700 rounded-xl flex items-center justify-center">
+            <div className="w-14 h-14 bg-brand-700 rounded-lg flex items-center justify-center">
               <span className="text-white text-[14px] font-bold tracking-wider" style={{ fontFamily: "'Inter', sans-serif" }}>F</span>
             </div>
           </div>
@@ -340,13 +340,13 @@ function TemplateB({ data, lang }: { data: DocPreviewData; lang: 'en' | 'ar' }) 
 
       {/* ── Party Cards ─────────────────────────────── */}
       <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="border border-gray-200 rounded-xl px-4 py-3">
+        <div className="border border-gray-200 rounded-lg px-4 py-3">
           <p className="text-[8.5px] text-gray-400 uppercase tracking-wider mb-1.5">{isAr ? 'المُصدِّر / البائع' : 'Exporter / Seller'}</p>
           <p className="font-bold text-[11.5px] text-gray-900">{isAr ? d.company.nameAr : d.company.nameEn}</p>
           <p className="text-[10px] text-gray-500 mt-0.5">{d.company.address}</p>
           <p className="text-[10px] text-gray-500">{d.company.phone}</p>
         </div>
-        <div className="border border-gray-200 rounded-xl px-4 py-3">
+        <div className="border border-gray-200 rounded-lg px-4 py-3">
           <p className="text-[8.5px] text-gray-400 uppercase tracking-wider mb-1.5">{isAr ? 'المشتري / العميل' : 'Buyer / Customer'}</p>
           <p className="font-bold text-[11.5px] text-gray-900">{isAr ? d.buyer.nameAr : d.buyer.name}</p>
           <p className="text-[10px] text-gray-500 mt-0.5">{d.buyer.address}</p>
@@ -368,7 +368,7 @@ function TemplateB({ data, lang }: { data: DocPreviewData; lang: 'en' | 'ar' }) 
 
       {/* ── Items Table (modern) ────────────────────── */}
       <div className="mb-6">
-        <div className="overflow-hidden rounded-xl border border-gray-200">
+        <div className="overflow-hidden rounded-lg border border-gray-200">
           <table className="w-full text-[10px]">
             <thead>
               <tr className="bg-brand-700 text-white">
@@ -428,7 +428,7 @@ function TemplateB({ data, lang }: { data: DocPreviewData; lang: 'en' | 'ar' }) 
 
       {/* ── Totals Card ─────────────────────────────── */}
       <div className={`flex ${isAr ? 'justify-start' : 'justify-end'} mb-6`}>
-        <div className="w-60 bg-gray-50 rounded-xl border border-gray-200 text-[10.5px] overflow-hidden">
+        <div className="w-60 bg-gray-50 rounded-lg border border-gray-200 text-[10.5px] overflow-hidden">
           <div className={`flex justify-between py-2 px-4 ${isAr ? 'flex-row-reverse' : ''}`}>
             <span className="text-gray-500">{isAr ? 'المجموع الفرعي' : 'Subtotal'}</span>
             <span>{d.subtotal.toLocaleString()} {d.items[0]?.currency}</span>
@@ -448,7 +448,7 @@ function TemplateB({ data, lang }: { data: DocPreviewData; lang: 'en' | 'ar' }) 
 
       {/* ── Terms ───────────────────────────────────── */}
       {d.terms && (
-        <div className="mb-6 bg-gray-50 rounded-xl px-4 py-3">
+        <div className="mb-6 bg-gray-50 rounded-lg px-4 py-3">
           <p className="text-[8.5px] text-gray-400 uppercase tracking-wider mb-1">
             {isAr ? 'الشروط والأحكام' : 'Terms & Conditions'}
           </p>
@@ -609,18 +609,18 @@ export default function DocumentPreviewPage() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleDownload} className="btn-secondary">
-            <Download size={16} className="mr-1.5" />
+            <Download size={16} className="ms-1.5" />
             {t('Download PDF', 'تنزيل PDF')}
           </button>
           <button onClick={handlePrint} className="btn-primary">
-            <Printer size={16} className="mr-1.5" />
+            <Printer size={16} className="ms-1.5" />
             {t('Print', 'طباعة')}
           </button>
         </div>
       </div>
 
       {/* ── Controls (hidden on print) ───────────────── */}
-      <div className="print:hidden flex items-center gap-4 mb-4 p-3 bg-white rounded-xl border border-gray-200 shadow-sm">
+      <div className="print:hidden flex items-center gap-4 mb-4 p-3 bg-white rounded-lg border border-gray-200">
         {/* Template Toggle */}
         <div className="flex items-center gap-2">
           <FileText size={16} className="text-gray-400" />
@@ -704,16 +704,16 @@ export default function DocumentPreviewPage() {
       {/* ── Bottom Actions (hidden on print) ─────────── */}
       <div className="print:hidden flex items-center justify-between mb-8">
         <button onClick={() => navigate(-1)} className="btn-ghost">
-          <ArrowLeft size={16} className="mr-1.5" />
+          <ArrowLeft size={16} className="ms-1.5" />
           {t('Back', 'رجوع')}
         </button>
         <div className="flex items-center gap-2">
           <button onClick={handleDownload} className="btn-secondary">
-            <Download size={16} className="mr-1.5" />
+            <Download size={16} className="ms-1.5" />
             {t('Download PDF', 'تنزيل PDF')}
           </button>
           <button onClick={handlePrint} className="btn-primary">
-            <Printer size={16} className="mr-1.5" />
+            <Printer size={16} className="ms-1.5" />
             {t('Print', 'طباعة')}
           </button>
         </div>

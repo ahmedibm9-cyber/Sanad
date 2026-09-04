@@ -96,7 +96,7 @@ export default function TaskDetailPage() {
       <div className="text-center py-20">
         <p className="text-gray-400 text-lg">{t('Task not found', 'المهمة غير موجودة')}</p>
         <Link to="/tasks" className="btn-primary mt-4 inline-flex">
-          <ArrowLeft className="w-4 h-4 mr-1.5" />
+          <ArrowLeft className="w-4 h-4 ms-1.5" />
           {t('Back to Tasks', 'العودة للمهام')}
         </Link>
       </div>
@@ -234,30 +234,30 @@ export default function TaskDetailPage() {
                 <div className="px-5 py-3 border-b border-gray-100">
                   <h3 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
                     {t('Related Materials', 'المواد المرتبطة')}
-                    <span className="ml-2 text-gray-400 font-normal normal-case">({task.materials.length})</span>
+                    <span className="ms-2 text-gray-400 font-normal normal-case">({task.materials.length})</span>
                   </h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-gray-100 bg-sand-50/50">
-                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
+                        <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
                           {t('Material', 'المادة')}
                         </th>
-                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
+                        <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
                           {t('Qty', 'الكمية')}
                         </th>
-                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
+                        <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
                           {t('Unit Price', 'سعر الوحدة')}
                         </th>
-                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
+                        <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
                           {t('Total', 'الإجمالي')}
                         </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {task.materials.map((mat) => (
-                        <tr key={mat.id} className="hover:bg-sand-50/50 transition-colors">
+                        <tr key={mat.id} className="table-row-hover">
                           <td className="px-5 py-3">
                             <p className="text-sm font-medium text-brand-900">{mat.materialName}</p>
                             {mat.grade && <p className="text-xs text-gray-400">{mat.grade}</p>}
@@ -326,7 +326,7 @@ export default function TaskDetailPage() {
                 )}
               </p>
               <button onClick={() => setShowConvertModal(true)} className="btn-primary w-full">
-                <ArrowRightLeft className="w-4 h-4 mr-1.5" />
+                <ArrowRightLeft className="w-4 h-4 ms-1.5" />
                 {t('Convert to Project', 'تحويل إلى مشروع')}
               </button>
             </div>
@@ -337,21 +337,21 @@ export default function TaskDetailPage() {
       {activeTab === 'documents' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
+            <h2 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
               {t('Documents', 'المستندات')} ({taskDocs.length})
-            </h3>
+            </h2>
             <div className="relative">
               <button onClick={(e) => { e.stopPropagation(); setShowInvoiceDropdown(!showInvoiceDropdown) }} className="btn-primary">
-                <Plus className="w-4 h-4 mr-1.5" />
+                <Plus className="w-4 h-4 ms-1.5" />
                 {t('New Document', 'مستند جديد')}
-                <ChevronDown className="w-3 h-3 ml-1.5" />
+                <ChevronDown className="w-3 h-3 me-1.5" />
               </button>
               {showInvoiceDropdown && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-30 py-1">
+                <div className="absolute end-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-sm z-30 py-1">
                   <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase">{t('Invoice', 'الفاتورة')}</div>
                   {(['QUOT','PINV','TINV','CINV'] as const).map(type => (
                     <button key={type} onClick={(e) => { e.stopPropagation(); setShowInvoiceDropdown(false); navigate(`/documents/new/form?type=${type}&projectId=${task.id}`) }}
-                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-brand-50 flex items-center gap-3 transition-colors">
+                      className="w-full text-start px-4 py-2.5 text-sm hover:bg-brand-50 flex items-center gap-3 transition-colors">
                       <span className="w-10 text-xs font-bold text-brand-600 bg-brand-50 rounded px-1.5 py-0.5 text-center">{type}</span>
                       <span className="text-gray-700">{t(DOC_TYPE_LABELS[type].en, DOC_TYPE_LABELS[type].ar)}</span>
                     </button>
@@ -360,7 +360,7 @@ export default function TaskDetailPage() {
                   <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase">{t('Other Documents', 'مستندات أخرى')}</div>
                   {(['PKL','DN','BL'] as const).map(type => (
                     <button key={type} onClick={(e) => { e.stopPropagation(); setShowInvoiceDropdown(false); navigate(`/documents/new/form?type=${type}&projectId=${task.id}`) }}
-                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-brand-50 flex items-center gap-3 transition-colors">
+                      className="w-full text-start px-4 py-2.5 text-sm hover:bg-brand-50 flex items-center gap-3 transition-colors">
                       <span className="w-10 text-xs font-bold text-brand-600 bg-brand-50 rounded px-1.5 py-0.5 text-center">{type}</span>
                       <span className="text-gray-700">{t(DOC_TYPE_LABELS[type].en, DOC_TYPE_LABELS[type].ar)}</span>
                     </button>
@@ -370,7 +370,7 @@ export default function TaskDetailPage() {
             </div>
           </div>
           {taskDocs.length === 0 ? (
-            <div className="card py-16 text-center">
+            <div className="card py-16 text-center empty-state">
               <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-400">{t('No documents yet', 'لا توجد مستندات بعد')}</p>
             </div>
@@ -379,22 +379,22 @@ export default function TaskDetailPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100 bg-sand-50/50">
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Number', 'الرقم')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Type', 'النوع')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Date', 'التاريخ')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Status', 'الحالة')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Prepared by', 'أعده')}
                     </th>
-                    <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-end text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Actions', 'الإجراءات')}
                     </th>
                   </tr>
@@ -403,7 +403,7 @@ export default function TaskDetailPage() {
                   {taskDocs.map((doc) => {
                     const typeLabel = DOC_TYPE_LABELS[doc.type]
                     return (
-                      <tr key={doc.id} className="hover:bg-sand-50/50 transition-colors">
+                      <tr key={doc.id} className="table-row-hover">
                         <td className="px-5 py-3.5">
                           <Link
                             to={`/documents/${doc.id}/preview`}
@@ -437,7 +437,7 @@ export default function TaskDetailPage() {
                         <td className="px-5 py-3.5 text-sm text-gray-600">
                           {doc.preparedBy || '—'}
                         </td>
-                        <td className="px-5 py-3.5 text-right">
+                        <td className="px-5 py-3.5 text-end">
                           <div className="flex items-center justify-end gap-1">
                             <button className="btn-ghost p-1.5" title={t('Print', 'طباعة')} onClick={() => window.print()}>
                               <Printer className="w-4 h-4" />
@@ -463,16 +463,16 @@ export default function TaskDetailPage() {
       {activeTab === 'attachments' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
+            <h2 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
               {t('Attachments', 'المرفقات')} ({attachments.length})
-            </h3>
+            </h2>
             <button onClick={() => setShowAttachmentModal(true)} className="btn-primary">
-              <Plus className="w-4 h-4 mr-1.5" />
+              <Plus className="w-4 h-4 ms-1.5" />
               {t('Upload', 'رفع')}
             </button>
           </div>
           {attachments.length === 0 ? (
-            <div className="card py-16 text-center">
+            <div className="card py-16 text-center empty-state">
               <Paperclip className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-400">{t('No attachments', 'لا توجد مرفقات')}</p>
             </div>
@@ -481,26 +481,26 @@ export default function TaskDetailPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100 bg-sand-50/50">
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('File Name', 'اسم الملف')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Size', 'الحجم')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Uploaded By', 'رفعه')}
                     </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Date', 'التاريخ')}
                     </th>
-                    <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                    <th className="text-end text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
                       {t('Actions', 'الإجراءات')}
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {attachments.map((att) => (
-                    <tr key={att.id} className="hover:bg-sand-50/50 transition-colors">
+                    <tr key={att.id} className="table-row-hover">
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
                           <Paperclip className="w-4 h-4 text-gray-400" />
@@ -520,7 +520,7 @@ export default function TaskDetailPage() {
                           year: 'numeric',
                         })}
                       </td>
-                      <td className="px-5 py-3.5 text-right">
+                      <td className="px-5 py-3.5 text-end">
                         <div className="flex items-center justify-end gap-1">
                           <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => alert(t('Download will be available in production.', 'سيتوفر التحميل في الإنتاج.'))}>
                             <Download className="w-4 h-4" />
@@ -542,11 +542,11 @@ export default function TaskDetailPage() {
       {activeTab === 'issues' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
+            <h2 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
               {t('Reported Issues', 'المشكلات المبلّغ عنها')} ({taskIssues.length})
-            </h3>
+            </h2>
             <button onClick={() => setShowIssueForm(!showIssueForm)} className="btn-primary">
-              <Plus className="w-4 h-4 mr-1.5" />
+              <Plus className="w-4 h-4 ms-1.5" />
               {t('Report Issue', 'إبلاغ عن مشكلة')}
             </button>
           </div>
@@ -574,7 +574,7 @@ export default function TaskDetailPage() {
             </div>
           )}
           {taskIssues.length === 0 ? (
-            <div className="card py-16 text-center">
+            <div className="card py-16 text-center empty-state">
               <AlertTriangle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-400">{t('No issues reported', 'لا توجد مشكلات مبلّغ عنها')}</p>
             </div>
@@ -597,7 +597,7 @@ export default function TaskDetailPage() {
                   <div key={issue.id} className="card p-4">
                     <div className="flex items-start justify-between">
                       <p className="text-sm text-gray-700 flex-1">{issue.description}</p>
-                      <div className="flex items-center gap-2 ml-4">
+                      <div className="flex items-center gap-2 ms-4">
                         <span className={`status-badge ${severityColors[issue.severity] || ''}`}>
                           {issue.severity}
                         </span>
@@ -628,11 +628,11 @@ export default function TaskDetailPage() {
       {activeTab === 'notes' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
+            <h2 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
               {t('Task Notes', 'ملاحظات المهمة')} ({taskNotes.length})
-            </h3>
+            </h2>
             <button onClick={() => setShowNoteForm(!showNoteForm)} className="btn-primary">
-              <Plus className="w-4 h-4 mr-1.5" />
+              <Plus className="w-4 h-4 ms-1.5" />
               {t('Add Note', 'إضافة ملاحظة')}
             </button>
           </div>
@@ -649,7 +649,7 @@ export default function TaskDetailPage() {
             </div>
           )}
           {taskNotes.length === 0 ? (
-            <div className="card py-16 text-center">
+            <div className="card py-16 text-center empty-state">
               <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-400">{t('No notes yet', 'لا توجد ملاحظات بعد')}</p>
             </div>

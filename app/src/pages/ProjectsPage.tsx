@@ -118,7 +118,7 @@ export default function ProjectsPage() {
           </p>
         </div>
         <button onClick={() => setShowProjectForm(true)} className="btn-primary">
-          <Plus className="w-4 h-4 mr-1.5" />
+          <Plus className="w-4 h-4 me-1.5" />
           {t('New Project', 'مشروع جديد')}
         </button>
       </div>
@@ -144,10 +144,10 @@ export default function ProjectsPage() {
               className="btn-secondary relative"
               onClick={() => setShowStatusFilter(!showStatusFilter)}
             >
-              <Filter className="w-4 h-4 mr-1.5" />
+              <Filter className="w-4 h-4 me-1.5" />
               {t('Status', 'الحالة')}
               {selectedStatuses.length > 0 && (
-                <span className="ml-1.5 bg-brand-700 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                <span className="ms-1.5 bg-brand-700 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   {selectedStatuses.length}
                 </span>
               )}
@@ -204,17 +204,17 @@ export default function ProjectsPage() {
                   onClick={() => toggleStatus(s)}
                 >
                   {opt?.label}
-                  <X className="w-3 h-3 ml-1" />
+                  <X className="w-3 h-3 ms-1" />
                 </span>
               )
             })}
             {selectedCustomerId && (
               <span className="status-badge bg-purple-100 text-purple-700 cursor-pointer" onClick={() => setSelectedCustomerId('')}>
                 {customers.find((c) => c.id === selectedCustomerId)?.name}
-                <X className="w-3 h-3 ml-1" />
+                <X className="w-3 h-3 ms-1" />
               </span>
             )}
-            <button className="text-xs text-brand-600 hover:text-brand-800 ml-2" onClick={clearFilters}>
+            <button className="text-xs text-brand-600 hover:text-brand-800 ms-2" onClick={clearFilters}>
               {t('Clear all', 'مسح الكل')}
             </button>
           </div>
@@ -243,7 +243,7 @@ export default function ProjectsPage() {
         <div className="px-5 py-3 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-brand-900">
             {t('All Projects', 'جميع المشاريع')}
-            <span className="ml-2 text-gray-400 font-normal">({filteredProjects.length})</span>
+            <span className="ms-2 text-gray-400 font-normal">({filteredProjects.length})</span>
           </h2>
         </div>
         {filteredProjects.length === 0 && archivedProjects.length === 0 ? (

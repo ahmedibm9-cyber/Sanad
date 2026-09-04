@@ -103,7 +103,7 @@ export default function MaterialDetailPage() {
       <div className="card p-6 mb-6">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 bg-brand-100 rounded-xl flex items-center justify-center shrink-0">
+            <div className="w-14 h-14 bg-brand-100 rounded-lg flex items-center justify-center shrink-0">
               <Package size={24} className="text-brand-600" />
             </div>
             <div>
@@ -116,19 +116,19 @@ export default function MaterialDetailPage() {
               <div className="flex items-center gap-3 mt-2 flex-wrap">
                 {material.manufacturer && (
                   <span className="status-badge bg-brand-50 text-brand-700 border border-brand-200">
-                    <Building2 size={12} className="mr-1" />
+                    <Building2 size={12} className="ms-1" />
                     {material.manufacturer}
                   </span>
                 )}
                 {material.origin && (
                   <span className="status-badge bg-blue-50 text-blue-700 border border-blue-200">
-                    <MapPin size={12} className="mr-1" />
+                    <MapPin size={12} className="ms-1" />
                     {material.origin}
                   </span>
                 )}
                 {material.hsCode && (
                   <span className="status-badge bg-gray-100 text-gray-600 border border-gray-200">
-                    <Tag size={12} className="mr-1" />
+                    <Tag size={12} className="ms-1" />
                     HS: {material.hsCode}
                   </span>
                 )}
@@ -136,7 +136,7 @@ export default function MaterialDetailPage() {
             </div>
           </div>
           <button onClick={() => setShowEditForm(true)} className="btn-secondary">
-            <Edit3 size={14} className="mr-1.5" />
+            <Edit3 size={14} className="ms-1.5" />
             {t('Edit', 'تعديل')}
           </button>
         </div>
@@ -145,7 +145,7 @@ export default function MaterialDetailPage() {
       {/* Last Selling Price - Prominent */}
       <div className="card p-6 mb-6 bg-gradient-to-r from-brand-50 to-brand-100/50 border-brand-200">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-brand-700 rounded-xl flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 bg-brand-700 rounded-lg flex items-center justify-center shrink-0">
             <DollarSign size={22} className="text-white" />
           </div>
           <div>
@@ -168,7 +168,7 @@ export default function MaterialDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Material Properties */}
         <div className="card p-5">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+          <h3 className="section-title mb-4">
             {t('Material Properties', 'خصائص المادة')}
           </h3>
           <div className="space-y-3">
@@ -201,7 +201,7 @@ export default function MaterialDetailPage() {
 
         {/* Reference Files */}
         <div className="card p-5">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+          <h3 className="section-title mb-4">
             {t('Reference Files', 'الملفات المرجعية')}
           </h3>
           <div className="space-y-3">
@@ -267,7 +267,7 @@ export default function MaterialDetailPage() {
 
             <div className="pt-2">
               <button onClick={() => setShowEditForm(true)} className="btn-secondary w-full justify-center">
-                <Box size={14} className="mr-1.5" />
+                <Box size={14} className="ms-1.5" />
                 {t('Manage Files', 'إدارة الملفات')}
               </button>
             </div>
@@ -278,7 +278,7 @@ export default function MaterialDetailPage() {
       {/* Related Projects Section */}
       <div className="card p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+          <h3 className="section-title flex items-center gap-2">
             <FolderOpen size={14} />
             {t('Related Projects', 'المشاريع ذات الصلة')}
           </h3>
@@ -288,7 +288,7 @@ export default function MaterialDetailPage() {
         </div>
 
         {relatedProjects.length === 0 ? (
-          <div className="p-8 text-center">
+          <div className="empty-state p-8">
             <FolderOpen size={32} className="mx-auto text-gray-300 mb-3" />
             <p className="text-gray-500 text-sm">
               {t('This material has not been used in any project yet.', 'لم يتم استخدام هذه المادة في أي مشروع بعد.')}
@@ -327,9 +327,9 @@ export default function MaterialDetailPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0 ml-4">
+                  <div className="flex items-center gap-3 shrink-0 ms-4">
                     {materialLine && (
-                      <div className="text-right">
+                      <div className="text-end">
                         <p className="text-sm font-semibold text-brand-800">
                           {materialLine.quantity} {materialLine.weightUnit}
                         </p>

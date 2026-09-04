@@ -381,7 +381,7 @@ export default function UsersPage() {
         <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm font-medium animate-in fade-in">
           <Check className="w-4 h-4 text-green-600" />
           {successMessage}
-          <button onClick={() => setSuccessMessage(null)} className="ml-auto text-green-500 hover:text-green-700">
+          <button onClick={() => setSuccessMessage(null)} className="ms-auto text-green-500 hover:text-green-700">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -392,15 +392,15 @@ export default function UsersPage() {
         {/* Search bar */}
         <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
-              className="input-field pl-9"
+              className="input-field ps-9"
               placeholder={t('Search users...', 'بحث في المستخدمين...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+              <button onClick={() => setSearchQuery('')} className="absolute end-3 top-1/2 -translate-y-1/2">
                 <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
               </button>
             )}
@@ -414,11 +414,11 @@ export default function UsersPage() {
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('User', 'المستخدم')}</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('Email', 'البريد الإلكتروني')}</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('Role', 'الدور')}</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('Companies', 'الشركات')}</th>
-                <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('Actions', 'الإجراءات')}</th>
+                <th className="text-start px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('User', 'المستخدم')}</th>
+                <th className="text-start px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('Email', 'البريد الإلكتروني')}</th>
+                <th className="text-start px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('Role', 'الدور')}</th>
+                <th className="text-start px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('Companies', 'الشركات')}</th>
+                <th className="text-end px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('Actions', 'الإجراءات')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -428,8 +428,8 @@ export default function UsersPage() {
                   <tr
                     key={user.id}
                     onClick={() => handleSelectUser(user.id)}
-                    className={`cursor-pointer transition-colors ${
-                      isSelected ? 'bg-brand-50/50' : 'hover:bg-gray-50/50'
+                    className={`table-row-hover cursor-pointer transition-colors ${
+                      isSelected ? 'bg-brand-50/50' : ''
                     }`}
                   >
                     <td className="px-5 py-3.5">
@@ -459,7 +459,7 @@ export default function UsersPage() {
                     <td className="px-5 py-3.5">
                       <span className="text-sm text-gray-600">{getCompanyNames(user)}</span>
                     </td>
-                    <td className="px-5 py-3.5 text-right">
+                    <td className="px-5 py-3.5 text-end">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -572,7 +572,7 @@ export default function UsersPage() {
                         {countChecked} / {countTotal} {t('permissions', 'صلاحيات')}
                       </span>
                       {CRITICAL_PERMISSIONS.size > 0 && (
-                        <div className="flex items-center gap-1 text-xs text-red-500 ml-auto">
+                        <div className="flex items-center gap-1 text-xs text-red-500 ms-auto">
                           <AlertTriangle className="w-3 h-3" />
                           <span>{t('Red = Critical permission', 'أحمر = صلاحية حساسة')}</span>
                         </div>
@@ -612,7 +612,7 @@ export default function UsersPage() {
                                   e.stopPropagation()
                                   toggleGroup(group.key)
                                 }}
-                                className="ml-auto text-xs text-brand-600 hover:text-brand-800 font-medium"
+                                className="ms-auto text-xs text-brand-600 hover:text-brand-800 font-medium"
                               >
                                 {checkedInGroup === allInGroup ? t('None', 'لا شيء') : t('All', 'الكل')}
                               </button>
@@ -674,8 +674,8 @@ export default function UsersPage() {
           })}
 
           {selectedUser.memberships.length === 0 && (
-            <div className="card p-8 text-center">
-              <UserCheck className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+            <div className="card empty-state">
+              <UserCheck className="w-10 h-10 text-gray-300 mb-3" />
               <p className="text-sm text-gray-500">{t('No company memberships', 'لا توجد عضويات في شركات')}</p>
             </div>
           )}

@@ -222,7 +222,7 @@ export default function DocumentFormPage() {
       <h2 className="text-lg font-semibold text-brand-900 mb-4 flex items-center gap-2">
         <FileText size={18} />
         {t('Document Information', 'معلومات المستند')}
-      </h3>
+      </h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Document Type */}
         <div>
@@ -396,16 +396,16 @@ export default function DocumentFormPage() {
     return (
       <div className="card p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-brand-900">
+          <h2 className="text-lg font-semibold text-brand-900">
             {t('Items', 'العناصر')}
-          </h3>
+          </h2>
           <div className="flex gap-2">
             <button onClick={addItem} className="btn-secondary text-xs">
-              <Plus size={14} className="mr-1" />
+              <Plus size={14} className="ms-1" />
               {t('Add Item', 'إضافة عنصر')}
             </button>
             <button onClick={recalcSubtotal} className="btn-ghost text-xs">
-              <RefreshCw size={14} className="mr-1" />
+              <RefreshCw size={14} className="ms-1" />
               {t('Recalc', 'إعادة حساب')}
             </button>
           </div>
@@ -414,9 +414,9 @@ export default function DocumentFormPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b-2 border-gray-200">
-                <th className="text-left py-2 px-2 text-gray-500 font-medium text-xs w-8">#</th>
+                <th className="text-start py-2 px-2 text-gray-500 font-medium text-xs w-8">#</th>
                 {cols.map((col, i) => (
-                  <th key={i} className="text-left py-2 px-2 text-gray-500 font-medium text-xs whitespace-nowrap">
+                  <th key={i} className="text-start py-2 px-2 text-gray-500 font-medium text-xs whitespace-nowrap">
                     {col}
                   </th>
                 ))}
@@ -425,7 +425,7 @@ export default function DocumentFormPage() {
             </thead>
             <tbody>
               {items.map((item, idx) => (
-                <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                <tr key={item.id} className="border-b border-gray-100 table-row-hover">
                   <td className="py-2 px-2 text-gray-400 text-xs">{idx + 1}</td>
                   {docType === 'PKL' ? (
                     <>
@@ -533,7 +533,7 @@ export default function DocumentFormPage() {
                         </>
                       )}
                       {/* Total */}
-                      <td className="py-2 px-1 font-medium text-right whitespace-nowrap">
+                      <td className="py-2 px-1 font-medium text-end whitespace-nowrap">
                         {(item.quantity * item.unitPrice).toLocaleString()} {item.currency}
                       </td>
                       {/* VAT fields for TINV */}
@@ -551,7 +551,7 @@ export default function DocumentFormPage() {
                           <td className="py-2 px-1">
                             <input className="input-field text-xs py-1.5 w-24" type="number" value={Math.round(item.quantity * item.unitPrice * (vatRate / 100) * 100) / 100} readOnly />
                           </td>
-                          <td className="py-2 px-1 font-medium text-right whitespace-nowrap">
+                          <td className="py-2 px-1 font-medium text-end whitespace-nowrap">
                             {(item.quantity * item.unitPrice * (1 + vatRate / 100)).toLocaleString()} {item.currency}
                           </td>
                         </>
@@ -582,7 +582,7 @@ export default function DocumentFormPage() {
           {renderItemsTable()}
           {/* Financial Summary */}
           <div className="card p-6 mb-6">
-            <h3 className="text-lg font-semibold text-brand-900 mb-4">{t('Financial Summary', 'الملخص المالي')}</h3>
+            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Financial Summary', 'الملخص المالي')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-4">
@@ -649,7 +649,7 @@ export default function DocumentFormPage() {
           </div>
           {/* Delivery & Payment Terms */}
           <div className="card p-6 mb-6">
-            <h3 className="text-lg font-semibold text-brand-900 mb-4">{t('Terms & Conditions', 'الشروط والأحكام')}</h3>
+            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Terms & Conditions', 'الشروط والأحكام')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="label-field">{t('Delivery Terms', 'شروط التسليم')}</label>
@@ -677,7 +677,7 @@ export default function DocumentFormPage() {
         <>
           {renderItemsTable()}
           <div className="card p-6 mb-6">
-            <h3 className="text-lg font-semibold text-brand-900 mb-4">{t('Proforma Invoice Details', 'تفاصيل الفاتورة المبدئية')}</h3>
+            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Proforma Invoice Details', 'تفاصيل الفاتورة المبدئية')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -765,7 +765,7 @@ export default function DocumentFormPage() {
         <>
           {renderItemsTable()}
           <div className="card p-6 mb-6">
-            <h3 className="text-lg font-semibold text-brand-900 mb-4">{t('Tax Invoice Details', 'تفاصيل الفاتورة الضريبية')}</h3>
+            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Tax Invoice Details', 'تفاصيل الفاتورة الضريبية')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -836,7 +836,7 @@ export default function DocumentFormPage() {
         <>
           {renderItemsTable()}
           <div className="card p-6 mb-6">
-            <h3 className="text-lg font-semibold text-brand-900 mb-4">{t('Commercial Invoice Details', 'تفاصيل الفاتورة التجارية')}</h3>
+            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Commercial Invoice Details', 'تفاصيل الفاتورة التجارية')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -900,7 +900,7 @@ export default function DocumentFormPage() {
         <>
           {renderItemsTable()}
           <div className="card p-6 mb-6">
-            <h3 className="text-lg font-semibold text-brand-900 mb-4">{t('Packing List Details', 'تفاصيل قائمة التعبئة')}</h3>
+            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Packing List Details', 'تفاصيل قائمة التعبئة')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -958,7 +958,7 @@ export default function DocumentFormPage() {
         <>
           {renderItemsTable()}
           <div className="card p-6 mb-6">
-            <h3 className="text-lg font-semibold text-brand-900 mb-4">{t('Delivery Note Details', 'تفاصيل إشعار التسليم')}</h3>
+            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Delivery Note Details', 'تفاصيل إشعار التسليم')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -1000,7 +1000,7 @@ export default function DocumentFormPage() {
         <>
           {renderItemsTable()}
           <div className="card p-6 mb-6">
-            <h3 className="text-lg font-semibold text-brand-900 mb-4">{t('Bill of Lading Details', 'تفاصيل بوليصة الشحن')}</h3>
+            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Bill of Lading Details', 'تفاصيل بوليصة الشحن')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -1113,11 +1113,11 @@ export default function DocumentFormPage() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handlePreview} className="btn-secondary">
-            <Printer size={16} className="mr-1.5" />
+            <Printer size={16} className="ms-1.5" />
             {t('Print / Preview', 'طباعة / معاينة')}
           </button>
           <button onClick={handleSave} className="btn-primary">
-            <Save size={16} className="mr-1.5" />
+            <Save size={16} className="ms-1.5" />
             {t('Save Draft', 'حفظ مسودة')}
           </button>
           {saveSuccess && (
@@ -1135,16 +1135,16 @@ export default function DocumentFormPage() {
       {/* Bottom Actions */}
       <div className="flex items-center justify-between mb-8">
         <button onClick={() => navigate(-1)} className="btn-ghost">
-          <ArrowLeft size={16} className="mr-1.5" />
+          <ArrowLeft size={16} className="ms-1.5" />
           {t('Back', 'رجوع')}
         </button>
         <div className="flex items-center gap-2">
           <button onClick={handlePreview} className="btn-secondary">
-            <Printer size={16} className="mr-1.5" />
+            <Printer size={16} className="ms-1.5" />
             {t('Print / Preview', 'طباعة / معاينة')}
           </button>
           <button onClick={handleSave} className="btn-primary">
-            <Save size={16} className="mr-1.5" />
+            <Save size={16} className="ms-1.5" />
             {t('Save Draft', 'حفظ مسودة')}
           </button>
         </div>
@@ -1156,8 +1156,8 @@ export default function DocumentFormPage() {
       {conflictOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setConflictOpen(false)} />
-          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6">
-            <button onClick={() => setConflictOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+          <div className="relative bg-white rounded-lg border border-gray-200 shadow-xl w-full max-w-lg mx-4 p-6">
+            <button onClick={() => setConflictOpen(false)} className="absolute top-4 end-4 text-gray-400 hover:text-gray-600">
               <X size={20} />
             </button>
             <div className="flex items-center gap-3 mb-4">
@@ -1165,9 +1165,9 @@ export default function DocumentFormPage() {
                 <AlertTriangle size={20} className="text-amber-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-brand-900">
+                <h2 className="text-lg font-semibold text-brand-900">
                   {t('Data Conflict Detected', 'تم اكتشاف تعارض في البيانات')}
-                </h3>
+                </h2>
                 <p className="text-sm text-gray-500">
                   {t('Quantity differs from Project Shared Data', 'الكمية تختلف عن البيانات المشتركة للمشروع')}
                 </p>
@@ -1212,7 +1212,7 @@ export default function DocumentFormPage() {
                 onClick={() => setSyncModalOpen(true)}
                 className="btn-primary"
               >
-                <RefreshCw size={14} className="mr-1.5" />
+                <RefreshCw size={14} className="ms-1.5" />
                 {t('Update Project Data', 'تحديث بيانات المشروع')}
               </button>
             </div>
@@ -1226,8 +1226,8 @@ export default function DocumentFormPage() {
       {syncModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setSyncModalOpen(false)} />
-          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6">
-            <button onClick={() => setSyncModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+          <div className="relative bg-white rounded-lg border border-gray-200 shadow-xl w-full max-w-lg mx-4 p-6">
+            <button onClick={() => setSyncModalOpen(false)} className="absolute top-4 end-4 text-gray-400 hover:text-gray-600">
               <X size={20} />
             </button>
             <div className="flex items-center gap-3 mb-4">
@@ -1235,9 +1235,9 @@ export default function DocumentFormPage() {
                 <RefreshCw size={20} className="text-blue-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-brand-900">
+                <h2 className="text-lg font-semibold text-brand-900">
                   {t('Sync Affected Documents', 'مزامنة المستندات المتأثرة')}
-                </h3>
+                </h2>
                 <p className="text-sm text-gray-500">
                   {t('Select documents to update with new quantity', 'اختر المستندات لتحديثها بالكمية الجديدة')}
                 </p>
@@ -1258,7 +1258,7 @@ export default function DocumentFormPage() {
                   />
                   <div className="flex-1">
                     <span className="text-sm font-medium text-brand-900">{doc.number}</span>
-                    <span className="text-xs text-gray-500 ml-2">{doc.type}</span>
+                    <span className="text-xs text-gray-500 ms-2">{doc.type}</span>
                   </div>
                   <CheckCircle size={16} className={`text-gray-300 ${doc.checked ? 'text-green-500' : ''}`} />
                 </label>
@@ -1273,7 +1273,7 @@ export default function DocumentFormPage() {
                 className="btn-primary"
                 disabled={!syncChecklist.some(d => d.checked)}
               >
-                <RefreshCw size={14} className="mr-1.5" />
+                <RefreshCw size={14} className="ms-1.5" />
                 {t('Sync Selected', 'مزامنة المحدد')}
               </button>
             </div>

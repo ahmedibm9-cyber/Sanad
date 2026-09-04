@@ -381,7 +381,7 @@ export default function CustomerDetailPage() {
                     <tr
                       key={doc.id}
                       onClick={() => navigate(`/documents/${doc.id}/preview`)}
-                      className="hover:bg-brand-50/40 cursor-pointer transition-colors"
+                      className="table-row-hover cursor-pointer"
                     >
                       <td className="px-5 py-3">
                         <span className="status-badge bg-brand-50 text-brand-700 border border-brand-200">

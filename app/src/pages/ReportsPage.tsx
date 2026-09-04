@@ -82,11 +82,11 @@ function ReportActions() {
       ) : (
         <>
           <button onClick={() => handleExport('PDF')} className="btn-secondary">
-            <FileDown className="w-4 h-4 mr-2" />
+            <FileDown className="w-4 h-4 ms-2" />
             {t('Export PDF', 'تصدير PDF')}
           </button>
           <button onClick={() => handleExport('Excel')} className="btn-secondary">
-            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            <FileSpreadsheet className="w-4 h-4 ms-2" />
             {t('Export Excel', 'تصدير Excel')}
           </button>
         </>
@@ -110,9 +110,9 @@ function ProjectsByStatusReport() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Count', 'العدد')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Percentage', 'النسبة')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Count', 'العدد')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Percentage', 'النسبة')}</th>
             </tr>
           </thead>
           <tbody>
@@ -132,7 +132,7 @@ function ProjectsByStatusReport() {
                 archived: 'bg-gray-100 text-gray-800',
               }
               return (
-                <tr key={status} className="border-b border-gray-100 hover:bg-gray-50/50">
+                <tr key={status} className="border-b border-gray-100 table-row-hover">
                   <td className="px-4 py-3">
                     <span className={`status-badge ${statusColors[status] || ''}`}>{statusLabels[status] || status}</span>
                   </td>
@@ -171,13 +171,13 @@ function ProjectsByDateReport() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Month', 'الشهر')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Projects Created', 'مشاريع منشأة')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Month', 'الشهر')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Projects Created', 'مشاريع منشأة')}</th>
             </tr>
           </thead>
           <tbody>
             {Object.entries(byMonth).sort().map(([month, count]) => (
-              <tr key={month} className="border-b border-gray-100 hover:bg-gray-50/50">
+              <tr key={month} className="border-b border-gray-100 table-row-hover">
                 <td className="px-4 py-3 font-medium">{month}</td>
                 <td className="px-4 py-3">{count}</td>
               </tr>
@@ -206,13 +206,13 @@ function ProjectsByCompanyReport() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Company', 'الشركة')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Projects', 'المشاريع')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Company', 'الشركة')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Projects', 'المشاريع')}</th>
             </tr>
           </thead>
           <tbody>
             {Object.entries(byCompany).map(([name, count]) => (
-              <tr key={name} className="border-b border-gray-100 hover:bg-gray-50/50">
+              <tr key={name} className="border-b border-gray-100 table-row-hover">
                 <td className="px-4 py-3 font-medium">{name}</td>
                 <td className="px-4 py-3">{count}</td>
               </tr>
@@ -240,13 +240,13 @@ function ProjectsByCustomerReport() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Projects', 'المشاريع')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Projects', 'المشاريع')}</th>
             </tr>
           </thead>
           <tbody>
             {Object.entries(byCustomer).sort((a, b) => b[1] - a[1]).map(([name, count]) => (
-              <tr key={name} className="border-b border-gray-100 hover:bg-gray-50/50">
+              <tr key={name} className="border-b border-gray-100 table-row-hover">
                 <td className="px-4 py-3 font-medium">{name}</td>
                 <td className="px-4 py-3">{count}</td>
               </tr>
@@ -270,16 +270,16 @@ function DocumentsRegisterReport() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Doc Number', 'رقم المستند')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Type', 'النوع')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Project', 'المشروع')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Date', 'التاريخ')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Doc Number', 'رقم المستند')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Type', 'النوع')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Project', 'المشروع')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Date', 'التاريخ')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
             </tr>
           </thead>
           <tbody>
             {allDocs.map(doc => (
-              <tr key={doc.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+              <tr key={doc.id} className="border-b border-gray-100 table-row-hover">
                 <td className="px-4 py-3 font-mono text-brand-700 font-medium">{doc.number}</td>
                 <td className="px-4 py-3">{doc.type}</td>
                 <td className="px-4 py-3">{doc.projectName}</td>
@@ -293,7 +293,7 @@ function DocumentsRegisterReport() {
             ))}
             {allDocs.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400 empty-state">
                   {t('No documents found.', 'لا توجد مستندات.')}
                 </td>
               </tr>
@@ -315,16 +315,16 @@ function TasksReport() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Task', 'المهمة')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Created By', 'أنشأها')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Created', 'أنشئ في')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Task', 'المهمة')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Created By', 'أنشأها')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Created', 'أنشئ في')}</th>
             </tr>
           </thead>
           <tbody>
             {tasks.map(task => (
-              <tr key={task.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+              <tr key={task.id} className="border-b border-gray-100 table-row-hover">
                 <td className="px-4 py-3 font-medium">{task.name}</td>
                 <td className="px-4 py-3 text-gray-600">{task.customerName || '-'}</td>
                 <td className="px-4 py-3">
@@ -363,17 +363,17 @@ function OverdueTasksReport() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Task', 'المهمة')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Created', 'أنشئ في')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Days Overdue', 'أيام التأخير')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Task', 'المهمة')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Created', 'أنشئ في')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Days Overdue', 'أيام التأخير')}</th>
             </tr>
           </thead>
           <tbody>
             {overdueTasks.map(task => {
               const days = Math.floor((Date.now() - new Date(task.createdAt).getTime()) / 86400000)
               return (
-                <tr key={task.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                <tr key={task.id} className="border-b border-gray-100 table-row-hover">
                   <td className="px-4 py-3 font-medium">{task.name}</td>
                   <td className="px-4 py-3 text-gray-600">{task.customerName || '-'}</td>
                   <td className="px-4 py-3 text-gray-500">{task.createdAt}</td>
@@ -385,7 +385,7 @@ function OverdueTasksReport() {
             })}
             {overdueTasks.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={4} className="px-4 py-8 text-center text-gray-400 empty-state">
                   {t('No overdue tasks.', 'لا توجد مهام متأخرة.')}
                 </td>
               </tr>
@@ -412,15 +412,15 @@ function UserActivityReport() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('User', 'المستخدم')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Email', 'البريد الإلكتروني')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Role', 'الدور')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Actions Logged', 'الإجراءات المسجلة')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('User', 'المستخدم')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Email', 'البريد الإلكتروني')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Role', 'الدور')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Actions Logged', 'الإجراءات المسجلة')}</th>
             </tr>
           </thead>
           <tbody>
             {userActivity.map(u => (
-              <tr key={u.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+              <tr key={u.id} className="border-b border-gray-100 table-row-hover">
                 <td className="px-4 py-3 font-medium">{u.name}</td>
                 <td className="px-4 py-3 text-gray-500">{u.email}</td>
                 <td className="px-4 py-3">
@@ -454,16 +454,16 @@ function CustomerExportHistoryReport() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Project', 'المشروع')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Destination', 'الوجهة')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Date', 'التاريخ')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Project', 'المشروع')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Destination', 'الوجهة')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Date', 'التاريخ')}</th>
             </tr>
           </thead>
           <tbody>
             {completedProjects.map(p => (
-              <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+              <tr key={p.id} className="border-b border-gray-100 table-row-hover">
                 <td className="px-4 py-3 font-medium">{p.customerName || '-'}</td>
                 <td className="px-4 py-3">{p.name}</td>
                 <td className="px-4 py-3 text-gray-600">{p.destinationCity}{p.destinationCountry ? `, ${p.destinationCountry}` : ''}</td>
@@ -477,7 +477,7 @@ function CustomerExportHistoryReport() {
             ))}
             {completedProjects.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400 empty-state">
                   {t('No export history found.', 'لا يوجد سجل تصدير.')}
                 </td>
               </tr>
@@ -510,15 +510,15 @@ function MaterialExportHistoryReport() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Material', 'المادة')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Grade', 'الدرجة')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Quantity', 'الكمية')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Material', 'المادة')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Grade', 'الدرجة')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Quantity', 'الكمية')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
             </tr>
           </thead>
           <tbody>
             {materialExports.map((m, i) => (
-              <tr key={i} className="border-b border-gray-100 hover:bg-gray-50/50">
+              <tr key={i} className="border-b border-gray-100 table-row-hover">
                 <td className="px-4 py-3 font-medium">{m.materialName}</td>
                 <td className="px-4 py-3 text-gray-600">{m.grade}</td>
                 <td className="px-4 py-3">{m.quantity} {m.unit}</td>
@@ -527,7 +527,7 @@ function MaterialExportHistoryReport() {
             ))}
             {materialExports.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={4} className="px-4 py-8 text-center text-gray-400 empty-state">
                   {t('No material export history found.', 'لا يوجد سجل تصدير مواد.')}
                 </td>
               </tr>
@@ -549,16 +549,16 @@ function AuditReport() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Timestamp', 'الوقت')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('User', 'المستخدم')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Action', 'الإجراء')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Entity', 'الكيان')}</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('Reference', 'المرجع')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Timestamp', 'الوقت')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('User', 'المستخدم')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Action', 'الإجراء')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Entity', 'الكيان')}</th>
+              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Reference', 'المرجع')}</th>
             </tr>
           </thead>
           <tbody>
             {activityLog.map(entry => (
-              <tr key={entry.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+              <tr key={entry.id} className="border-b border-gray-100 table-row-hover">
                 <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{new Date(entry.timestamp).toLocaleString()}</td>
                 <td className="px-4 py-3 font-medium">{entry.userName}</td>
                 <td className="px-4 py-3">
@@ -607,14 +607,14 @@ export default function ReportsPage() {
       {/* Sidebar */}
       <div className="w-64 flex-shrink-0 border-r border-gray-200 bg-white overflow-y-auto">
         <div className="px-4 pt-5 pb-3">
-          <h2 className="text-lg font-bold text-gray-900">{t('Reports', 'التقارير')}</h2>
+          <h1 className="text-lg font-bold text-gray-900">{t('Reports', 'التقارير')}</h1>
         </div>
         <nav className="px-2 pb-4">
           {reports.map(report => (
             <button
               key={report.id}
               onClick={() => setActiveReport(report.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition-colors mb-0.5 ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-start transition-colors mb-0.5 ${
                 activeReport === report.id
                   ? 'bg-brand-50 text-brand-700 font-semibold'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'

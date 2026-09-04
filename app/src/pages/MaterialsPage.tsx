@@ -59,7 +59,7 @@ export default function MaterialsPage() {
           <h1 className="text-2xl font-bold text-brand-900">{t('Materials Library', 'مكتبة المواد')}</h1>
           <p className="text-sm text-gray-500 mt-1">{t(`${materials.length} materials across ${manufacturers} manufacturers from ${origins} origins`, `${materials.length} مادة من ${manufacturers} مصنّع و ${origins} أصل`)}</p>
         </div>
-        <button onClick={() => { setEditingMaterial(null); setShowForm(true) }} className="btn-primary"><Plus size={16} className="mr-1.5" />{t('Add Material', 'إضافة مادة')}</button>
+        <button onClick={() => { setEditingMaterial(null); setShowForm(true) }} className="btn-primary"><Plus size={16} className="ms-1.5" />{t('Add Material', 'إضافة مادة')}</button>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
@@ -70,32 +70,32 @@ export default function MaterialsPage() {
       </div>
 
       <div className="relative mb-4">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input type="text" className="input-field pl-9" placeholder={t('Search materials by name, grade, manufacturer, HS code...', 'بحث بالاسم أو المستوى أو المصنّع أو كود HS...')} value={search} onChange={e => setSearch(e.target.value)} />
+        <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input type="text" className="input-field ps-9" placeholder={t('Search materials by name, grade, manufacturer, HS code...', 'بحث بالاسم أو المستوى أو المصنّع أو كود HS...')} value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       <div className="card overflow-hidden">
         {filtered.length === 0 ? (
-          <div className="p-12 text-center"><Package size={40} className="mx-auto text-gray-300 mb-3" /><p className="text-gray-500 text-sm">{search ? t('No materials match your search.', 'لا توجد مواد تطابق بحثك.') : t('No materials yet.', 'لا توجد مواد بعد.')}</p></div>
+          <div className="empty-state"><Package size={40} className="mx-auto text-gray-300 mb-3" /><p className="text-gray-500 text-sm">{search ? t('No materials match your search.', 'لا توجد مواد تطابق بحثك.') : t('No materials yet.', 'لا توجد مواد بعد.')}</p></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Material', 'المادة')}</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Grade', 'المستوى')}</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Manufacturer', 'المصنّع')}</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Origin', 'الأصل')}</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('HS Code', 'كود HS')}</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Packing', 'التعبئة')}</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Last Price', 'آخر سعر')}</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Files', 'الملفات')}</th>
-                  <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Actions', 'الإجراءات')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Material', 'المادة')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Grade', 'المستوى')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Manufacturer', 'المصنّع')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Origin', 'الأصل')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('HS Code', 'كود HS')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Packing', 'التعبئة')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Last Price', 'آخر سعر')}</th>
+                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Files', 'الملفات')}</th>
+                  <th className="text-end text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Actions', 'الإجراءات')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map(m => (
-                  <tr key={m.id} className="hover:bg-brand-50/40 transition-colors">
+                  <tr key={m.id} className="table-row-hover">
                     <td className="px-5 py-3.5"><span className="text-sm font-semibold text-brand-900">{m.name}</span></td>
                     <td className="px-5 py-3.5 text-sm text-gray-600">{m.grade || '—'}</td>
                     <td className="px-5 py-3.5 text-sm text-gray-600">{m.manufacturer || '—'}</td>
@@ -124,7 +124,7 @@ export default function MaterialsPage() {
         )}
       </div>
 
-      {filtered.length > 0 && <p className="text-xs text-gray-400 mt-3 text-right">{t(`Showing ${filtered.length} of ${materials.length} materials`, `عرض ${filtered.length} من ${materials.length} مادة`)}</p>}
+      {filtered.length > 0 && <p className="text-xs text-gray-400 mt-3 text-end">{t(`Showing ${filtered.length} of ${materials.length} materials`, `عرض ${filtered.length} من ${materials.length} مادة`)}</p>}
 
       <MaterialFormModal open={showForm} onClose={() => { setShowForm(false); setEditingMaterial(null) }} onSave={handleSave} material={editingMaterial} />
       <ConfirmModal open={!!deletingMaterial} onClose={() => setDeletingMaterial(null)} onConfirm={handleDelete} title={t('Move to Trash', 'نقل إلى سلة المهملات')} message={t(`Are you sure you want to move "${deletingMaterial?.name}" to trash?`, `هل أنت متأكد من نقل "${deletingMaterial?.name}" إلى سلة المهملات؟`)} details={t('This action can be undone from Trash.', 'يمكن التراجع من سلة المهملات.')} confirmLabel={t('Move to Trash', 'نقل إلى سلة المهملات')} cancelLabel={t('Cancel', 'إلغاء')} variant="danger" />
