@@ -1,33 +1,72 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useLanguage } from '../../contexts/LanguageContext'
 import { useCompany } from '../../contexts/CompanyContext'
+import { useApp } from '../../contexts/AppContext'
 import {
   LayoutDashboard, FolderOpen, ListTodo, CheckSquare, Users, Package,
   Factory, BarChart3, Activity, Trash2, Settings, ChevronDown, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { useState } from 'react'
 
-const navItems = [
-  { path: '/dashboard', icon: LayoutDashboard, en: 'Dashboard', ar: 'لوحة التحكم' },
-  { path: '/projects', icon: FolderOpen, en: 'Projects', ar: 'المشاريع' },
-  { path: '/tasks', icon: ListTodo, en: 'Tasks', ar: 'المهام' },
-  { path: '/todos', icon: CheckSquare, en: 'To-dos', ar: 'المهام الشخصية' },
-  { path: '/customers', icon: Users, en: 'Customers', ar: 'العملاء' },
-  { path: '/materials', icon: Package, en: 'Materials', ar: 'المواد' },
-  { path: '/factory', icon: Factory, en: 'Factory Code', ar: 'كود المصنع' },
-  { path: '/reports', icon: BarChart3, en: 'Reports', ar: 'التقارير' },
-  { path: '/activity', icon: Activity, en: 'Activity', ar: 'سجل النشاط' },
-  { path: '/trash', icon: Trash2, en: 'Trash', ar: 'سلة المهملات' },
-  { path: '/settings', icon: Settings, en: 'Settings', ar: 'الإعدادات' },
+// ─── Grouped navigation ───────────────────────────────────
+interface NavSection {
+  labelEn: string
+  labelAr: string
+  items: { path: string; icon: typeof LayoutDashboard; en: string; ar: string }[]
+}
+
+const navSections: NavSection[] = [
+  {
+    labelEn: 'Work',
+    labelAr: 'العمل',
+    items: [
+      { path: '/dashboard', icon: LayoutDashboard, en: 'Dashboard', ar: 'لوحة التحكم' },
+      { path: '/projects', icon: FolderOpen, en: 'Projects', ar: 'المشاريع' },
+      { path: '/tasks', icon: ListTodo, en: 'Tasks', ar: 'المهام' },
+      { path: '/todos', icon: CheckSquare, en: 'To-dos', ar: 'المهام الشخصية' },
+    ],
+  },
+  {
+    labelEn: 'Data',
+    labelAr: 'البيانات',
+    items: [
+      { path: '/customers', icon: Users, en: 'Customers', ar: 'العملاء' },
+      { path: '/materials', icon: Package, en: 'Materials', ar: 'المواد' },
+      { path: '/factory', icon: Factory, en: 'Factory Code', ar: 'كود المصنع' },
+    ],
+  },
+  {
+    labelEn: 'Insights',
+    labelAr: 'المعلومات',
+    items: [
+      { path: '/reports', icon: BarChart3, en: 'Reports', ar: 'التقارير' },
+      { path: '/activity', icon: Activity, en: 'Activity', ar: 'سجل النشاط' },
+    ],
+  },
+  {
+    labelEn: 'System',
+    labelAr: 'النظام',
+    items: [
+      { path: '/trash', icon: Trash2, en: 'Trash', ar: 'سلة المهملات' },
+      { path: '/settings', icon: Settings, en: 'Settings', ar: 'الإعدادات' },
+    ],
+  },
 ]
 
 export default function Sidebar() {
   const { t, dir } = useLanguage()
   const { currentCompany, allCompanies, setCurrentCompany } = useCompany()
+  const { currentUser } = useApp()
   const [companyOpen, setCompanyOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const location = useLocation()
   const isRtl = dir === 'rtl'
+
+  const userInitials = currentUser.name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
 
   return (
     <aside
@@ -98,40 +137,53 @@ export default function Sidebar() {
         </div>
       )}
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-2 px-2" aria-label={t('Main navigation', 'التنقل الرئيسي')}>
-        {navItems.map((item) => {
-          const Icon = item.icon
-          const isActive = location.pathname.startsWith(item.path)
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={`flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm mb-0.5 transition-colors duration-100 ${
-                isActive
-                  ? 'bg-brand-50 text-brand-700 font-medium'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`}
-              title={collapsed ? t(item.en, item.ar) : undefined}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              <Icon size={18} className="shrink-0" />
-              {!collapsed && <span>{t(item.en, item.ar)}</span>}
-            </NavLink>
-          )
-        })}
+      {/* Navigation – Grouped Sections */}
+      <nav className="flex-1 overflow-y-auto py-3 px-2" aria-label={t('Main navigation', 'التنقل الرئيسي')}>
+        {navSections.map((section, sIdx) => (
+          <div key={section.labelEn} className={sIdx > 0 ? 'mt-4' : ''}>
+            {/* Section header */}
+            {!collapsed && (
+              <p className="px-2.5 mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                {t(section.labelEn, section.labelAr)}
+              </p>
+            )}
+            {collapsed && sIdx > 0 && (
+              <div className="mx-2 my-2 border-t border-gray-100" />
+            )}
+            {section.items.map((item) => {
+              const Icon = item.icon
+              const isActive = location.pathname.startsWith(item.path)
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm mb-0.5 transition-colors duration-100 ${
+                    isActive
+                      ? 'bg-brand-50 text-brand-700 font-medium'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                  title={collapsed ? t(item.en, item.ar) : undefined}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <Icon size={18} className="shrink-0" />
+                  {!collapsed && <span>{t(item.en, item.ar)}</span>}
+                </NavLink>
+              )
+            })}
+          </div>
+        ))}
       </nav>
 
-      {/* Footer */}
+      {/* Footer – Current User */}
       {!collapsed && (
         <div className="px-2.5 py-3 border-t border-gray-100 shrink-0">
           <div className="flex items-center gap-2 px-2">
             <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center text-brand-700 text-xs font-bold shrink-0" aria-hidden="true">
-              MH
+              {userInitials}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-800 truncate">Mohamed Al-Hassan</p>
-              <p className="text-xs text-gray-400">Admin</p>
+              <p className="text-sm font-medium text-gray-800 truncate">{currentUser.name}</p>
+              <p className="text-xs text-gray-400 capitalize">{currentUser.role}</p>
             </div>
           </div>
         </div>

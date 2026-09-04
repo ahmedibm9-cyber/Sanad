@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Search,
   Plus,
@@ -14,11 +14,16 @@ import {
   FolderOpen,
   Archive,
   RotateCcw,
+  MoreVertical,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { getProjectsByCompany, getCustomersByCompany } from '../data/mockData'
 import ProjectFormModal from '../components/projects/ProjectFormModal'
+import Pagination from '../components/common/Pagination'
+import ConfirmModal from '../components/common/ConfirmModal'
 import type { WorkItemStatus, WorkItem } from '../types'
 
 const STATUS_OPTIONS: { value: WorkItemStatus; label: string; colorClass: string }[] = [
@@ -40,6 +45,7 @@ function formatCurrency(amount: number, currency: string) {
 export default function ProjectsPage() {
   const { t } = useLanguage()
   const { currentCompany } = useCompany()
+  const navigate = useNavigate()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatuses, setSelectedStatuses] = useState<WorkItemStatus[]>([])
@@ -48,7 +54,13 @@ export default function ProjectsPage() {
   const [archivedExpanded, setArchivedExpanded] = useState(false)
   const [showProjectForm, setShowProjectForm] = useState(false)
   const [projects, setProjects] = useState<WorkItem[]>(() => getProjectsByCompany(currentCompany.id))
+  const [page, setPage] = useState(1)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [archiveConfirmId, setArchiveConfirmId] = useState<string | null>(null)
+  const [trashConfirmId, setTrashConfirmId] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const customers = getCustomersByCompany(currentCompany.id)
+  const PAGE_SIZE = 10
 
   // Filter logic
   const filteredProjects = useMemo(() => {
@@ -99,6 +111,36 @@ export default function ProjectsPage() {
     setSelectedStatuses([])
     setSelectedCustomerId('')
     setSearchQuery('')
+  }
+
+  // ── Pagination ──
+  const totalPages = Math.max(1, Math.ceil(unpinnedProjects.length / PAGE_SIZE))
+  const paginatedProjects = unpinnedProjects.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  // Reset to page 1 when filters change
+  useEffect(() => { setPage(1) }, [searchQuery, selectedStatuses, selectedCustomerId])
+
+  // ── Click outside to close More menu ──
+  const handleMenuClickOutside = useCallback((e: MouseEvent) => {
+    if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenMenuId(null)
+  }, [])
+
+  useEffect(() => {
+    document.addEventListener('mousedown', handleMenuClickOutside)
+    return () => document.removeEventListener('mousedown', handleMenuClickOutside)
+  }, [handleMenuClickOutside])
+
+  // ── Row actions ──
+  const handleArchive = (id: string) => {
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, status: 'archived' as WorkItemStatus } : p))
+    setArchiveConfirmId(null)
+    setOpenMenuId(null)
+  }
+
+  const handleTrash = (id: string) => {
+    setProjects(prev => prev.filter(p => p.id !== id))
+    setTrashConfirmId(null)
+    setOpenMenuId(null)
   }
 
   return (
@@ -277,8 +319,8 @@ export default function ProjectsPage() {
                   <th className="w-10 px-5 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
-                {unpinnedProjects.map((project) => {
+              <tbody>
+                {paginatedProjects.map((project) => {
                   const statusOpt = getStatusBadge(project.status)
                   const totalValue = project.materials.reduce(
                     (s, m) => s + m.quantity * m.unitPrice,
@@ -351,6 +393,43 @@ export default function ProjectsPage() {
                           <Link to={`/projects/${project.id}`} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-brand-600 transition-colors" title={t('View', 'عرض')}>
                             <ArrowRight className="w-4 h-4" />
                           </Link>
+                          {/* More Menu */}
+                          <div ref={openMenuId === project.id ? menuRef : undefined} className="relative">
+                            <button
+                              onClick={() => setOpenMenuId(openMenuId === project.id ? null : project.id)}
+                              className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
+                              title={t('More', 'المزيد')}
+                              aria-label={t('More actions', 'إجراءات إضافية')}
+                              aria-expanded={openMenuId === project.id}
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                            {openMenuId === project.id && (
+                              <div className="absolute top-full end-0 mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
+                                <button
+                                  onClick={() => { setOpenMenuId(null); navigate(`/projects/${project.id}`) }}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  {t('Edit', 'تعديل')}
+                                </button>
+                                <button
+                                  onClick={() => { setArchiveConfirmId(project.id); setOpenMenuId(null) }}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                >
+                                  <Archive className="w-3.5 h-3.5" />
+                                  {t('Archive', 'أرشفة')}
+                                </button>
+                                <button
+                                  onClick={() => { setTrashConfirmId(project.id); setOpenMenuId(null) }}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  {t('Move to Trash', 'نقل إلى سلة المهملات')}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -360,9 +439,13 @@ export default function ProjectsPage() {
             </table>
           </div>
         )}
+        {/* Pagination */}
+        {filteredProjects.length > 0 && (
+          <div className="px-5 py-3 border-t border-gray-100">
+            <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+          </div>
+        )}
       </div>
-
-      {/* Archived Section (Collapsible) */}
       {archivedProjects.length > 0 && (
         <div className="card overflow-hidden">
           <button
@@ -462,6 +545,31 @@ export default function ProjectsPage() {
       setProjects(prev => [newProj, ...prev])
       setShowProjectForm(false)
     }} mode="project" />
+
+    {/* Archive Confirm */}
+    <ConfirmModal
+      open={!!archiveConfirmId}
+      onClose={() => setArchiveConfirmId(null)}
+      onConfirm={() => archiveConfirmId && handleArchive(archiveConfirmId)}
+      title={t('Archive Project', 'أرشفة المشروع')}
+      message={t('Are you sure you want to archive this project? It will be moved to the Archived section.', 'هل أنت متأكد من أرشفة هذا المشروع؟ سيتم نقله إلى قسم المؤرشفة.')}
+      confirmLabel={t('Archive', 'أرشفة')}
+      cancelLabel={t('Cancel', 'إلغاء')}
+      variant="warning"
+    />
+
+    {/* Trash Confirm */}
+    <ConfirmModal
+      open={!!trashConfirmId}
+      onClose={() => setTrashConfirmId(null)}
+      onConfirm={() => trashConfirmId && handleTrash(trashConfirmId)}
+      title={t('Move to Trash', 'نقل إلى سلة المهملات')}
+      message={t('Are you sure you want to move this project to trash?', 'هل أنت متأكد من نقل هذا المشروع إلى سلة المهملات؟')}
+      details={t('This action can be undone from the Trash module.', 'يمكن التراجع عن هذا الإجراء من وحدة سلة المهملات.')}
+      confirmLabel={t('Move to Trash', 'نقل إلى سلة المهملات')}
+      cancelLabel={t('Cancel', 'إلغاء')}
+      variant="danger"
+    />
     </>
   )
 }

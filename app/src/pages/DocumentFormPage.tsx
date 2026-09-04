@@ -4,10 +4,11 @@ import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { useApp } from '../contexts/AppContext'
 import { projects, customersFulla } from '../data/mockData'
+import FormSection from '../components/common/FormSection'
 import type { DocumentType, ProjectMaterial } from '../types'
 import {
   Save, Printer, ArrowLeft, Plus, Trash2, AlertTriangle, X,
-  FileText, CheckCircle, RefreshCw, ChevronDown, Info,
+  FileText, CheckCircle, RefreshCw, Info,
 } from 'lucide-react'
 
 /* ── helpers ──────────────────────────────────────────── */
@@ -80,7 +81,7 @@ export default function DocumentFormPage() {
   const [showSignature, setShowSignature] = useState(currentCompany.showSignature ?? true)
   const [showStamp, setShowStamp] = useState(currentCompany.showStamp ?? true)
 
-  // Quotation
+  // Commercial terms
   const [validUntil, setValidUntil] = useState('2024-12-31')
   const [subtotal, setSubtotal] = useState(52500)
   const [vatRate, setVatRate] = useState<number>(0)
@@ -164,9 +165,6 @@ export default function DocumentFormPage() {
       if (i !== idx) return item
       const updated = { ...item, [field]: value }
       if (field === 'quantity' || field === 'unitPrice') {
-        const origQty = field === 'quantity' ? (value as number) : item.quantity
-        const origPrice = field === 'unitPrice' ? (value as number) : item.unitPrice
-        // conflict demo: if user changes first item qty from 50 to 48
         if (idx === 0 && field === 'quantity' && value === 48) {
           setTimeout(() => setConflictOpen(true), 300)
         }
@@ -216,13 +214,11 @@ export default function DocumentFormPage() {
     ))
   }
 
-  /* ── common header ──────────────────────────────────── */
-  const CommonFields = () => (
-    <div className="card p-6 mb-6">
-      <h2 className="text-lg font-semibold text-brand-900 mb-4 flex items-center gap-2">
-        <FileText size={18} />
-        {t('Document Information', 'معلومات المستند')}
-      </h2>
+  /* ══════════════════════════════════════════════════════
+     SECTION: Document Info (always shown)
+     ══════════════════════════════════════════════════════ */
+  const renderDocumentInfoSection = () => (
+    <FormSection title="Document Information" titleAr="معلومات المستند">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Document Type */}
         <div>
@@ -326,11 +322,39 @@ export default function DocumentFormPage() {
           {t('Show Stamp', 'إظهار الختم')}
         </label>
       </div>
-    </div>
+    </FormSection>
   )
 
-  /* ── items table header based on type ───────────────── */
-  const renderItemsTable = () => {
+  /* ══════════════════════════════════════════════════════
+     SECTION: Customer (always shown)
+     ══════════════════════════════════════════════════════ */
+  const renderCustomerSection = () => (
+    <FormSection title="Customer" titleAr="العميل">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="label-field">{t('Customer Name', 'اسم العميل')}</label>
+          <input type="text" className="input-field bg-gray-50" value={customer.name} readOnly />
+        </div>
+        {(docType === 'BL' || docType === 'DN' || docType === 'TINV') && (
+          <>
+            <div>
+              <label className="label-field">{t('Contact Person', 'جهة الاتصال')}</label>
+              <input type="text" className="input-field bg-gray-50" value={customer.contactPerson || '—'} readOnly />
+            </div>
+            <div>
+              <label className="label-field">{t('Country', 'الدولة')}</label>
+              <input type="text" className="input-field bg-gray-50" value={customer.country || '—'} readOnly />
+            </div>
+          </>
+        )}
+      </div>
+    </FormSection>
+  )
+
+  /* ══════════════════════════════════════════════════════
+     SECTION: Materials / Items Table
+     ══════════════════════════════════════════════════════ */
+  const renderMaterialsSection = () => {
     const commonCols = (docType === 'PKL') ? [] : (
       docType === 'DN' ? [
         t('Description', 'الوصف'),
@@ -394,21 +418,16 @@ export default function DocumentFormPage() {
     const cols = docType === 'PKL' ? pklCols : commonCols
 
     return (
-      <div className="card p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-brand-900">
-            {t('Items', 'العناصر')}
-          </h2>
-          <div className="flex gap-2">
-            <button onClick={addItem} className="btn-secondary text-xs">
-              <Plus size={14} className="ms-1" />
-              {t('Add Item', 'إضافة عنصر')}
-            </button>
-            <button onClick={recalcSubtotal} className="btn-ghost text-xs">
-              <RefreshCw size={14} className="ms-1" />
-              {t('Recalc', 'إعادة حساب')}
-            </button>
-          </div>
+      <FormSection title="Materials" titleAr="المواد">
+        <div className="flex items-center justify-end gap-2 mb-4">
+          <button onClick={addItem} className="btn-secondary text-xs">
+            <Plus size={14} className="ms-1" />
+            {t('Add Item', 'إضافة عنصر')}
+          </button>
+          <button onClick={recalcSubtotal} className="btn-ghost text-xs">
+            <RefreshCw size={14} className="ms-1" />
+            {t('Recalc', 'إعادة حساب')}
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -569,20 +588,21 @@ export default function DocumentFormPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </FormSection>
     )
   }
 
-  /* ── type-specific fields ───────────────────────────── */
-  const renderTypeFields = () => {
+  /* ══════════════════════════════════════════════════════
+     TYPE-SPECIFIC SECTIONS
+     ══════════════════════════════════════════════════════ */
+  const renderTypeSpecificSections = () => {
     switch (docType) {
+
       /* ── QUOTATION ─────────────────────────────────── */
       case 'QUOT': return (
         <>
-          {renderItemsTable()}
           {/* Financial Summary */}
-          <div className="card p-6 mb-6">
-            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Financial Summary', 'الملخص المالي')}</h2>
+          <FormSection title="Financial Summary" titleAr="الملخص المالي">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-4">
@@ -594,10 +614,6 @@ export default function DocumentFormPage() {
                     <label className="label-field">{t('Valid Until', 'صالح حتى')}</label>
                     <input type="date" className="input-field" value={validUntil} onChange={e => setValidUntil(e.target.value)} />
                   </div>
-                </div>
-                <div>
-                  <label className="label-field">{t('Customer', 'العميل')}</label>
-                  <input type="text" className="input-field" value={customer.name} readOnly />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -646,10 +662,10 @@ export default function DocumentFormPage() {
                 </div>
               </div>
             </div>
-          </div>
-          {/* Delivery & Payment Terms */}
-          <div className="card p-6 mb-6">
-            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Terms & Conditions', 'الشروط والأحكام')}</h2>
+          </FormSection>
+
+          {/* Terms & Conditions */}
+          <FormSection title="Terms & Conditions" titleAr="الشروط والأحكام">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="label-field">{t('Delivery Terms', 'شروط التسليم')}</label>
@@ -668,16 +684,15 @@ export default function DocumentFormPage() {
               <label className="label-field">{t('Terms & Conditions', 'الشروط والأحكام')}</label>
               <textarea className="input-field" rows={3} value={terms} onChange={e => setTerms(e.target.value)} />
             </div>
-          </div>
+          </FormSection>
         </>
       )
 
       /* ── PROFORMA INVOICE ───────────────────────────── */
       case 'PINV': return (
         <>
-          {renderItemsTable()}
-          <div className="card p-6 mb-6">
-            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Proforma Invoice Details', 'تفاصيل الفاتورة المبدئية')}</h2>
+          {/* Proforma Details */}
+          <FormSection title="Proforma Invoice Details" titleAr="تفاصيل الفاتورة المبدئية">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -736,16 +751,6 @@ export default function DocumentFormPage() {
                     <option>SAR</option><option>USD</option><option>EUR</option>
                   </select>
                 </div>
-                {/* Bank Details */}
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('Bank Details', 'التفاصيل المصرفية')}</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between"><span className="text-gray-500">{t('Bank', 'البنك')}</span><input type="text" className="input-field w-48 text-xs py-1" value={bankName} onChange={e => setBankName(e.target.value)} /></div>
-                    <div className="flex justify-between"><span className="text-gray-500">{t('Account Name', 'اسم الحساب')}</span><input type="text" className="input-field w-48 text-xs py-1" value={accountName} onChange={e => setAccountName(e.target.value)} /></div>
-                    <div className="flex justify-between"><span className="text-gray-500">{t('IBAN', 'آيبان')}</span><input type="text" className="input-field w-48 text-xs py-1" value={iban} onChange={e => setIban(e.target.value)} /></div>
-                    <div className="flex justify-between"><span className="text-gray-500">{t('SWIFT', 'سويلفت')}</span><input type="text" className="input-field w-48 text-xs py-1" value={swift} onChange={e => setSwift(e.target.value)} /></div>
-                  </div>
-                </div>
               </div>
             </div>
             <div className="mt-4">
@@ -756,16 +761,41 @@ export default function DocumentFormPage() {
               <label className="label-field">{t('Notes', 'ملاحظات')}</label>
               <textarea className="input-field" rows={2} value={notes} onChange={e => setNotes(e.target.value)} />
             </div>
-          </div>
+          </FormSection>
+
+          {/* Bank Details */}
+          <FormSection title="Bank Details" titleAr="التفاصيل المصرفية" defaultOpen={false}>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label-field">{t('Bank Name', 'اسم البنك')}</label>
+                  <input type="text" className="input-field" value={bankName} onChange={e => setBankName(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label-field">{t('Account Name', 'اسم الحساب')}</label>
+                  <input type="text" className="input-field" value={accountName} onChange={e => setAccountName(e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label-field">{t('IBAN', 'آيبان')}</label>
+                  <input type="text" className="input-field" value={iban} onChange={e => setIban(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label-field">{t('SWIFT', 'سويلفت')}</label>
+                  <input type="text" className="input-field" value={swift} onChange={e => setSwift(e.target.value)} />
+                </div>
+              </div>
+            </div>
+          </FormSection>
         </>
       )
 
       /* ── TAX INVOICE ────────────────────────────────── */
       case 'TINV': return (
         <>
-          {renderItemsTable()}
-          <div className="card p-6 mb-6">
-            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Tax Invoice Details', 'تفاصيل الفاتورة الضريبية')}</h2>
+          {/* Tax Details */}
+          <FormSection title="Tax Invoice Details" titleAr="تفاصيل الفاتورة الضريبية">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -827,16 +857,15 @@ export default function DocumentFormPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </FormSection>
         </>
       )
 
       /* ── COMMERCIAL INVOICE ─────────────────────────── */
       case 'CINV': return (
         <>
-          {renderItemsTable()}
-          <div className="card p-6 mb-6">
-            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Commercial Invoice Details', 'تفاصيل الفاتورة التجارية')}</h2>
+          {/* Commercial Details */}
+          <FormSection title="Commercial Invoice Details" titleAr="تفاصيل الفاتورة التجارية">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -891,16 +920,15 @@ export default function DocumentFormPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </FormSection>
         </>
       )
 
       /* ── PACKING LIST ───────────────────────────────── */
       case 'PKL': return (
         <>
-          {renderItemsTable()}
-          <div className="card p-6 mb-6">
-            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Packing List Details', 'تفاصيل قائمة التعبئة')}</h2>
+          {/* Packing Details */}
+          <FormSection title="Packing List Details" titleAr="تفاصيل قائمة التعبئة">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -949,16 +977,15 @@ export default function DocumentFormPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </FormSection>
         </>
       )
 
       /* ── DELIVERY NOTE ──────────────────────────────── */
       case 'DN': return (
         <>
-          {renderItemsTable()}
-          <div className="card p-6 mb-6">
-            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Delivery Note Details', 'تفاصيل إشعار التسليم')}</h2>
+          {/* Delivery Details */}
+          <FormSection title="Delivery Note Details" titleAr="تفاصيل إشعار التسليم">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -983,24 +1010,26 @@ export default function DocumentFormPage() {
                   <label className="label-field">{t('Related Invoice', 'الفاتورة المرتبطة')}</label>
                   <input type="text" className="input-field" value={relatedInvoice} onChange={e => setRelatedInvoice(e.target.value)} />
                 </div>
-                {/* Receiver Signature */}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <p className="text-sm text-gray-500 mb-2">{t('Receiver Signature', 'توقيع المستلم')}</p>
-                  <div className="h-16 border-b border-gray-200 mb-2"></div>
-                  <p className="text-xs text-gray-400">{t('Date: _______________', 'التاريخ: _______________')}</p>
-                </div>
               </div>
             </div>
-          </div>
+          </FormSection>
+
+          {/* Receiver Signature */}
+          <FormSection title="Finalization" titleAr="الإتمام">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <p className="text-sm text-gray-500 mb-2">{t('Receiver Signature', 'توقيع المستلم')}</p>
+              <div className="h-16 border-b border-gray-200 mb-2"></div>
+              <p className="text-xs text-gray-400">{t('Date: _______________', 'التاريخ: _______________')}</p>
+            </div>
+          </FormSection>
         </>
       )
 
       /* ── BILL OF LADING ─────────────────────────────── */
       case 'BL': return (
         <>
-          {renderItemsTable()}
-          <div className="card p-6 mb-6">
-            <h2 className="text-lg font-semibold text-brand-900 mb-4">{t('Bill of Lading Details', 'تفاصيل بوليصة الشحن')}</h2>
+          {/* BL Details */}
+          <FormSection title="Bill of Lading Details" titleAr="تفاصيل بوليصة الشحن">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -1082,7 +1111,7 @@ export default function DocumentFormPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </FormSection>
         </>
       )
 
@@ -1126,14 +1155,16 @@ export default function DocumentFormPage() {
         </div>
       </div>
 
-      {/* Common Fields */}
-      <CommonFields />
-
-      {/* Type-Specific Fields */}
-      {renderTypeFields()}
+      {/* Sections with progressive disclosure */}
+      <div className="space-y-5">
+        {renderDocumentInfoSection()}
+        {renderCustomerSection()}
+        {renderMaterialsSection()}
+        {renderTypeSpecificSections()}
+      </div>
 
       {/* Bottom Actions */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 mt-6">
         <button onClick={() => navigate(-1)} className="btn-ghost">
           <ArrowLeft size={16} className="ms-1.5" />
           {t('Back', 'رجوع')}

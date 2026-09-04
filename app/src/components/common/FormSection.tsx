@@ -20,9 +20,9 @@ export default function FormSection({ title, titleAr, subtitle, children, defaul
         className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors duration-100"
         aria-expanded={open}
       >
-        <div className="text-left">
+        <div className="text-start">
           <span className="text-sm font-semibold text-gray-800">{title}</span>
-          {(subtitle || titleAr) && <span className="text-xs text-gray-400 ml-2">{subtitle || titleAr}</span>}
+          {(subtitle || titleAr) && <span className="text-xs text-gray-400 ms-2">{subtitle || titleAr}</span>}
         </div>
         <ChevronDown size={16} className={`text-gray-400 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>

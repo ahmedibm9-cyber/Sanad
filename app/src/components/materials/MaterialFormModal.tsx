@@ -22,6 +22,7 @@ export default function MaterialFormModal({ open, onClose, onSave, material }: M
   const { t } = useLanguage()
   const isEdit = !!material
   const [form, setForm] = useState(EMPTY_FORM)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (material) {
@@ -43,17 +44,21 @@ export default function MaterialFormModal({ open, onClose, onSave, material }: M
   const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }))
 
   const handleSave = () => {
-    onSave({
-      ...material,
-      name: form.name, grade: form.grade, manufacturer: form.manufacturer,
-      origin: form.origin, hsCode: form.hsCode, defaultPacking: form.defaultPacking,
-      lastSellingPrice: form.lastSellingPrice ? Number(form.lastSellingPrice) : undefined,
-      currency: form.currency,
-      tdsFile: form.tdsFileName ? 'mock-tds.pdf' : undefined,
-      msdsFile: form.msdsFileName ? 'mock-msds.pdf' : undefined,
-      coaFile: form.coaFileName ? 'mock-coa.pdf' : undefined,
-    })
-    onClose()
+    setSaving(true)
+    setTimeout(() => {
+      onSave({
+        ...material,
+        name: form.name, grade: form.grade, manufacturer: form.manufacturer,
+        origin: form.origin, hsCode: form.hsCode, defaultPacking: form.defaultPacking,
+        lastSellingPrice: form.lastSellingPrice ? Number(form.lastSellingPrice) : undefined,
+        currency: form.currency,
+        tdsFile: form.tdsFileName ? 'mock-tds.pdf' : undefined,
+        msdsFile: form.msdsFileName ? 'mock-msds.pdf' : undefined,
+        coaFile: form.coaFileName ? 'mock-coa.pdf' : undefined,
+      })
+      setSaving(false)
+      onClose()
+    }, 500)
   }
 
   const fileUpload = (label: string, fieldKey: string, fileName: string) => (
@@ -82,8 +87,13 @@ export default function MaterialFormModal({ open, onClose, onSave, material }: M
       subtitle={isEdit ? t('Update material information', 'تحديث معلومات المادة') : t('Add a new material to the library', 'إضافة مادة جديدة إلى المكتبة')}
       footer={
         <>
-          <button onClick={onClose} className="btn-secondary">{t('Cancel', 'إلغاء')}</button>
-          <button onClick={handleSave} className="btn-primary">{isEdit ? t('Save Changes', 'حفظ التغييرات') : t('Create Material', 'إنشاء المادة')}</button>
+          <button onClick={onClose} className="btn-secondary" disabled={saving}>{t('Cancel', 'إلغاء')}</button>
+          <button onClick={handleSave} className="btn-primary min-w-[140px]" disabled={saving}>
+            {saving
+              ? t('Saving...', 'جاري الحفظ...')
+              : isEdit ? t('Save Changes', 'حفظ التغييرات') : t('Create Material', 'إنشاء المادة')
+            }
+          </button>
         </>
       }
     >

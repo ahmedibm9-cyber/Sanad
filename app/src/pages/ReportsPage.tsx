@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo, type ReactNode } from 'react'
 import {
   BarChart3, Calendar, Building2, Users, FileText, CheckSquare,
   AlertTriangle, Activity, Globe, Package, ShieldCheck,
@@ -7,12 +7,40 @@ import {
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { projects, tasks, users, activityLog, companies } from '../data/mockData'
+import type { WorkItem } from '../types'
 
+// ─── Filter State ──────────────────────────────────────
+interface ReportFiltersState {
+  dateFrom: string
+  dateTo: string
+  status: string
+  companyId: string
+}
+
+const defaultFilters: ReportFiltersState = {
+  dateFrom: '',
+  dateTo: '',
+  status: '',
+  companyId: '',
+}
+
+// ─── Helper: apply common filters to a list of WorkItems ──
+function filterWorkItems(items: WorkItem[], filters: ReportFiltersState): WorkItem[] {
+  return items.filter(item => {
+    if (filters.status && item.status !== filters.status) return false
+    if (filters.companyId && item.companyId !== filters.companyId) return false
+    if (filters.dateFrom && item.createdAt < filters.dateFrom) return false
+    if (filters.dateTo && item.createdAt > filters.dateTo) return false
+    return true
+  })
+}
+
+// ─── Report Item definition ────────────────────────────
 interface ReportItem {
   id: string
   name: string
   nameAr: string
-  icon: React.ReactNode
+  icon: ReactNode
 }
 
 const reports: ReportItem[] = [
@@ -29,22 +57,39 @@ const reports: ReportItem[] = [
   { id: 'audit', name: 'Audit Report', nameAr: 'تقرير التدقيق', icon: <ShieldCheck className="w-4 h-4" /> },
 ]
 
-function ReportFilters() {
+// ─── Filter Bar (controlled, rendered once in parent) ──
+function ReportFilterBar({ filters, onChange }: { filters: ReportFiltersState; onChange: (f: ReportFiltersState) => void }) {
   const { t } = useLanguage()
   const { allCompanies } = useCompany()
+  const update = (patch: Partial<ReportFiltersState>) => onChange({ ...filters, ...patch })
+
   return (
     <div className="flex flex-wrap items-end gap-3 mb-4">
       <div>
         <label className="label-field">{t('From Date', 'من تاريخ')}</label>
-        <input type="date" className="input-field w-40" defaultValue="2024-01-01" />
+        <input
+          type="date"
+          className="input-field w-40"
+          value={filters.dateFrom}
+          onChange={e => update({ dateFrom: e.target.value })}
+        />
       </div>
       <div>
         <label className="label-field">{t('To Date', 'إلى تاريخ')}</label>
-        <input type="date" className="input-field w-40" defaultValue="2024-12-31" />
+        <input
+          type="date"
+          className="input-field w-40"
+          value={filters.dateTo}
+          onChange={e => update({ dateTo: e.target.value })}
+        />
       </div>
       <div>
         <label className="label-field">{t('Status', 'الحالة')}</label>
-        <select className="select-field w-44">
+        <select
+          className="select-field w-44"
+          value={filters.status}
+          onChange={e => update({ status: e.target.value })}
+        >
           <option value="">{t('All', 'الكل')}</option>
           <option value="in_progress">{t('In Progress', 'قيد التنفيذ')}</option>
           <option value="completed">{t('Completed', 'مكتمل')}</option>
@@ -54,7 +99,11 @@ function ReportFilters() {
       </div>
       <div>
         <label className="label-field">{t('Company', 'الشركة')}</label>
-        <select className="select-field w-44">
+        <select
+          className="select-field w-44"
+          value={filters.companyId}
+          onChange={e => update({ companyId: e.target.value })}
+        >
           <option value="">{t('All Companies', 'كل الشركات')}</option>
           {allCompanies.map(c => (
             <option key={c.id} value={c.id}>{c.nameEn}</option>
@@ -65,6 +114,7 @@ function ReportFilters() {
   )
 }
 
+// ─── Export Actions ────────────────────────────────────
 function ReportActions() {
   const { t } = useLanguage()
   const [exported, setExported] = useState<string | null>(null)
@@ -95,405 +145,395 @@ function ReportActions() {
   )
 }
 
-function ProjectsByStatusReport() {
+// ─── Empty state row helper ────────────────────────────
+function EmptyRow({ colSpan, message }: { colSpan: number; message: string }) {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="px-4 py-8 text-center text-gray-400 empty-state">
+        {message}
+      </td>
+    </tr>
+  )
+}
+
+// ─── Report: Projects by Status ────────────────────────
+function ProjectsByStatusReport({ filtered }: { filtered: WorkItem[] }) {
   const { t } = useLanguage()
-  const statusCounts = projects.reduce((acc, p) => {
+  const statusCounts = useMemo(() => filtered.reduce((acc, p) => {
     acc[p.status] = (acc[p.status] || 0) + 1
     return acc
-  }, {} as Record<string, number>)
+  }, {} as Record<string, number>), [filtered])
+
+  const statusLabels: Record<string, string> = {
+    in_progress: t('In Progress', 'قيد التنفيذ'),
+    completed: t('Completed', 'مكتمل'),
+    cancelled: t('Cancelled', 'ملغى'),
+    archived: t('Archived', 'مؤرشف'),
+  }
+  const statusColors: Record<string, string> = {
+    in_progress: 'bg-yellow-100 text-yellow-800',
+    completed: 'bg-green-100 text-green-800',
+    cancelled: 'bg-red-100 text-red-800',
+    archived: 'bg-gray-100 text-gray-800',
+  }
 
   return (
-    <div>
-      <ReportFilters />
-      <ReportActions />
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Count', 'العدد')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Percentage', 'النسبة')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(statusCounts).map(([status, count]) => {
-              const total = projects.length
-              const pct = ((count / total) * 100).toFixed(1)
-              const statusLabels: Record<string, string> = {
-                in_progress: t('In Progress', 'قيد التنفيذ'),
-                completed: t('Completed', 'مكتمل'),
-                cancelled: t('Cancelled', 'ملغى'),
-                archived: t('Archived', 'مؤرشف'),
-              }
-              const statusColors: Record<string, string> = {
-                in_progress: 'bg-yellow-100 text-yellow-800',
-                completed: 'bg-green-100 text-green-800',
-                cancelled: 'bg-red-100 text-red-800',
-                archived: 'bg-gray-100 text-gray-800',
-              }
-              return (
-                <tr key={status} className="border-b border-gray-100 table-row-hover">
-                  <td className="px-4 py-3">
-                    <span className={`status-badge ${statusColors[status] || ''}`}>{statusLabels[status] || status}</span>
-                  </td>
-                  <td className="px-4 py-3 font-medium">{count}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-brand-600 rounded-full" style={{ width: `${pct}%` }} />
-                      </div>
-                      <span className="text-gray-500">{pct}%</span>
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Count', 'العدد')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Percentage', 'النسبة')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(statusCounts).map(([status, count]) => {
+            const total = filtered.length || 1
+            const pct = ((count / total) * 100).toFixed(1)
+            return (
+              <tr key={status} className="border-b border-gray-100 table-row-hover">
+                <td className="px-4 py-3">
+                  <span className={`status-badge ${statusColors[status] || ''}`}>{statusLabels[status] || status}</span>
+                </td>
+                <td className="px-4 py-3 font-medium">{count}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-brand-600 rounded-full" style={{ width: `${pct}%` }} />
                     </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                    <span className="text-gray-500">{pct}%</span>
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+          {Object.keys(statusCounts).length === 0 && (
+            <EmptyRow colSpan={3} message={t('No projects match the selected filters.', 'لا توجد مشاريع مطابقة للمرشّحات المحددة.')} />
+          )}
+        </tbody>
+      </table>
     </div>
   )
 }
 
-function ProjectsByDateReport() {
+// ─── Report: Projects by Date ──────────────────────────
+function ProjectsByDateReport({ filtered }: { filtered: WorkItem[] }) {
   const { t } = useLanguage()
-  const byMonth = projects.reduce((acc, p) => {
+  const byMonth = useMemo(() => filtered.reduce((acc, p) => {
     const month = p.createdAt.substring(0, 7)
     acc[month] = (acc[month] || 0) + 1
     return acc
-  }, {} as Record<string, number>)
+  }, {} as Record<string, number>), [filtered])
 
   return (
-    <div>
-      <ReportFilters />
-      <ReportActions />
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Month', 'الشهر')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Projects Created', 'مشاريع منشأة')}</th>
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Month', 'الشهر')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Projects Created', 'مشاريع منشأة')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(byMonth).sort().map(([month, count]) => (
+            <tr key={month} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-medium">{month}</td>
+              <td className="px-4 py-3">{count}</td>
             </tr>
-          </thead>
-          <tbody>
-            {Object.entries(byMonth).sort().map(([month, count]) => (
-              <tr key={month} className="border-b border-gray-100 table-row-hover">
-                <td className="px-4 py-3 font-medium">{month}</td>
-                <td className="px-4 py-3">{count}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+          {Object.keys(byMonth).length === 0 && (
+            <EmptyRow colSpan={2} message={t('No projects match the selected filters.', 'لا توجد مشاريع مطابقة للمرشّحات المحددة.')} />
+          )}
+        </tbody>
+      </table>
     </div>
   )
 }
 
-function ProjectsByCompanyReport() {
+// ─── Report: Projects by Company ───────────────────────
+function ProjectsByCompanyReport({ filtered }: { filtered: WorkItem[] }) {
   const { t } = useLanguage()
-  const byCompany = projects.reduce((acc, p) => {
+  const byCompany = useMemo(() => filtered.reduce((acc, p) => {
     const comp = companies.find(c => c.id === p.companyId)
     const name = comp?.nameEn || p.companyId
     acc[name] = (acc[name] || 0) + 1
     return acc
-  }, {} as Record<string, number>)
+  }, {} as Record<string, number>), [filtered])
 
   return (
-    <div>
-      <ReportFilters />
-      <ReportActions />
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Company', 'الشركة')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Projects', 'المشاريع')}</th>
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Company', 'الشركة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Projects', 'المشاريع')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(byCompany).map(([name, count]) => (
+            <tr key={name} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-medium">{name}</td>
+              <td className="px-4 py-3">{count}</td>
             </tr>
-          </thead>
-          <tbody>
-            {Object.entries(byCompany).map(([name, count]) => (
-              <tr key={name} className="border-b border-gray-100 table-row-hover">
-                <td className="px-4 py-3 font-medium">{name}</td>
-                <td className="px-4 py-3">{count}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+          {Object.keys(byCompany).length === 0 && (
+            <EmptyRow colSpan={2} message={t('No projects match the selected filters.', 'لا توجد مشاريع مطابقة للمرشّحات المحددة.')} />
+          )}
+        </tbody>
+      </table>
     </div>
   )
 }
 
-function ProjectsByCustomerReport() {
+// ─── Report: Projects by Customer ──────────────────────
+function ProjectsByCustomerReport({ filtered }: { filtered: WorkItem[] }) {
   const { t } = useLanguage()
-  const byCustomer = projects.reduce((acc, p) => {
+  const byCustomer = useMemo(() => filtered.reduce((acc, p) => {
     const name = p.customerName || 'Unknown'
     acc[name] = (acc[name] || 0) + 1
     return acc
-  }, {} as Record<string, number>)
+  }, {} as Record<string, number>), [filtered])
 
   return (
-    <div>
-      <ReportFilters />
-      <ReportActions />
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Projects', 'المشاريع')}</th>
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Projects', 'المشاريع')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(byCustomer).sort((a, b) => b[1] - a[1]).map(([name, count]) => (
+            <tr key={name} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-medium">{name}</td>
+              <td className="px-4 py-3">{count}</td>
             </tr>
-          </thead>
-          <tbody>
-            {Object.entries(byCustomer).sort((a, b) => b[1] - a[1]).map(([name, count]) => (
-              <tr key={name} className="border-b border-gray-100 table-row-hover">
-                <td className="px-4 py-3 font-medium">{name}</td>
-                <td className="px-4 py-3">{count}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+          {Object.keys(byCustomer).length === 0 && (
+            <EmptyRow colSpan={2} message={t('No projects match the selected filters.', 'لا توجد مشاريع مطابقة للمرشّحات المحددة.')} />
+          )}
+        </tbody>
+      </table>
     </div>
   )
 }
 
-function DocumentsRegisterReport() {
+// ─── Report: Documents Register ────────────────────────
+function DocumentsRegisterReport({ filtered }: { filtered: WorkItem[] }) {
   const { t } = useLanguage()
-  const allDocs = projects.flatMap(p => p.documents.map(d => ({ ...d, projectName: p.name })))
+  const allDocs = useMemo(() => filtered.flatMap(p => p.documents.map(d => ({ ...d, projectName: p.name }))), [filtered])
 
   return (
-    <div>
-      <ReportFilters />
-      <ReportActions />
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Doc Number', 'رقم المستند')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Type', 'النوع')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Project', 'المشروع')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Date', 'التاريخ')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Doc Number', 'رقم المستند')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Type', 'النوع')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Project', 'المشروع')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Date', 'التاريخ')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {allDocs.map(doc => (
+            <tr key={doc.id} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-mono text-brand-700 font-medium">{doc.number}</td>
+              <td className="px-4 py-3">{doc.type}</td>
+              <td className="px-4 py-3">{doc.projectName}</td>
+              <td className="px-4 py-3">{doc.date}</td>
+              <td className="px-4 py-3">
+                <span className={`status-badge ${doc.status === 'final' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                  {doc.status === 'final' ? t('Final', 'نهائي') : t('Draft', 'مسودة')}
+                </span>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {allDocs.map(doc => (
-              <tr key={doc.id} className="border-b border-gray-100 table-row-hover">
-                <td className="px-4 py-3 font-mono text-brand-700 font-medium">{doc.number}</td>
-                <td className="px-4 py-3">{doc.type}</td>
-                <td className="px-4 py-3">{doc.projectName}</td>
-                <td className="px-4 py-3">{doc.date}</td>
-                <td className="px-4 py-3">
-                  <span className={`status-badge ${doc.status === 'final' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                    {doc.status === 'final' ? t('Final', 'نهائي') : t('Draft', 'مسودة')}
-                  </span>
-                </td>
-              </tr>
-            ))}
-            {allDocs.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400 empty-state">
-                  {t('No documents found.', 'لا توجد مستندات.')}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          ))}
+          {allDocs.length === 0 && (
+            <EmptyRow colSpan={5} message={t('No documents found.', 'لا توجد مستندات.')} />
+          )}
+        </tbody>
+      </table>
     </div>
   )
 }
 
-function TasksReport() {
+// ─── Report: Tasks ─────────────────────────────────────
+function TasksReport({ filtered }: { filtered: WorkItem[] }) {
   const { t } = useLanguage()
   return (
-    <div>
-      <ReportFilters />
-      <ReportActions />
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Task', 'المهمة')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Created By', 'أنشأها')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Created', 'أنشئ في')}</th>
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Task', 'المهمة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Created By', 'أنشأها')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Created', 'أنشئ في')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filtered.map(task => (
+            <tr key={task.id} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-medium">{task.name}</td>
+              <td className="px-4 py-3 text-gray-600">{task.customerName || '-'}</td>
+              <td className="px-4 py-3">
+                <span className={`status-badge ${
+                  task.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+                  task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                  task.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {task.status === 'in_progress' ? t('In Progress', 'قيد التنفيذ') :
+                   task.status === 'completed' ? t('Completed', 'مكتمل') :
+                   task.status === 'cancelled' ? t('Cancelled', 'ملغى') : task.status}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-gray-600">{task.createdBy || '-'}</td>
+              <td className="px-4 py-3 text-gray-500">{task.createdAt}</td>
             </tr>
-          </thead>
-          <tbody>
-            {tasks.map(task => (
+          ))}
+          {filtered.length === 0 && (
+            <EmptyRow colSpan={5} message={t('No tasks match the selected filters.', 'لا توجد مهام مطابقة للمرشّحات المحددة.')} />
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ─── Report: Overdue Tasks ─────────────────────────────
+function OverdueTasksReport({ filtered }: { filtered: WorkItem[] }) {
+  const { t } = useLanguage()
+  return (
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Task', 'المهمة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Created', 'أنشئ في')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Days Overdue', 'أيام التأخير')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filtered.map(task => {
+            const days = Math.floor((Date.now() - new Date(task.createdAt).getTime()) / 86400000)
+            return (
               <tr key={task.id} className="border-b border-gray-100 table-row-hover">
                 <td className="px-4 py-3 font-medium">{task.name}</td>
                 <td className="px-4 py-3 text-gray-600">{task.customerName || '-'}</td>
-                <td className="px-4 py-3">
-                  <span className={`status-badge ${
-                    task.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
-                    task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                    task.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {task.status === 'in_progress' ? t('In Progress', 'قيد التنفيذ') :
-                     task.status === 'completed' ? t('Completed', 'مكتمل') :
-                     task.status === 'cancelled' ? t('Cancelled', 'ملغى') : task.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-gray-600">{task.createdBy || '-'}</td>
                 <td className="px-4 py-3 text-gray-500">{task.createdAt}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-function OverdueTasksReport() {
-  const { t } = useLanguage()
-  // Mock: tasks without completion that have older dates
-  const overdueTasks = tasks.filter(t => t.status === 'in_progress' && t.createdAt < '2024-11-15')
-
-  return (
-    <div>
-      <ReportFilters />
-      <ReportActions />
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Task', 'المهمة')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Created', 'أنشئ في')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Days Overdue', 'أيام التأخير')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {overdueTasks.map(task => {
-              const days = Math.floor((Date.now() - new Date(task.createdAt).getTime()) / 86400000)
-              return (
-                <tr key={task.id} className="border-b border-gray-100 table-row-hover">
-                  <td className="px-4 py-3 font-medium">{task.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{task.customerName || '-'}</td>
-                  <td className="px-4 py-3 text-gray-500">{task.createdAt}</td>
-                  <td className="px-4 py-3">
-                    <span className="status-badge bg-red-100 text-red-800">{days} {t('days', 'يوم')}</span>
-                  </td>
-                </tr>
-              )
-            })}
-            {overdueTasks.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-gray-400 empty-state">
-                  {t('No overdue tasks.', 'لا توجد مهام متأخرة.')}
+                <td className="px-4 py-3">
+                  <span className="status-badge bg-red-100 text-red-800">{days} {t('days', 'يوم')}</span>
                 </td>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            )
+          })}
+          {filtered.length === 0 && (
+            <EmptyRow colSpan={4} message={t('No overdue tasks.', 'لا توجد مهام متأخرة.')} />
+          )}
+        </tbody>
+      </table>
     </div>
   )
 }
 
-function UserActivityReport() {
+// ─── Report: User Activity ─────────────────────────────
+function UserActivityReport({ filtered }: { filtered: WorkItem[] }) {
   const { t } = useLanguage()
-  const userActivity = users.map(u => {
-    const count = activityLog.filter(a => a.userId === u.id).length
+  const companyIds = useMemo(() => new Set(filtered.map(p => p.companyId)), [filtered])
+  const userActivity = useMemo(() => users.map(u => {
+    const count = activityLog.filter(a => a.userId === u.id && companyIds.has(a.companyId)).length
     return { ...u, actionCount: count }
-  })
+  }), [companyIds])
 
   return (
-    <div>
-      <ReportFilters />
-      <ReportActions />
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('User', 'المستخدم')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Email', 'البريد الإلكتروني')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Role', 'الدور')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Actions Logged', 'الإجراءات المسجلة')}</th>
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('User', 'المستخدم')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Email', 'البريد الإلكتروني')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Role', 'الدور')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Actions Logged', 'الإجراءات المسجلة')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {userActivity.map(u => (
+            <tr key={u.id} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-medium">{u.name}</td>
+              <td className="px-4 py-3 text-gray-500">{u.email}</td>
+              <td className="px-4 py-3">
+                <span className={`status-badge ${
+                  u.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                  u.role === 'user' ? 'bg-blue-100 text-blue-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {u.role}
+                </span>
+              </td>
+              <td className="px-4 py-3 font-medium">{u.actionCount}</td>
             </tr>
-          </thead>
-          <tbody>
-            {userActivity.map(u => (
-              <tr key={u.id} className="border-b border-gray-100 table-row-hover">
-                <td className="px-4 py-3 font-medium">{u.name}</td>
-                <td className="px-4 py-3 text-gray-500">{u.email}</td>
-                <td className="px-4 py-3">
-                  <span className={`status-badge ${
-                    u.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                    u.role === 'user' ? 'bg-blue-100 text-blue-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {u.role}
-                  </span>
-                </td>
-                <td className="px-4 py-3 font-medium">{u.actionCount}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
 
-function CustomerExportHistoryReport() {
+// ─── Report: Customer Export History ───────────────────
+function CustomerExportHistoryReport({ filtered }: { filtered: WorkItem[] }) {
   const { t } = useLanguage()
-  const completedProjects = projects.filter(p => p.status === 'completed' || p.status === 'archived')
+  const exportProjects = useMemo(() =>
+    filtered.filter(p => p.status === 'completed' || p.status === 'archived'),
+    [filtered]
+  )
 
   return (
-    <div>
-      <ReportFilters />
-      <ReportActions />
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Project', 'المشروع')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Destination', 'الوجهة')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Date', 'التاريخ')}</th>
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Project', 'المشروع')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Destination', 'الوجهة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Date', 'التاريخ')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {exportProjects.map(p => (
+            <tr key={p.id} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-medium">{p.customerName || '-'}</td>
+              <td className="px-4 py-3">{p.name}</td>
+              <td className="px-4 py-3 text-gray-600">{p.destinationCity}{p.destinationCountry ? `, ${p.destinationCountry}` : ''}</td>
+              <td className="px-4 py-3">
+                <span className={`status-badge ${p.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                  {p.status === 'completed' ? t('Completed', 'مكتمل') : t('Archived', 'مؤرشف')}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-gray-500">{p.updatedAt}</td>
             </tr>
-          </thead>
-          <tbody>
-            {completedProjects.map(p => (
-              <tr key={p.id} className="border-b border-gray-100 table-row-hover">
-                <td className="px-4 py-3 font-medium">{p.customerName || '-'}</td>
-                <td className="px-4 py-3">{p.name}</td>
-                <td className="px-4 py-3 text-gray-600">{p.destinationCity}{p.destinationCountry ? `, ${p.destinationCountry}` : ''}</td>
-                <td className="px-4 py-3">
-                  <span className={`status-badge ${p.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                    {p.status === 'completed' ? t('Completed', 'مكتمل') : t('Archived', 'مؤرشف')}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-gray-500">{p.updatedAt}</td>
-              </tr>
-            ))}
-            {completedProjects.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400 empty-state">
-                  {t('No export history found.', 'لا يوجد سجل تصدير.')}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          ))}
+          {exportProjects.length === 0 && (
+            <EmptyRow colSpan={5} message={t('No export history found.', 'لا يوجد سجل تصدير.')} />
+          )}
+        </tbody>
+      </table>
     </div>
   )
 }
 
-function MaterialExportHistoryReport() {
+// ─── Report: Material Export History ───────────────────
+function MaterialExportHistoryReport({ filtered }: { filtered: WorkItem[] }) {
   const { t } = useLanguage()
-  const materialExports = projects
-    .filter(p => p.status === 'completed' || p.status === 'archived')
-    .flatMap(p => p.materials.map(m => ({
+  const materialExports = useMemo(() => {
+    const completedProjects = filtered.filter(p => p.status === 'completed' || p.status === 'archived')
+    return completedProjects.flatMap(p => p.materials.map(m => ({
       materialName: m.materialName,
       grade: m.grade || '-',
       quantity: m.quantity,
@@ -501,106 +541,107 @@ function MaterialExportHistoryReport() {
       customer: p.customerName || '-',
       currency: m.currency,
     })))
+  }, [filtered])
 
   return (
-    <div>
-      <ReportFilters />
-      <ReportActions />
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Material', 'المادة')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Grade', 'الدرجة')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Quantity', 'الكمية')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Material', 'المادة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Grade', 'الدرجة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Quantity', 'الكمية')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {materialExports.map((m, i) => (
+            <tr key={i} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-medium">{m.materialName}</td>
+              <td className="px-4 py-3 text-gray-600">{m.grade}</td>
+              <td className="px-4 py-3">{m.quantity} {m.unit}</td>
+              <td className="px-4 py-3 text-gray-600">{m.customer}</td>
             </tr>
-          </thead>
-          <tbody>
-            {materialExports.map((m, i) => (
-              <tr key={i} className="border-b border-gray-100 table-row-hover">
-                <td className="px-4 py-3 font-medium">{m.materialName}</td>
-                <td className="px-4 py-3 text-gray-600">{m.grade}</td>
-                <td className="px-4 py-3">{m.quantity} {m.unit}</td>
-                <td className="px-4 py-3 text-gray-600">{m.customer}</td>
-              </tr>
-            ))}
-            {materialExports.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-gray-400 empty-state">
-                  {t('No material export history found.', 'لا يوجد سجل تصدير مواد.')}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          ))}
+          {materialExports.length === 0 && (
+            <EmptyRow colSpan={4} message={t('No material export history found.', 'لا يوجد سجل تصدير مواد.')} />
+          )}
+        </tbody>
+      </table>
     </div>
   )
 }
 
-function AuditReport() {
+// ─── Report: Audit ─────────────────────────────────────
+function AuditReport({ auditLog }: { auditLog: typeof activityLog }) {
   const { t } = useLanguage()
+
   return (
-    <div>
-      <ReportFilters />
-      <ReportActions />
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/80">
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Timestamp', 'الوقت')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('User', 'المستخدم')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Action', 'الإجراء')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Entity', 'الكيان')}</th>
-              <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Reference', 'المرجع')}</th>
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Timestamp', 'الوقت')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('User', 'المستخدم')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Action', 'الإجراء')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Entity', 'الكيان')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Reference', 'المرجع')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {auditLog.map(entry => (
+            <tr key={entry.id} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{new Date(entry.timestamp).toLocaleString()}</td>
+              <td className="px-4 py-3 font-medium">{entry.userName}</td>
+              <td className="px-4 py-3">
+                <span className={`status-badge ${
+                  entry.action === 'CREATE' ? 'bg-green-100 text-green-800' :
+                  entry.action === 'EDIT' ? 'bg-blue-100 text-blue-800' :
+                  entry.action === 'DELETE' || entry.action === 'MOVE_TO_TRASH' ? 'bg-red-100 text-red-800' :
+                  entry.action === 'ARCHIVE' ? 'bg-gray-100 text-gray-800' :
+                  'bg-purple-100 text-purple-800'
+                }`}>
+                  {entry.action}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-gray-600">{entry.entityType}</td>
+              <td className="px-4 py-3 text-gray-500">{entry.entityRef || entry.entityId}</td>
             </tr>
-          </thead>
-          <tbody>
-            {activityLog.map(entry => (
-              <tr key={entry.id} className="border-b border-gray-100 table-row-hover">
-                <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{new Date(entry.timestamp).toLocaleString()}</td>
-                <td className="px-4 py-3 font-medium">{entry.userName}</td>
-                <td className="px-4 py-3">
-                  <span className={`status-badge ${
-                    entry.action === 'CREATE' ? 'bg-green-100 text-green-800' :
-                    entry.action === 'EDIT' ? 'bg-blue-100 text-blue-800' :
-                    entry.action === 'DELETE' || entry.action === 'MOVE_TO_TRASH' ? 'bg-red-100 text-red-800' :
-                    entry.action === 'ARCHIVE' ? 'bg-gray-100 text-gray-800' :
-                    'bg-purple-100 text-purple-800'
-                  }`}>
-                    {entry.action}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-gray-600">{entry.entityType}</td>
-                <td className="px-4 py-3 text-gray-500">{entry.entityRef || entry.entityId}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+          {auditLog.length === 0 && (
+            <EmptyRow colSpan={5} message={t('No audit entries match the selected filters.', 'لا توجد سجلات تدقيق مطابقة للمرشّحات المحددة.')} />
+          )}
+        </tbody>
+      </table>
     </div>
   )
 }
 
-const reportComponents: Record<string, React.FC> = {
-  'by-status': ProjectsByStatusReport,
-  'by-date': ProjectsByDateReport,
-  'by-company': ProjectsByCompanyReport,
-  'by-customer': ProjectsByCustomerReport,
-  'documents-register': DocumentsRegisterReport,
-  'tasks': TasksReport,
-  'overdue-tasks': OverdueTasksReport,
-  'user-activity': UserActivityReport,
-  'customer-export-history': CustomerExportHistoryReport,
-  'material-export-history': MaterialExportHistoryReport,
-  'audit': AuditReport,
-}
-
+// ─── Main Page ─────────────────────────────────────────
 export default function ReportsPage() {
   const { t } = useLanguage()
   const [activeReport, setActiveReport] = useState('by-status')
-  const ActiveComponent = reportComponents[activeReport] || ProjectsByStatusReport
+  const [filters, setFilters] = useState<ReportFiltersState>(defaultFilters)
+
+  // Apply common WorkItem filters to projects
+  const filteredProjects = useMemo(() => filterWorkItems(projects, filters), [filters])
+  // Apply common WorkItem filters to tasks, with overdue constraint
+  const filteredTasks = useMemo(() => filterWorkItems(tasks, filters), [filters])
+  const filteredOverdueTasks = useMemo(() =>
+    filteredTasks.filter(task => task.status === 'in_progress' && task.createdAt < '2024-11-15'),
+    [filteredTasks]
+  )
+  // Filter audit log by company + date range
+  const filteredAuditLog = useMemo(() => {
+    return activityLog.filter(entry => {
+      if (filters.companyId && entry.companyId !== filters.companyId) return false
+      if (filters.dateFrom && entry.timestamp.substring(0, 10) < filters.dateFrom) return false
+      if (filters.dateTo && entry.timestamp.substring(0, 10) > filters.dateTo) return false
+      return true
+    }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  }, [filters])
+
+  const reportTitle = reports.find(r => r.id === activeReport)
 
   return (
     <div className="h-full flex overflow-hidden">
@@ -630,12 +671,28 @@ export default function ReportsPage() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <h2 className="text-xl font-bold text-gray-900 mb-1">
-          {t(reports.find(r => r.id === activeReport)?.name || '', reports.find(r => r.id === activeReport)?.nameAr || '')}
+          {t(reportTitle?.name || '', reportTitle?.nameAr || '')}
         </h2>
         <p className="text-sm text-gray-500 mb-4">
           {t('Data for current company', 'بيانات الشركة الحالية')}
         </p>
-        <ActiveComponent />
+
+        {/* Filters + Actions rendered once */}
+        <ReportFilterBar filters={filters} onChange={setFilters} />
+        <ReportActions />
+
+        {/* Active report */}
+        {activeReport === 'by-status' && <ProjectsByStatusReport filtered={filteredProjects} />}
+        {activeReport === 'by-date' && <ProjectsByDateReport filtered={filteredProjects} />}
+        {activeReport === 'by-company' && <ProjectsByCompanyReport filtered={filteredProjects} />}
+        {activeReport === 'by-customer' && <ProjectsByCustomerReport filtered={filteredProjects} />}
+        {activeReport === 'documents-register' && <DocumentsRegisterReport filtered={filteredProjects} />}
+        {activeReport === 'tasks' && <TasksReport filtered={filteredTasks} />}
+        {activeReport === 'overdue-tasks' && <OverdueTasksReport filtered={filteredOverdueTasks} />}
+        {activeReport === 'user-activity' && <UserActivityReport filtered={filteredProjects} />}
+        {activeReport === 'customer-export-history' && <CustomerExportHistoryReport filtered={filteredProjects} />}
+        {activeReport === 'material-export-history' && <MaterialExportHistoryReport filtered={filteredProjects} />}
+        {activeReport === 'audit' && <AuditReport auditLog={filteredAuditLog} />}
       </div>
     </div>
   )

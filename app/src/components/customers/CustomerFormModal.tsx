@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useLanguage } from '../../contexts/LanguageContext'
 import Modal from '../common/Modal'
 import FormSection from '../common/FormSection'
@@ -27,6 +27,8 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
   const { t } = useLanguage()
   const isEdit = !!customer
   const [form, setForm] = useState(EMPTY_FORM)
+  const initialFormRef = useRef(EMPTY_FORM)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (customer) {
@@ -51,11 +53,39 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
     }
   }, [customer, open])
 
+  // Capture initial form snapshot after form state settles (on open / customer change)
+  useEffect(() => {
+    initialFormRef.current = form
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
+  // Dirty-state tracking: compare current form to initial snapshot
+  const isDirty = JSON.stringify(form) !== JSON.stringify(initialFormRef.current)
+
+  // Unsaved changes protection via native browser beforeunload
+  const handleBeforeUnload = useCallback((e: BeforeUnloadEvent) => {
+    if (isDirty) {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+  }, [isDirty])
+
+  useEffect(() => {
+    if (open && isDirty) {
+      window.addEventListener('beforeunload', handleBeforeUnload)
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [open, isDirty, handleBeforeUnload])
+
   const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }))
 
   const handleSave = () => {
-    onSave({ ...form, id: customer?.id, companyId: customer?.companyId })
-    onClose()
+    setSaving(true)
+    setTimeout(() => {
+      onSave({ ...form, id: customer?.id, companyId: customer?.companyId })
+      setSaving(false)
+      onClose()
+    }, 500)
   }
 
   const field = (label: string, fieldKey: string, opts?: { type?: string; placeholder?: string; required?: boolean; half?: boolean }) => (
@@ -94,8 +124,13 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
       subtitle={isEdit ? t('Update customer information and defaults', 'تحديث معلومات العميل والإعدادات الافتراضية') : t('Create a new customer with commercial and logistics defaults', 'إنشاء عميل جديد مع الإعدادات التجارية واللوجستية')}
       footer={
         <>
-          <button onClick={onClose} className="btn-secondary">{t('Cancel', 'إلغاء')}</button>
-          <button onClick={handleSave} className="btn-primary">{isEdit ? t('Save Changes', 'حفظ التغييرات') : t('Create Customer', 'إنشاء العميل')}</button>
+          <button onClick={onClose} className="btn-secondary" disabled={saving}>{t('Cancel', 'إلغاء')}</button>
+          <button onClick={handleSave} className="btn-primary min-w-[140px]" disabled={saving}>
+            {saving
+              ? t('Saving...', 'جاري الحفظ...')
+              : isEdit ? t('Save Changes', 'حفظ التغييرات') : t('Create Customer', 'إنشاء العميل')
+            }
+          </button>
         </>
       }
     >

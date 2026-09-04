@@ -18,6 +18,8 @@ import {
   ExternalLink,
   Trash2,
   ChevronDown,
+  Check,
+  X,
 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
@@ -90,6 +92,34 @@ export default function ProjectDetailPage() {
   const [issueSeverity, setIssueSeverity] = useState<ReportIssue['severity']>('medium')
   const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(null)
   const [showEditForm, setShowEditForm] = useState(false)
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [editingNoteContent, setEditingNoteContent] = useState('')
+
+  const updateIssue = (issueId: string, field: string, value: string) => {
+    setReportIssues(prev => prev.map(iss =>
+      iss.id === issueId ? { ...iss, [field]: value } : iss
+    ))
+  }
+
+  const startEditNote = (noteId: string, content: string) => {
+    setEditingNoteId(noteId)
+    setEditingNoteContent(content)
+  }
+
+  const saveEditNote = () => {
+    if (editingNoteId && editingNoteContent.trim()) {
+      setProjectNotes(prev => prev.map(n =>
+        n.id === editingNoteId ? { ...n, content: editingNoteContent.trim() } : n
+      ))
+      setEditingNoteId(null)
+      setEditingNoteContent('')
+    }
+  }
+
+  const cancelEditNote = () => {
+    setEditingNoteId(null)
+    setEditingNoteContent('')
+  }
 
   if (!project) {
     return (
@@ -384,7 +414,7 @@ export default function ProjectDetailPage() {
                   <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase">{t('Invoice', 'الفاتورة')}</div>
                   {(['QUOT','PINV','TINV','CINV'] as const).map(type => (
                     <button key={type} onClick={() => { setShowInvoiceDropdown(false); navigate(`/documents/new/form?type=${type}&projectId=${project.id}`) }}
-                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-brand-50 flex items-center gap-3 transition-colors">
+                      className="w-full text-start px-4 py-2.5 text-sm hover:bg-brand-50 flex items-center gap-3 transition-colors">
                       <span className="w-10 text-xs font-bold text-brand-600 bg-brand-50 rounded px-1.5 py-0.5 text-center">{type}</span>
                       <span className="text-gray-700">{t(DOC_TYPE_LABELS[type].en, DOC_TYPE_LABELS[type].ar)}</span>
                     </button>
@@ -393,7 +423,7 @@ export default function ProjectDetailPage() {
                   <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase">{t('Other Documents', 'مستندات أخرى')}</div>
                   {(['PKL','DN','BL'] as const).map(type => (
                     <button key={type} onClick={() => { setShowInvoiceDropdown(false); navigate(`/documents/new/form?type=${type}&projectId=${project.id}`) }}
-                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-brand-50 flex items-center gap-3 transition-colors">
+                      className="w-full text-start px-4 py-2.5 text-sm hover:bg-brand-50 flex items-center gap-3 transition-colors">
                       <span className="w-10 text-xs font-bold text-brand-600 bg-brand-50 rounded px-1.5 py-0.5 text-center">{type}</span>
                       <span className="text-gray-700">{t(DOC_TYPE_LABELS[type].en, DOC_TYPE_LABELS[type].ar)}</span>
                     </button>
@@ -612,29 +642,37 @@ export default function ProjectDetailPage() {
           ) : (
             <div className="space-y-3">
               {reportIssues.map((issue) => {
-                const severityColors: Record<string, string> = {
-                  low: 'bg-gray-100 text-gray-600',
-                  medium: 'bg-amber-100 text-amber-700',
-                  high: 'bg-orange-100 text-orange-700',
-                  critical: 'bg-red-100 text-red-700',
-                }
-                const issueStatusColors: Record<string, string> = {
-                  open: 'bg-red-100 text-red-700',
-                  under_review: 'bg-blue-100 text-blue-700',
-                  resolved: 'bg-green-100 text-green-700',
-                  rejected: 'bg-gray-100 text-gray-600',
-                }
                 return (
                   <div key={issue.id} className="card p-4">
                     <div className="flex items-start justify-between">
                       <p className="text-sm text-gray-700 flex-1">{issue.description}</p>
-                      <div className="flex items-center gap-2 ms-4">
-                        <span className={`status-badge ${severityColors[issue.severity] || ''}`}>
-                          {issue.severity}
-                        </span>
-                        <span className={`status-badge ${issueStatusColors[issue.status] || ''}`}>
-                          {issue.status.replace('_', ' ')}
-                        </span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-3">
+                      <div>
+                        <label className="label-field text-xs">{t('Severity', 'الخطورة')}</label>
+                        <select
+                          className="select-field text-xs py-1 px-2"
+                          value={issue.severity}
+                          onChange={e => updateIssue(issue.id, 'severity', e.target.value)}
+                        >
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                          <option value="critical">Critical</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label-field text-xs">{t('Status', 'الحالة')}</label>
+                        <select
+                          className="select-field text-xs py-1 px-2"
+                          value={issue.status}
+                          onChange={e => updateIssue(issue.id, 'status', e.target.value)}
+                        >
+                          <option value="open">Open</option>
+                          <option value="under_review">Under Review</option>
+                          <option value="resolved">Resolved</option>
+                          <option value="rejected">Rejected</option>
+                        </select>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
@@ -688,18 +726,48 @@ export default function ProjectDetailPage() {
             <div className="space-y-3">
               {projectNotes.map((note) => (
                 <div key={note.id} className="card p-4">
-                  <p className="text-sm text-gray-700">{note.content}</p>
-                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                    <span>{note.author || '—'}</span>
-                    <span>&middot;</span>
-                    <span>
-                      {new Date(note.createdAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </span>
-                  </div>
+                  {editingNoteId === note.id ? (
+                    <div className="space-y-3">
+                      <textarea
+                        className="input-field"
+                        rows={3}
+                        value={editingNoteContent}
+                        onChange={e => setEditingNoteContent(e.target.value)}
+                      />
+                      <div className="flex items-center gap-2 justify-end">
+                        <button onClick={cancelEditNote} className="btn-ghost text-gray-500 hover:text-gray-700">
+                          <X className="w-4 h-4 me-1" />
+                          {t('Cancel', 'إلغاء')}
+                        </button>
+                        <button onClick={saveEditNote} className="btn-primary">
+                          <Check className="w-4 h-4 me-1" />
+                          {t('Save', 'حفظ')}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-700">{note.content}</p>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+                        <span>{note.author || '—'}</span>
+                        <span>&middot;</span>
+                        <span>
+                          {new Date(note.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </span>
+                        <button
+                          onClick={() => startEditNote(note.id, note.content)}
+                          className="ms-auto text-gray-400 hover:text-brand-600 transition-colors"
+                          title={t('Edit', 'تعديل')}
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>

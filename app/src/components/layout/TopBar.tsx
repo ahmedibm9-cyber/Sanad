@@ -5,11 +5,12 @@ import { useNavigate } from 'react-router-dom'
 import { Search, Bell, Globe, ChevronDown } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { notifications as mockNotifications } from '../../data/mockData'
+import GlobalSearch from '../common/GlobalSearch'
 
 export default function TopBar() {
   const { language, setLanguage, t, dir } = useLanguage()
   const { currentCompany } = useCompany()
-  const { currentUser, setCurrentUser } = useApp()
+  const { currentUser, setCurrentUser, searchOpen, setSearchOpen } = useApp()
   const navigate = useNavigate()
   const isRtl = dir === 'rtl'
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -33,7 +34,7 @@ export default function TopBar() {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
-        document.getElementById('global-search')?.focus()
+        setSearchOpen(true)
       }
     }
     document.addEventListener('keydown', handler)
@@ -51,15 +52,18 @@ export default function TopBar() {
     <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0" role="banner">
       {/* Left: Search */}
       <div className="flex items-center gap-3">
-        <div className="hidden md:flex items-center bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 w-72 transition-colors focus-within:border-brand-400 focus-within:bg-white focus-within:ring-1 focus-within:ring-brand-400">
+        {/* Company Indicator */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-brand-50 border border-brand-200 rounded-md">
+          <div className="w-5 h-5 bg-brand-600 rounded flex items-center justify-center">
+            <span className="text-white text-[10px] font-bold">{currentCompany.shortName.charAt(0)}</span>
+          </div>
+          <span className="text-sm font-semibold text-brand-700 hidden sm:inline">{currentCompany.shortName}</span>
+        </div>
+        <div className="hidden md:flex items-center bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 w-72 transition-colors focus-within:border-brand-400 focus-within:bg-white focus-within:ring-1 focus-within:ring-brand-400 cursor-pointer" onClick={() => setSearchOpen(true)}>
           <Search size={15} className="text-gray-400 shrink-0" aria-hidden="true" />
-          <input
-            id="global-search"
-            type="search"
-            placeholder={t('Search...', 'بحث...')}
-            className={`${isRtl ? 'mr-2 pr-1 pl-0' : 'ml-2 pl-1 pr-0'} bg-transparent text-sm w-full focus:outline-none text-gray-700 placeholder-gray-400`}
-            aria-label={t('Global search', 'بحث عام')}
-          />
+          <span className={`${isRtl ? 'mr-2' : 'ml-2'} bg-transparent text-sm w-full text-gray-400`}>
+            {t('Search...', 'بحث...')}
+          </span>
           <kbd className="text-[10px] text-gray-400 bg-white border border-gray-200 px-1.5 py-0.5 rounded shrink-0" aria-hidden="true">⌘K</kbd>
         </div>
       </div>
@@ -166,6 +170,9 @@ export default function TopBar() {
           )}
         </div>
       </div>
+
+      {/* Global Search Overlay */}
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </header>
   )
 }

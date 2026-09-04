@@ -1,5 +1,5 @@
 import { Fragment, useState, useMemo } from 'react'
-import { Search, ChevronDown, ChevronRight, Clock, User, FileText, Edit3, Trash2, Archive, Download, Upload, RotateCcw, Shield, Database, Key } from 'lucide-react'
+import { Search, ChevronDown, ChevronRight, Clock, User, FileText, Edit3, Trash2, Archive, Download, Upload, RotateCcw, Shield, Database, Key, ArrowRight, ChevronDown as ChevronDownSmall } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { activityLog } from '../data/mockData'
@@ -45,6 +45,37 @@ export default function ActivityPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
+  const [showRawDiff, setShowRawDiff] = useState<string | null>(null)
+
+  // Format a camelCase or snake_case field name into a readable label
+  const formatFieldLabel = (key: string): string => {
+    return key
+      .replace(/([A-Z])/g, ' $1')       // camelCase → "Camel Case"
+      .replace(/_/g, ' ')                 // snake_case → "snake case"
+      .replace(/^\w/, c => c.toUpperCase()) // capitalize first letter
+      .trim()
+  }
+
+  // Compute field-level diffs between before and after objects
+  const computeDiffs = (before: Record<string, unknown>, after: Record<string, unknown>): Array<{ field: string; oldValue: string; newValue: string; onlyIn?: 'before' | 'after' }> => {
+    const allKeys = new Set([...Object.keys(before), ...Object.keys(after)])
+    const diffs: Array<{ field: string; oldValue: string; newValue: string; onlyIn?: 'before' | 'after' }> = []
+    for (const key of allKeys) {
+      const oldVal = before[key]
+      const newVal = after[key]
+      const oldStr = oldVal === undefined ? '—' : String(oldVal)
+      const newStr = newVal === undefined ? '—' : String(newVal)
+      if (oldStr !== newStr) {
+        diffs.push({
+          field: formatFieldLabel(key),
+          oldValue: oldStr,
+          newValue: newStr,
+          onlyIn: oldVal === undefined ? 'after' : newVal === undefined ? 'before' : undefined,
+        })
+      }
+    }
+    return diffs
+  }
 
   const entityTypes = useMemo(() => {
     const types = new Set(activityLog.map(a => a.entityType))
@@ -240,45 +271,81 @@ export default function ActivityPage() {
                       </td>
                       <td className="px-4 py-3 text-gray-600 max-w-xs truncate">{entry.entityRef || entry.entityId}</td>
                     </tr>
-                    {isExpanded && hasBeforeAfter && (
-                      <tr className="bg-gray-50/80">
-                        <td colSpan={6} className="px-6 py-4">
-                          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                            {t('Before / After Comparison', 'مقارنة قبل / بعد')}
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="p-3 rounded-lg border border-red-200 bg-red-50/50">
-                              <div className="text-xs font-bold text-red-700 mb-2 flex items-center gap-1">
-                                <span className="w-2 h-2 rounded-full bg-red-500" />
-                                {t('Before', 'قبل')}
-                              </div>
-                              <div className="space-y-1">
-                                {Object.entries(entry.before!).map(([key, value]) => (
-                                  <div key={key} className="flex items-center gap-2">
-                                    <span className="font-mono text-gray-600 font-medium">{key}:</span>
-                                    <span className="text-red-700">{String(value)}</span>
-                                  </div>
-                                ))}
-                              </div>
+                    {isExpanded && hasBeforeAfter && (() => {
+                      const diffs = computeDiffs(entry.before!, entry.after!)
+                      const isRawVisible = showRawDiff === entry.id
+                      return (
+                        <tr className="bg-gray-50/80">
+                          <td colSpan={6} className="px-6 py-4">
+                            {/* Field-level diffs */}
+                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                              {t('Changes', 'التغييرات')}
                             </div>
-                            <div className="p-3 rounded-lg border border-green-200 bg-green-50/50">
-                              <div className="text-xs font-bold text-green-700 mb-2 flex items-center gap-1">
-                                <span className="w-2 h-2 rounded-full bg-green-500" />
-                                {t('After', 'بعد')}
-                              </div>
-                              <div className="space-y-1">
-                                {Object.entries(entry.after!).map(([key, value]) => (
-                                  <div key={key} className="flex items-center gap-2">
-                                    <span className="font-mono text-gray-600 font-medium">{key}:</span>
-                                    <span className="text-green-700">{String(value)}</span>
-                                  </div>
-                                ))}
-                              </div>
+                            <div className="rounded-lg border border-gray-200 bg-white divide-y divide-gray-100 mb-3">
+                              {diffs.map(d => (
+                                <div key={d.field} className="flex items-center gap-3 px-3 py-2 text-sm">
+                                  <span className="font-medium text-gray-700 min-w-[120px]">{d.field}</span>
+                                  {d.onlyIn === 'after' ? (
+                                    <span className="text-green-600">
+                                      {t('Added', 'أُضيف')}: <span className="font-mono">{d.newValue}</span>
+                                    </span>
+                                  ) : d.onlyIn === 'before' ? (
+                                    <span className="text-red-600">
+                                      {t('Removed', 'حُذف')}: <span className="font-mono line-through">{d.oldValue}</span>
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <span className="font-mono text-red-600 bg-red-50 px-1.5 py-0.5 rounded">{d.oldValue}</span>
+                                      <ArrowRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                                      <span className="font-mono text-green-600 bg-green-50 px-1.5 py-0.5 rounded">{d.newValue}</span>
+                                    </>
+                                  )}
+                                </div>
+                              ))}
+                              {diffs.length === 0 && (
+                                <div className="px-3 py-2 text-sm text-gray-400">
+                                  {t('No differences detected.', 'لا توجد فروقات.')}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
+
+                            {/* Collapsible raw data */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setShowRawDiff(isRawVisible ? null : entry.id)
+                              }}
+                              className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
+                            >
+                              <ChevronDownSmall className={`w-3.5 h-3.5 transition-transform ${isRawVisible ? 'rotate-180' : ''}`} />
+                              {t('Show Raw Data', 'عرض البيانات الخام')}
+                            </button>
+                            {isRawVisible && (
+                              <div className="grid grid-cols-2 gap-4 mt-3">
+                                <div className="p-3 rounded-lg border border-red-200 bg-red-50/50">
+                                  <div className="text-xs font-bold text-red-700 mb-2 flex items-center gap-1">
+                                    <span className="w-2 h-2 rounded-full bg-red-500" />
+                                    {t('Before', 'قبل')}
+                                  </div>
+                                  <pre className="font-mono text-xs text-red-700 whitespace-pre-wrap break-words">
+                                    {JSON.stringify(entry.before, null, 2)}
+                                  </pre>
+                                </div>
+                                <div className="p-3 rounded-lg border border-green-200 bg-green-50/50">
+                                  <div className="text-xs font-bold text-green-700 mb-2 flex items-center gap-1">
+                                    <span className="w-2 h-2 rounded-full bg-green-500" />
+                                    {t('After', 'بعد')}
+                                  </div>
+                                  <pre className="font-mono text-xs text-green-700 whitespace-pre-wrap break-words">
+                                    {JSON.stringify(entry.after, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })()}
                   </Fragment>
                 )
               })}

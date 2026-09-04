@@ -21,6 +21,7 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
   const isEdit = !!item
   const customers = getCustomersByCompany(currentCompany.id)
   const materials = getMaterialsByCompany(currentCompany.id)
+  const [saving, setSaving] = useState(false)
 
   const [form, setForm] = useState({
     name: '', customerId: '', destinationCountry: '', destinationCity: '',
@@ -105,26 +106,30 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
   }
 
   const handleSave = () => {
-    onSave({
-      ...item,
-      name: form.name,
-      customerId: form.customerId,
-      customerName: customers.find(c => c.id === form.customerId)?.name,
-      destinationCountry: form.destinationCountry,
-      destinationCity: form.destinationCity,
-      currency: form.currency,
-      incoterm: form.incoterm,
-      paymentTerms: form.paymentTerms,
-      deliveryTerms: form.deliveryTerms,
-      portOfLoading: form.portOfLoading,
-      portOfDischarge: form.portOfDischarge,
-      vesselName: form.vesselName,
-      voyageNumber: form.voyageNumber,
-      containerNumber: form.containerNumber,
-      notes: form.notes,
-      materials: materialLines,
-    })
-    onClose()
+    setSaving(true)
+    setTimeout(() => {
+      onSave({
+        ...item,
+        name: form.name,
+        customerId: form.customerId,
+        customerName: customers.find(c => c.id === form.customerId)?.name,
+        destinationCountry: form.destinationCountry,
+        destinationCity: form.destinationCity,
+        currency: form.currency,
+        incoterm: form.incoterm,
+        paymentTerms: form.paymentTerms,
+        deliveryTerms: form.deliveryTerms,
+        portOfLoading: form.portOfLoading,
+        portOfDischarge: form.portOfDischarge,
+        vesselName: form.vesselName,
+        voyageNumber: form.voyageNumber,
+        containerNumber: form.containerNumber,
+        notes: form.notes,
+        materials: materialLines,
+      })
+      setSaving(false)
+      onClose()
+    }, 500)
   }
 
   return (
@@ -140,9 +145,12 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
       }
       footer={
         <>
-          <button onClick={onClose} className="btn-secondary">{t('Cancel', 'إلغاء')}</button>
-          <button onClick={handleSave} className="btn-primary" disabled={!form.name || !form.customerId}>
-            {isEdit ? t('Save Changes', 'حفظ التغييرات') : (mode === 'project' ? t('Create Project', 'إنشاء المشروع') : t('Create Task', 'إنشاء المهمة'))}
+          <button onClick={onClose} className="btn-secondary" disabled={saving}>{t('Cancel', 'إلغاء')}</button>
+          <button onClick={handleSave} className="btn-primary min-w-[140px]" disabled={saving || !form.name || !form.customerId}>
+            {saving
+              ? t('Saving...', 'جاري الحفظ...')
+              : isEdit ? t('Save Changes', 'حفظ التغييرات') : (mode === 'project' ? t('Create Project', 'إنشاء المشروع') : t('Create Task', 'إنشاء المهمة'))
+            }
           </button>
         </>
       }
@@ -291,7 +299,7 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
               </div>
             ))}
             <button type="button" onClick={addMaterialLine} className="btn-secondary w-full">
-              <Plus size={16} className="mr-1.5" />
+              <Plus size={16} className="ms-1.5" />
               {t('Add Material Line', 'إضافة صنف مادة')}
             </button>
           </div>

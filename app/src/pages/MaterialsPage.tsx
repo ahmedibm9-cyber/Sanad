@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { getMaterialsByCompany } from '../data/mockData'
 import MaterialFormModal from '../components/materials/MaterialFormModal'
 import ConfirmModal from '../components/common/ConfirmModal'
+import Pagination from '../components/common/Pagination'
 import type { Material } from '../types'
 import { Package, Search, Plus, FileText, Pencil, Trash2, ExternalLink } from 'lucide-react'
 
@@ -15,6 +16,8 @@ export default function MaterialsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null)
   const [deletingMaterial, setDeletingMaterial] = useState<Material | null>(null)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 10
 
   const filtered = useMemo(() => {
     if (!search.trim()) return materials
@@ -25,6 +28,12 @@ export default function MaterialsPage() {
       m.hsCode?.toLowerCase().includes(q) || m.defaultPacking?.toLowerCase().includes(q)
     )
   }, [materials, search])
+
+  // Reset page when search changes
+  useEffect(() => { setPage(1) }, [search])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const paginatedMaterials = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const manufacturers = useMemo(() => new Set(materials.map(m => m.manufacturer).filter(Boolean)).size, [materials])
   const origins = useMemo(() => new Set(materials.map(m => m.origin).filter(Boolean)).size, [materials])
@@ -94,7 +103,7 @@ export default function MaterialsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filtered.map(m => (
+                {paginatedMaterials.map(m => (
                   <tr key={m.id} className="table-row-hover">
                     <td className="px-5 py-3.5"><span className="text-sm font-semibold text-brand-900">{m.name}</span></td>
                     <td className="px-5 py-3.5 text-sm text-gray-600">{m.grade || '—'}</td>
@@ -124,7 +133,14 @@ export default function MaterialsPage() {
         )}
       </div>
 
-      {filtered.length > 0 && <p className="text-xs text-gray-400 mt-3 text-end">{t(`Showing ${filtered.length} of ${materials.length} materials`, `عرض ${filtered.length} من ${materials.length} مادة`)}</p>}
+      {filtered.length > 0 && <p className="text-xs text-gray-400 mt-3 text-end">{t(`Showing ${Math.min(page * PAGE_SIZE, filtered.length)} of ${filtered.length} materials`, `عرض ${Math.min(page * PAGE_SIZE, filtered.length)} من ${filtered.length} مادة`)}</p>}
+
+      {/* Pagination */}
+      {filtered.length > 0 && (
+        <div className="mt-2">
+          <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+        </div>
+      )}
 
       <MaterialFormModal open={showForm} onClose={() => { setShowForm(false); setEditingMaterial(null) }} onSave={handleSave} material={editingMaterial} />
       <ConfirmModal open={!!deletingMaterial} onClose={() => setDeletingMaterial(null)} onConfirm={handleDelete} title={t('Move to Trash', 'نقل إلى سلة المهملات')} message={t(`Are you sure you want to move "${deletingMaterial?.name}" to trash?`, `هل أنت متأكد من نقل "${deletingMaterial?.name}" إلى سلة المهملات؟`)} details={t('This action can be undone from Trash.', 'يمكن التراجع من سلة المهملات.')} confirmLabel={t('Move to Trash', 'نقل إلى سلة المهملات')} cancelLabel={t('Cancel', 'إلغاء')} variant="danger" />

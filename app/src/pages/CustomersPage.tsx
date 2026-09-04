@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { getCustomersByCompany } from '../data/mockData'
 import CustomerFormModal from '../components/customers/CustomerFormModal'
 import ConfirmModal from '../components/common/ConfirmModal'
+import Pagination from '../components/common/Pagination'
 import type { Customer } from '../types'
 import { Users, Search, Plus, Phone, Mail, MapPin, Eye, Pencil, Trash2 } from 'lucide-react'
 
@@ -16,6 +17,8 @@ export default function CustomersPage() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
   const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 10
 
   const filteredCustomers = useMemo(() => {
     if (!search.trim()) return customers
@@ -26,6 +29,12 @@ export default function CustomersPage() {
       c.country?.toLowerCase().includes(q) || c.city?.toLowerCase().includes(q)
     )
   }, [customers, search])
+
+  // Reset page when search changes
+  useEffect(() => { setPage(1) }, [search])
+
+  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / PAGE_SIZE))
+  const paginatedCustomers = filteredCustomers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const countryCounts = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -102,7 +111,7 @@ export default function CustomersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredCustomers.map(customer => (
+                {paginatedCustomers.map(customer => (
                   <tr key={customer.id} className="table-row-hover">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
@@ -135,7 +144,14 @@ export default function CustomersPage() {
       </div>
 
       {filteredCustomers.length > 0 && (
-        <p className="text-xs text-gray-400 mt-3 text-end">{t(`Showing ${filteredCustomers.length} of ${customers.length} customers`, `عرض ${filteredCustomers.length} من ${customers.length} عميل`)}</p>
+        <p className="text-xs text-gray-400 mt-3 text-end">{t(`Showing ${Math.min(page * PAGE_SIZE, filteredCustomers.length)} of ${filteredCustomers.length} customers`, `عرض ${Math.min(page * PAGE_SIZE, filteredCustomers.length)} من ${filteredCustomers.length} عميل`)}</p>
+      )}
+
+      {/* Pagination */}
+      {filteredCustomers.length > 0 && (
+        <div className="mt-2">
+          <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+        </div>
       )}
 
       {/* View Customer Detail Modal */}
