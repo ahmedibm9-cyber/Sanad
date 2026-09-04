@@ -217,7 +217,7 @@ export default function MaterialDetailPage() {
                 </div>
               </div>
               {material.tdsFile ? (
-                <button className="btn-ghost text-green-600 hover:text-green-700" title={t('Download TDS', 'تحميل TDS')}>
+                <button className="btn-ghost text-green-600 hover:text-green-700" title={t('Download TDS', 'تحميل TDS')} onClick={() => alert(t('TDS file download will be available in production.', 'سيتوفر تحميل ملف TDS في الإنتاج.'))}>
                   <ExternalLink size={14} />
                 </button>
               ) : (
@@ -237,7 +237,7 @@ export default function MaterialDetailPage() {
                 </div>
               </div>
               {material.msdsFile ? (
-                <button className="btn-ghost text-amber-600 hover:text-amber-700" title={t('Download MSDS', 'تحميل MSDS')}>
+                <button className="btn-ghost text-amber-600 hover:text-amber-700" title={t('Download MSDS', 'تحميل MSDS')} onClick={() => alert(t('MSDS file download will be available in production.', 'سيتوفر تحميل ملف MSDS في الإنتاج.'))}>
                   <ExternalLink size={14} />
                 </button>
               ) : (
@@ -257,7 +257,7 @@ export default function MaterialDetailPage() {
                 </div>
               </div>
               {material.coaFile ? (
-                <button className="btn-ghost text-blue-600 hover:text-blue-700" title={t('Download COA', 'تحميل COA')}>
+                <button className="btn-ghost text-blue-600 hover:text-blue-700" title={t('Download COA', 'تحميل COA')} onClick={() => alert(t('COA file download will be available in production.', 'سيتوفر تحميل ملف COA في الإنتاج.'))}>
                   <ExternalLink size={14} />
                 </button>
               ) : (

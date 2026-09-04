@@ -442,7 +442,7 @@ export default function TaskDetailPage() {
                             <button className="btn-ghost p-1.5" title={t('Print', 'طباعة')} onClick={() => window.print()}>
                               <Printer className="w-4 h-4" />
                             </button>
-                            <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => {}}>
+                            <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => alert(t('Download will be available in production.', 'سيتوفر التحميل في الإنتاج.'))}>
                               <Download className="w-4 h-4" />
                             </button>
                             <button className="btn-ghost p-1.5" title={t('Edit', 'تعديل')} onClick={() => navigate(`/documents/${doc.id}/form?projectId=${task.id}`)}>
@@ -522,7 +522,7 @@ export default function TaskDetailPage() {
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => {}}>
+                          <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => alert(t('Download will be available in production.', 'سيتوفر التحميل في الإنتاج.'))}>
                             <Download className="w-4 h-4" />
                           </button>
                           <button className="btn-ghost p-1.5" title={t('Delete', 'حذف')} onClick={() => setDeleteAttachmentId(att.id)}>

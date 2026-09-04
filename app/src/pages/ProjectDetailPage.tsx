@@ -475,7 +475,7 @@ export default function ProjectDetailPage() {
                             <button className="btn-ghost p-1.5" title={t('Print', 'طباعة')} onClick={() => window.print()}>
                               <Printer className="w-4 h-4" />
                             </button>
-                            <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => {}}>
+                            <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => alert(t('Download will be available in production.', 'سيتوفر التحميل في الإنتاج.'))}>
                               <Download className="w-4 h-4" />
                             </button>
                             <button className="btn-ghost p-1.5" title={t('Edit', 'تعديل')} onClick={() => navigate(`/documents/${doc.id}/form?projectId=${project.id}`)}>
