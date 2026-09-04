@@ -25,6 +25,7 @@ import { useApp } from '../contexts/AppContext'
 import { getProjectsByCompany, getCustomersByCompany } from '../data/mockData'
 import AttachmentUploadModal from '../components/common/AttachmentUploadModal'
 import ConfirmModal from '../components/common/ConfirmModal'
+import ProjectFormModal from '../components/projects/ProjectFormModal'
 import type { WorkItemStatus, WorkItem, Document, ProjectNote, ReportIssue } from '../types'
 
 const STATUS_OPTIONS: { value: WorkItemStatus; label: string; colorClass: string; labelAr: string }[] = [
@@ -88,6 +89,7 @@ export default function ProjectDetailPage() {
   const [issueDesc, setIssueDesc] = useState('')
   const [issueSeverity, setIssueSeverity] = useState<ReportIssue['severity']>('medium')
   const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(null)
+  const [showEditForm, setShowEditForm] = useState(false)
 
   if (!project) {
     return (
@@ -141,14 +143,14 @@ export default function ProjectDetailPage() {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          <button className="btn-secondary">
+          <button className="btn-secondary" onClick={() => setShowEditForm(true)}>
             <Edit3 className="w-4 h-4 mr-1.5" />
             {t('Edit', 'تعديل')}
           </button>
-          <button className="btn-ghost">
+          <button className="btn-ghost" onClick={() => window.print()}>
             <Printer className="w-4 h-4" />
           </button>
-          <button className="btn-ghost">
+          <button className="btn-ghost" onClick={() => alert(t('PDF download will be available in production.', 'سيتوفر تحميل PDF في الإنتاج.'))}>
             <Download className="w-4 h-4" />
           </button>
         </div>
@@ -470,13 +472,13 @@ export default function ProjectDetailPage() {
                         </td>
                         <td className="px-5 py-3.5 text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <button className="btn-ghost p-1.5" title={t('Print', 'طباعة')}>
+                            <button className="btn-ghost p-1.5" title={t('Print', 'طباعة')} onClick={() => window.print()}>
                               <Printer className="w-4 h-4" />
                             </button>
-                            <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')}>
+                            <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => {}}>
                               <Download className="w-4 h-4" />
                             </button>
-                            <button className="btn-ghost p-1.5" title={t('Edit', 'تعديل')}>
+                            <button className="btn-ghost p-1.5" title={t('Edit', 'تعديل')} onClick={() => navigate(`/documents/${doc.id}/form?projectId=${project.id}`)}>
                               <Edit3 className="w-4 h-4" />
                             </button>
                           </div>
@@ -553,10 +555,10 @@ export default function ProjectDetailPage() {
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')}>
+                          <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => alert(t('Download will be available in production.', 'سيتوفر التحميل في الإنتاج.'))}>
                             <Download className="w-4 h-4" />
                           </button>
-                          <button className="btn-ghost p-1.5" title={t('Delete', 'حذف')}>
+                          <button className="btn-ghost p-1.5" title={t('Delete', 'حذف')} onClick={() => setDeleteAttachmentId(att.id)}>
                             <Trash2 className="w-4 h-4 text-red-400" />
                           </button>
                         </div>
@@ -707,6 +709,7 @@ export default function ProjectDetailPage() {
     </div>
     <AttachmentUploadModal open={showAttachmentModal} onClose={() => setShowAttachmentModal(false)} onSave={(att) => { setAttachments(prev => [{ id: `att-${Date.now()}`, name: att.name, type: 'application/pdf', size: 245000, uploadedBy: currentUser.name, uploadedAt: new Date().toISOString().split('T')[0] }, ...prev]); setShowAttachmentModal(false) }} />
     <ConfirmModal open={!!deleteAttachmentId} onClose={() => setDeleteAttachmentId(null)} onConfirm={() => { setAttachments(prev => prev.filter(a => a.id !== deleteAttachmentId)); setDeleteAttachmentId(null) }} title={t('Delete Attachment', 'حذف المرفق')} message={t('Are you sure you want to delete this attachment?', 'هل أنت متأكد من حذف هذا المرفق؟')} confirmLabel={t('Delete', 'حذف')} cancelLabel={t('Cancel', 'إلغاء')} variant="danger" />
+    <ProjectFormModal open={showEditForm} onClose={() => setShowEditForm(false)} onSave={(data) => { Object.assign(project, data); setShowEditForm(false) }} item={project} mode="project" />
     </>
   )
 }

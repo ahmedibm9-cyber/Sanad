@@ -51,7 +51,7 @@ export default function AttachmentUploadModal({ open, onClose, onSave }: Attachm
               <Upload size={24} className="text-gray-400" />
               <span className="text-sm text-gray-500">{t('Click to select a file or drag & drop', 'انقر لاختيار ملف أو اسحب وأفلت')}</span>
               <span className="text-xs text-gray-400">PDF, DOC, DOCX, XLS, XLSX, JPG, PNG</span>
-              <input type="file" className="hidden" onChange={() => setFileName('Certificate_of_Origin.pdf')} />
+              <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) setFileName(f.name) }} />
             </label>
           )}
         </div>

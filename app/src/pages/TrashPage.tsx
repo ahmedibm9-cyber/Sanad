@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
-import { Search, RotateCcw, Trash2, X, AlertTriangle } from 'lucide-react'
+import { Search, RotateCcw, Trash2, X, AlertTriangle, CheckCircle } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
-import { trashEntries } from '../data/mockData'
+import { trashEntries as initialTrash } from '../data/mockData'
+import type { TrashEntry } from '../types'
 
 export default function TrashPage() {
   const { t } = useLanguage()
@@ -11,14 +12,16 @@ export default function TrashPage() {
   const [search, setSearch] = useState('')
   const [entityTypeFilter, setEntityTypeFilter] = useState('')
   const [confirmRestore, setConfirmRestore] = useState<string | null>(null)
+  const [items, setItems] = useState<TrashEntry[]>(initialTrash)
+  const [restoredMsg, setRestoredMsg] = useState<string | null>(null)
 
   const entityTypes = useMemo(() => {
-    const types = new Set(trashEntries.filter(e => e.companyId === currentCompany.id).map(e => e.entityType))
+    const types = new Set(items.filter(e => e.companyId === currentCompany.id).map(e => e.entityType))
     return Array.from(types).sort()
-  }, [currentCompany.id])
+  }, [currentCompany.id, items])
 
   const filtered = useMemo(() => {
-    return trashEntries
+    return items
       .filter(e => e.companyId === currentCompany.id)
       .filter(e => {
         if (entityTypeFilter && e.entityType !== entityTypeFilter) return false
@@ -33,7 +36,7 @@ export default function TrashPage() {
         return true
       })
       .sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime())
-  }, [search, entityTypeFilter, currentCompany.id])
+  }, [search, entityTypeFilter, currentCompany.id, items])
 
   const handleRestore = (id: string) => {
     setConfirmRestore(id)
@@ -41,11 +44,11 @@ export default function TrashPage() {
 
   const confirmRestoreAction = () => {
     if (confirmRestore) {
-      alert(t(
-        `Item "${trashEntries.find(e => e.id === confirmRestore)?.entityName}" has been restored.`,
-        `تم استعادة "${trashEntries.find(e => e.id === confirmRestore)?.entityName}".`
-      ))
+      const item = items.find(e => e.id === confirmRestore)
+      setItems(prev => prev.filter(e => e.id !== confirmRestore))
+      setRestoredMsg(item?.entityName || 'Item')
       setConfirmRestore(null)
+      setTimeout(() => setRestoredMsg(null), 3000)
     }
   }
 
@@ -83,6 +86,13 @@ export default function TrashPage() {
           </div>
         </div>
       </div>
+
+      {restoredMsg && (
+        <div className="mx-6 mb-4 flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
+          <CheckCircle size={16} />
+          {t(`"${restoredMsg}" has been restored.`, `تم استعادة "${restoredMsg}".`)}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex-shrink-0 px-6 pb-4">
@@ -187,7 +197,7 @@ export default function TrashPage() {
                 {t('Are you sure you want to restore this item?', 'هل أنت متأكد من استعادة هذا العنصر؟')}
               </p>
               <p className="text-sm font-medium text-gray-900 mb-4">
-                "{trashEntries.find(e => e.id === confirmRestore)?.entityName}"
+                "{items.find((e: TrashEntry) => e.id === confirmRestore)?.entityName}"
               </p>
               <p className="text-xs text-gray-400">
                 {t(

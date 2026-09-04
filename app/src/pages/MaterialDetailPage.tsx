@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { getMaterialsByCompany, getProjectsByCompany } from '../data/mockData'
+import MaterialFormModal from '../components/materials/MaterialFormModal'
 import {
   ArrowLeft, Package, Edit3, MapPin, Building2, FileText,
   FileCheck, FileWarning, Calendar, FolderOpen, ExternalLink,
@@ -20,6 +21,7 @@ export default function MaterialDetailPage() {
     [currentCompany.id]
   )
   const material = allMaterials.find((m) => m.id === id)
+  const [showEditForm, setShowEditForm] = useState(false)
 
   const allProjects = useMemo(
     () => getProjectsByCompany(currentCompany.id),
@@ -86,6 +88,7 @@ export default function MaterialDetailPage() {
   }
 
   return (
+    <>
     <div className="max-w-5xl mx-auto">
       {/* Back Navigation */}
       <Link
@@ -132,7 +135,7 @@ export default function MaterialDetailPage() {
               </div>
             </div>
           </div>
-          <button className="btn-secondary">
+          <button onClick={() => setShowEditForm(true)} className="btn-secondary">
             <Edit3 size={14} className="mr-1.5" />
             {t('Edit', 'تعديل')}
           </button>
@@ -214,7 +217,7 @@ export default function MaterialDetailPage() {
                 </div>
               </div>
               {material.tdsFile ? (
-                <button className="btn-ghost text-green-600 hover:text-green-700">
+                <button className="btn-ghost text-green-600 hover:text-green-700" title={t('Download TDS', 'تحميل TDS')}>
                   <ExternalLink size={14} />
                 </button>
               ) : (
@@ -234,7 +237,7 @@ export default function MaterialDetailPage() {
                 </div>
               </div>
               {material.msdsFile ? (
-                <button className="btn-ghost text-amber-600 hover:text-amber-700">
+                <button className="btn-ghost text-amber-600 hover:text-amber-700" title={t('Download MSDS', 'تحميل MSDS')}>
                   <ExternalLink size={14} />
                 </button>
               ) : (
@@ -254,7 +257,7 @@ export default function MaterialDetailPage() {
                 </div>
               </div>
               {material.coaFile ? (
-                <button className="btn-ghost text-blue-600 hover:text-blue-700">
+                <button className="btn-ghost text-blue-600 hover:text-blue-700" title={t('Download COA', 'تحميل COA')}>
                   <ExternalLink size={14} />
                 </button>
               ) : (
@@ -263,7 +266,7 @@ export default function MaterialDetailPage() {
             </div>
 
             <div className="pt-2">
-              <button className="btn-secondary w-full justify-center">
+              <button onClick={() => setShowEditForm(true)} className="btn-secondary w-full justify-center">
                 <Box size={14} className="mr-1.5" />
                 {t('Manage Files', 'إدارة الملفات')}
               </button>
@@ -346,5 +349,7 @@ export default function MaterialDetailPage() {
         )}
       </div>
     </div>
+    {material && <MaterialFormModal open={showEditForm} onClose={() => setShowEditForm(false)} onSave={() => setShowEditForm(false)} material={material} />}
+    </>
   )
 }

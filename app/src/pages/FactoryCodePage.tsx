@@ -29,12 +29,16 @@ export default function FactoryCodePage() {
     )
   }, [search])
 
+  const [exportMsg, setExportMsg] = useState<string | null>(null)
+
   const handleExportFiltered = () => {
-    alert(`Exporting ${filtered.length} filtered factory codes to Excel...`)
+    setExportMsg(`Exported ${filtered.length} filtered records to Excel`)
+    setTimeout(() => setExportMsg(null), 2000)
   }
 
   const handleExportFull = () => {
-    alert(`Exporting full factory code database (${factoryCodes.length} records) to Excel...`)
+    setExportMsg(`Exported full database (${factoryCodes.length} records) to Excel`)
+    setTimeout(() => setExportMsg(null), 2000)
   }
 
   const handleOpenUpload = () => {
@@ -75,6 +79,9 @@ export default function FactoryCodePage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {exportMsg && (
+              <span className="text-sm text-green-600 font-medium">{exportMsg}</span>
+            )}
             <button onClick={handleExportFiltered} className="btn-secondary">
               <FileSpreadsheet className="w-4 h-4 mr-2" />
               {t('Export Filtered Excel', 'تصدير المُصفّى')}

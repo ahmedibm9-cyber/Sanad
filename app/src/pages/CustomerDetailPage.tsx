@@ -3,7 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { getCustomersByCompany, getProjectsByCompany } from '../data/mockData'
-import type { DocumentType } from '../types'
+import CustomerFormModal from '../components/customers/CustomerFormModal'
+import type { DocumentType, Customer } from '../types'
 import {
   ArrowLeft, Edit3, Phone, Mail, MapPin, Building2, Calendar,
   FolderOpen, FileText, Clock, ExternalLink, User, ChevronRight,
@@ -27,6 +28,7 @@ export default function CustomerDetailPage() {
   const { currentCompany } = useCompany()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
+  const [showEditForm, setShowEditForm] = useState(false)
 
   const customers = useMemo(
     () => getCustomersByCompany(currentCompany.id),
@@ -88,6 +90,7 @@ export default function CustomerDetailPage() {
   ]
 
   return (
+    <>
     <div className="max-w-5xl mx-auto">
       {/* Back Navigation */}
       <Link
@@ -127,7 +130,7 @@ export default function CustomerDetailPage() {
               </div>
             </div>
           </div>
-          <button className="btn-secondary">
+          <button onClick={() => setShowEditForm(true)} className="btn-secondary">
             <Edit3 size={14} className="mr-1.5" />
             {t('Edit', 'تعديل')}
           </button>
@@ -377,6 +380,7 @@ export default function CustomerDetailPage() {
                   {relatedDocuments.map((doc) => (
                     <tr
                       key={doc.id}
+                      onClick={() => navigate(`/documents/${doc.id}/preview`)}
                       className="hover:bg-brand-50/40 cursor-pointer transition-colors"
                     >
                       <td className="px-5 py-3">
@@ -484,5 +488,7 @@ export default function CustomerDetailPage() {
         </div>
       )}
     </div>
+    <CustomerFormModal open={showEditForm} onClose={() => setShowEditForm(false)} onSave={() => setShowEditForm(false)} customer={customer} />
+    </>
   )
 }

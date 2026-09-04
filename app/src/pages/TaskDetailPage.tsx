@@ -23,6 +23,7 @@ import { useApp } from '../contexts/AppContext'
 import { getTasksByCompany, getProjectsByCompany } from '../data/mockData'
 import AttachmentUploadModal from '../components/common/AttachmentUploadModal'
 import ConfirmModal from '../components/common/ConfirmModal'
+import ProjectFormModal from '../components/projects/ProjectFormModal'
 import type { WorkItemStatus, Document, ProjectNote, ReportIssue } from '../types'
 
 const STATUS_OPTIONS: { value: WorkItemStatus; label: string; colorClass: string; labelAr: string }[] = [
@@ -71,7 +72,8 @@ export default function TaskDetailPage() {
   const { currentUser } = useApp()
 
   const allTasks = getTasksByCompany(currentCompany.id)
-  const task = allTasks.find((tk) => tk.id === id)
+  const [taskItems, setTaskItems] = useState(allTasks)
+  const task = taskItems.find((tk) => tk.id === id)
 
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [showInvoiceDropdown, setShowInvoiceDropdown] = useState(false)
@@ -86,6 +88,8 @@ export default function TaskDetailPage() {
   const [issueDesc, setIssueDesc] = useState('')
   const [issueSeverity, setIssueSeverity] = useState('medium')
   const [showConvertModal, setShowConvertModal] = useState(false)
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(null)
 
   if (!task) {
     return (
@@ -138,7 +142,7 @@ export default function TaskDetailPage() {
             <ArrowRightLeft className="w-4 h-4 mr-1.5" />
             {t('Convert to Project', 'تحويل إلى مشروع')}
           </button>
-          <button className="btn-secondary">
+          <button onClick={() => setShowEditForm(true)} className="btn-secondary">
             <Edit3 className="w-4 h-4 mr-1.5" />
             {t('Edit', 'تعديل')}
           </button>
@@ -435,13 +439,13 @@ export default function TaskDetailPage() {
                         </td>
                         <td className="px-5 py-3.5 text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <button className="btn-ghost p-1.5" title={t('Print', 'طباعة')}>
+                            <button className="btn-ghost p-1.5" title={t('Print', 'طباعة')} onClick={() => window.print()}>
                               <Printer className="w-4 h-4" />
                             </button>
-                            <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')}>
+                            <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => {}}>
                               <Download className="w-4 h-4" />
                             </button>
-                            <button className="btn-ghost p-1.5" title={t('Edit', 'تعديل')}>
+                            <button className="btn-ghost p-1.5" title={t('Edit', 'تعديل')} onClick={() => navigate(`/documents/${doc.id}/form?projectId=${task.id}`)}>
                               <Edit3 className="w-4 h-4" />
                             </button>
                           </div>
@@ -518,10 +522,10 @@ export default function TaskDetailPage() {
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')}>
+                          <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => {}}>
                             <Download className="w-4 h-4" />
                           </button>
-                          <button className="btn-ghost p-1.5" title={t('Delete', 'حذف')}>
+                          <button className="btn-ghost p-1.5" title={t('Delete', 'حذف')} onClick={() => setDeleteAttachmentId(att.id)}>
                             <Trash2 className="w-4 h-4 text-red-400" />
                           </button>
                         </div>
@@ -695,8 +699,8 @@ export default function TaskDetailPage() {
       open={showConvertModal}
       onClose={() => setShowConvertModal(false)}
       onConfirm={() => {
+        setTaskItems(prev => prev.map(t => t.id === task.id ? {...t, type: 'project' as const} : t))
         setShowConvertModal(false)
-        // In a real implementation this would convert the task to a project
       }}
       title={t('Convert to Project', 'تحويل إلى مشروع')}
       message={t(
@@ -710,6 +714,36 @@ export default function TaskDetailPage() {
       confirmLabel={t('Convert', 'تحويل')}
       cancelLabel={t('Cancel', 'إلغاء')}
       variant="info"
+    />
+
+    {/* Edit Task Modal */}
+    <ProjectFormModal
+      open={showEditForm}
+      onClose={() => setShowEditForm(false)}
+      onSave={(data) => {
+        setTaskItems(prev => prev.map(t => t.id === task.id ? {...t, ...data} : t))
+        setShowEditForm(false)
+      }}
+      item={task}
+      mode="task"
+    />
+
+    {/* Delete Attachment Confirmation Modal */}
+    <ConfirmModal
+      open={!!deleteAttachmentId}
+      onClose={() => setDeleteAttachmentId(null)}
+      onConfirm={() => {
+        setAttachments(prev => prev.filter(a => a.id !== deleteAttachmentId))
+        setDeleteAttachmentId(null)
+      }}
+      title={t('Delete Attachment', 'حذف المرفق')}
+      message={t(
+        'Are you sure you want to delete this attachment? This action cannot be undone.',
+        'هل أنت متأكد من حذف هذا المرفق؟ لا يمكن التراجع عن هذا الإجراء.'
+      )}
+      confirmLabel={t('Delete', 'حذف')}
+      cancelLabel={t('Cancel', 'إلغاء')}
+      variant="danger"
     />
     </>
   )

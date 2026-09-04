@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   BarChart3, Calendar, Building2, Users, FileText, CheckSquare,
   AlertTriangle, Activity, Globe, Package, ShieldCheck,
-  FileDown, FileSpreadsheet
+  FileDown, FileSpreadsheet, CheckCircle
 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
@@ -67,16 +67,30 @@ function ReportFilters() {
 
 function ReportActions() {
   const { t } = useLanguage()
+  const [exported, setExported] = useState<string | null>(null)
+  const handleExport = (type: string) => {
+    setExported(type)
+    setTimeout(() => setExported(null), 2000)
+  }
   return (
     <div className="flex items-center gap-2 mb-4">
-      <button onClick={() => alert('Exporting report to PDF...')} className="btn-secondary">
-        <FileDown className="w-4 h-4 mr-2" />
-        {t('Export PDF', 'تصدير PDF')}
-      </button>
-      <button onClick={() => alert('Exporting report to Excel...')} className="btn-secondary">
-        <FileSpreadsheet className="w-4 h-4 mr-2" />
-        {t('Export Excel', 'تصدير Excel')}
-      </button>
+      {exported ? (
+        <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+          <CheckCircle className="w-4 h-4" />
+          {t(`Exported to ${exported} successfully`, `تم التصدير إلى ${exported} بنجاح`)}
+        </div>
+      ) : (
+        <>
+          <button onClick={() => handleExport('PDF')} className="btn-secondary">
+            <FileDown className="w-4 h-4 mr-2" />
+            {t('Export PDF', 'تصدير PDF')}
+          </button>
+          <button onClick={() => handleExport('Excel')} className="btn-secondary">
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            {t('Export Excel', 'تصدير Excel')}
+          </button>
+        </>
+      )}
     </div>
   )
 }

@@ -196,11 +196,10 @@ export default function DocumentFormPage() {
   }
 
   /* ── handlers ───────────────────────────────────────── */
+  const [saveSuccess, setSaveSuccess] = useState(false)
   const handleSave = () => {
-    alert(t(
-      `Document ${docNumber} saved successfully as Draft.`,
-      `تم حفظ المستند ${docNumber} بنجاح كمسودة.`
-    ))
+    setSaveSuccess(true)
+    setTimeout(() => setSaveSuccess(false), 3000)
   }
 
   const handlePreview = () => {
@@ -437,7 +436,7 @@ export default function DocumentFormPage() {
                         <input className="input-field text-xs py-1.5" value={item.origin || ''} onChange={e => updateItem(idx, 'origin', e.target.value)} placeholder={t('Origin', 'المصدر')} />
                       </td>
                       <td className="py-2 px-1">
-                        <input className="input-field text-xs py-1.5" type="number" value={2000} onChange={() => {}} placeholder="Pkgs" />
+                        <input className="input-field text-xs py-1.5" type="number" value={(item as any).packages || ''} onChange={e => { const v = e.target.value; setItems(prev => prev.map((it, i) => i === idx ? { ...it, packages: Number(v) } as any : it)) }} placeholder="Pkgs" />
                       </td>
                       <td className="py-2 px-1">
                         <input className="input-field text-xs py-1.5" value={item.packing || ''} onChange={e => updateItem(idx, 'packing', e.target.value)} placeholder={t('Packing Type', 'نوع التعبئة')} />
@@ -1121,6 +1120,9 @@ export default function DocumentFormPage() {
             <Save size={16} className="mr-1.5" />
             {t('Save Draft', 'حفظ مسودة')}
           </button>
+          {saveSuccess && (
+            <span className="text-sm text-green-600 font-medium">{t('Saved!', 'تم الحفظ!')}</span>
+          )}
         </div>
       </div>
 

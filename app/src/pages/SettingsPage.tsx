@@ -102,6 +102,8 @@ export default function SettingsPage() {
   const [showAddPackingUnit, setShowAddPackingUnit] = useState(false)
   const [showAddPaymentTerm, setShowAddPaymentTerm] = useState(false)
   const [showAddDeliveryTerm, setShowAddDeliveryTerm] = useState(false)
+  const [defaultWeightUnit, setDefaultWeightUnit] = useState('MT')
+  const [defaultPackingUnit, setDefaultPackingUnit] = useState('Bags')
 
   // ─── Banking: Multiple accounts state ──────────────────────
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([
@@ -216,23 +218,34 @@ export default function SettingsPage() {
   )
 
   // ─── Upload Area Component ──────────────────────────────
-  const UploadArea = ({ label, icon: Icon }: { label: string; icon: typeof Camera }) => (
-    <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-brand-400 transition-colors cursor-pointer bg-gray-50 hover:bg-brand-50/30">
-      <div className="flex flex-col items-center gap-2">
-        <div className="p-3 bg-brand-100 rounded-xl">
-          <Icon className="w-6 h-6 text-brand-600" />
+  const UploadArea = ({ label, icon: Icon }: { label: string; icon: typeof Camera }) => {
+    const [uploaded, setUploaded] = useState(false)
+    const [fileName, setFileName] = useState('')
+    return (
+      <label className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-brand-400 transition-colors cursor-pointer bg-gray-50 hover:bg-brand-50/30 block">
+        <input type="file" className="hidden" accept="image/png,image/jpeg,image/svg+xml" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setFileName(f.name); setUploaded(true) } }} />
+        <div className="flex flex-col items-center gap-2">
+          <div className="p-3 bg-brand-100 rounded-xl">
+            <Icon className="w-6 h-6 text-brand-600" />
+          </div>
+          <div>
+            {uploaded ? (
+              <p className="text-sm font-medium text-green-600">{fileName}</p>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-gray-700">{label}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{t('Click to upload or drag and drop', 'انقر للرفع أو اسحب وأفلت')}</p>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <Upload className="w-3.5 h-3.5" />
+            <span>PNG, JPG, SVG (max 2MB)</span>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-medium text-gray-700">{label}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{t('Click to upload or drag and drop', 'انقر للرفع أو اسحب وأفلت')}</p>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-gray-400">
-          <Upload className="w-3.5 h-3.5" />
-          <span>PNG, JPG, SVG (max 2MB)</span>
-        </div>
-      </div>
-    </div>
-  )
+      </label>
+    )
+  }
 
   // ─── Section Label ──────────────────────────────────────
   const FieldLabel = ({ children }: { children: React.ReactNode }) => (
@@ -791,7 +804,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <FieldLabel>{t('Default Weight Unit', 'وحدة الوزن الافتراضية')}</FieldLabel>
-                <select className="select-field" value={weightUnits[0]} onChange={() => {}}>
+                <select className="select-field" value={defaultWeightUnit} onChange={(e) => setDefaultWeightUnit(e.target.value)}>
                   {weightUnits.map((u) => (
                     <option key={u} value={u}>{u}</option>
                   ))}
@@ -799,7 +812,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <FieldLabel>{t('Default Packing Unit', 'وحدة التعبئة الافتراضية')}</FieldLabel>
-                <select className="select-field" value={packingUnits[0]} onChange={() => {}}>
+                <select className="select-field" value={defaultPackingUnit} onChange={(e) => setDefaultPackingUnit(e.target.value)}>
                   {packingUnits.map((u) => (
                     <option key={u} value={u}>{u}</option>
                   ))}
@@ -1171,7 +1184,7 @@ export default function SettingsPage() {
                 <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 font-mono text-sm text-gray-600 tracking-wider">
                   SANAD-ENT-****-****-****-7K2M
                 </div>
-                <button className="btn-ghost text-xs">
+                <button onClick={() => { navigator.clipboard.writeText('SANAD-ENT-****-****-****-7K2M') }} className="btn-ghost text-xs">
                   {t('Copy', 'نسخ')}
                 </button>
               </div>
