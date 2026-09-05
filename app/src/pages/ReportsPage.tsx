@@ -60,7 +60,7 @@ const reports: ReportItem[] = [
 // ─── Filter Bar (controlled, rendered once in parent) ──
 function ReportFilterBar({ filters, onChange }: { filters: ReportFiltersState; onChange: (f: ReportFiltersState) => void }) {
   const { t } = useLanguage()
-  const { allCompanies } = useCompany()
+  const { companies: allCompanies } = useCompany()
   const update = (patch: Partial<ReportFiltersState>) => onChange({ ...filters, ...patch })
 
   return (

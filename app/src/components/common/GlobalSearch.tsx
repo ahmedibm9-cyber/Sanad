@@ -91,7 +91,7 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
 
   const results = useMemo<ResultGroup[]>(() => {
     const q = query.trim()
-    if (!q) return []
+    if (!q || !currentCompany) return []
 
     const projectMatches: SearchResult[] = getProjectsByCompany(currentCompany.id)
       .filter(p => match(q, p.name, p.customerName, p.destinationCountry, p.destinationCity))
@@ -173,7 +173,7 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
     ]
 
     return groups.filter(g => g.items.length > 0)
-  }, [query, currentCompany.id, t])
+  }, [query, currentCompany?.id, t])
 
   // Flat list for keyboard navigation
   const flatItems = useMemo(() => results.flatMap(g => g.items), [results])

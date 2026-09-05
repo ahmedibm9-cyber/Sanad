@@ -26,8 +26,8 @@ interface DocPreviewItem {
 }
 interface DocPreviewParty { name: string; nameAr: string; address: string; contactPerson: string }
 interface DocPreviewCompany {
-  nameEn: string; nameAr: string; crNumber: string; vatNumber: string;
-  address: string; phone: string; email: string; bankName: string; iban: string; swift: string;
+  nameEn: string | undefined; nameAr: string | undefined; crNumber: string | undefined; vatNumber: string | undefined;
+  address: string | undefined; phone: string | undefined; email: string | undefined; bankName: string | undefined; iban: string | undefined; swift: string | undefined;
 }
 interface DocPreviewData {
   id: string; type: DocumentType; number: string; date: string;
@@ -107,7 +107,7 @@ function TemplateA({ data, lang }: { data: DocPreviewData; lang: 'en' | 'ar' }) 
         </div>
         <div className={`${isAr ? 'text-left' : 'text-right'} shrink-0`}>
           <div className="inline-block border-2 border-gray-900 px-3 py-1">
-            <p className="text-[16px] font-bold tracking-wider">{isAr ? d.company.nameAr.split(' ')[0] : 'FULLA'}</p>
+            <p className="text-[16px] font-bold tracking-wider">{isAr ? d.company.nameAr?.split(' ')[0] || 'FULLA' : 'FULLA'}</p>
           </div>
         </div>
       </div>

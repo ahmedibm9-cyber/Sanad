@@ -55,7 +55,7 @@ const navSections: NavSection[] = [
 
 export default function Sidebar() {
   const { t, dir } = useLanguage()
-  const { currentCompany, allCompanies, setCurrentCompany } = useCompany()
+  const { currentCompany, companies: allCompanies, setCurrentCompany } = useCompany()
   const { currentUser } = useApp()
   const [companyOpen, setCompanyOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -107,9 +107,9 @@ export default function Sidebar() {
           >
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-6 h-6 bg-brand-100 rounded flex items-center justify-center text-brand-700 text-xs font-bold shrink-0">
-                {currentCompany.shortName[0]}
+                {currentCompany?.short_name?.[0] || '?'}
               </div>
-              <span className="truncate font-medium text-gray-800">{currentCompany.shortName}</span>
+              <span className="truncate font-medium text-gray-800">{currentCompany?.short_name || 'Select Company'}</span>
             </div>
             <ChevronDown size={14} className={`text-gray-400 transition-transform duration-150 ${companyOpen ? 'rotate-180' : ''}`} />
           </button>
@@ -119,16 +119,16 @@ export default function Sidebar() {
                 <button
                   key={company.id}
                   onClick={() => { setCurrentCompany(company.id); setCompanyOpen(false) }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${company.id === currentCompany.id ? 'bg-brand-50 text-brand-700 font-medium' : 'text-gray-700'}`}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${company.id === currentCompany?.id ? 'bg-brand-50 text-brand-700 font-medium' : 'text-gray-700'}`}
                   role="option"
-                  aria-selected={company.id === currentCompany.id}
+                  aria-selected={company.id === currentCompany?.id}
                 >
                   <div className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center text-xs font-bold shrink-0">
-                    {company.shortName[0]}
+                    {company.short_name?.[0] || '?'}
                   </div>
                   <div className={isRtl ? 'text-right' : 'text-left'}>
-                    <div className="font-medium">{company.shortName}</div>
-                    <div className="text-xs text-gray-400">{company.code}</div>
+                    <div className="font-medium">{company.short_name}</div>
+                    <div className="text-xs text-gray-400">{company.company_code}</div>
                   </div>
                 </button>
               ))}

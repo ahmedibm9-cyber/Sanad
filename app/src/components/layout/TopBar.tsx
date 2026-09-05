@@ -57,9 +57,9 @@ export default function TopBar() {
         {/* Company Indicator */}
         <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-brand-50 border border-brand-200 rounded-md">
           <div className="w-5 h-5 bg-brand-600 rounded flex items-center justify-center">
-            <span className="text-white text-[10px] font-bold">{currentCompany.shortName.charAt(0)}</span>
+            <span className="text-white text-[10px] font-bold">{currentCompany?.short_name?.charAt(0) || '?'}</span>
           </div>
-          <span className="text-sm font-semibold text-brand-700 hidden sm:inline">{currentCompany.shortName}</span>
+          <span className="text-sm font-semibold text-brand-700 hidden sm:inline">{currentCompany?.short_name || 'Select'}</span>
         </div>
         <div className="hidden md:flex items-center bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 w-72 transition-colors focus-within:border-brand-400 focus-within:bg-white focus-within:ring-1 focus-within:ring-brand-400 cursor-pointer" onClick={() => setSearchOpen(true)}>
           <Search size={15} className="text-gray-400 shrink-0" aria-hidden="true" />
