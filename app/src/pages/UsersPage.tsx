@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import type { MembershipWithUser } from '../lib/services/membership'
 import {
   Users,
   Plus,
@@ -16,7 +17,7 @@ import {
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { useApp } from '../contexts/AppContext'
-import { users as mockUsers, companies } from '../data/mockData'
+import { useCompanyMemberships, useCompanies } from '../hooks/useData'
 import type { User, Permission, CompanyId } from '../types'
 import UserFormModal from '../components/users/UserFormModal'
 
@@ -221,8 +222,42 @@ export default function UsersPage() {
   const { currentCompany } = useCompany()
   const { currentUser } = useApp()
 
-  // ─── Local users state (initialized from mock) ──────────
-  const [usersList, setUsersList] = useState<User[]>(() => [...mockUsers])
+  // ─── Data from hooks ────────────────────────────────────
+  const { data: memberships } = useCompanyMemberships(currentCompany?.id)
+  const { data: companiesList } = useCompanies()
+
+  // ─── Local users state (initialized from memberships) ──
+  const editedRef = useRef(false)
+  const [usersList, setUsersList] = useState<User[]>([])
+
+  useEffect(() => {
+    if (editedRef.current) return
+    if (!memberships || memberships.length === 0) return
+    const map = new Map<string, User>()
+    for (const m of memberships) {
+      const uid = m.user_id
+      if (map.has(uid)) {
+        map.get(uid)!.memberships.push({
+          companyId: m.company_id,
+          role: m.base_role,
+          permissions: [],
+        })
+      } else {
+        map.set(uid, {
+          id: uid,
+          name: m.users?.display_name || '',
+          email: m.users?.email || '',
+          role: m.base_role,
+          memberships: [{
+            companyId: m.company_id,
+            role: m.base_role,
+            permissions: [],
+          }],
+        })
+      }
+    }
+    setUsersList(Array.from(map.values()))
+  }, [memberships])
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set(PERMISSION_GROUPS.map((g) => g.key)))
@@ -260,7 +295,7 @@ export default function UsersPage() {
   // Get company names for a user
   const getCompanyNames = (user: User) => {
     return user.memberships
-      .map((m) => companies.find((c) => c.id === m.companyId)?.shortName || m.companyId)
+      .map((m) => companiesList?.find((c) => c.id === m.companyId)?.short_name || m.companyId)
       .join(', ')
   }
 
@@ -357,6 +392,7 @@ export default function UsersPage() {
 
   // ─── Save from modal ────────────────────────────────────
   const handleFormSave = (savedUser: User) => {
+    editedRef.current = true
     setUsersList((prev) => {
       const idx = prev.findIndex((u) => u.id === savedUser.id)
       if (idx >= 0) {
@@ -537,7 +573,7 @@ export default function UsersPage() {
 
           {/* Company Memberships with Permissions */}
           {selectedUser.memberships.map((membership) => {
-            const company = companies.find((c) => c.id === membership.companyId)
+            const company = companiesList?.find((c) => c.id === membership.companyId)
             if (!company) return null
             const isEditing = editingPermissions !== null
             const currentPerms = getCompanyPermissions(selectedUser.id, membership.companyId)
@@ -552,12 +588,12 @@ export default function UsersPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-semibold text-brand-900">{company.nameEn}</h3>
+                        <h3 className="text-sm font-semibold text-brand-900">{company.name_en}</h3>
                         <span className="status-badge bg-gray-100 text-gray-600 text-[10px]">
                           {membership.role}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-400">{company.code} — {company.country}</p>
+                      <p className="text-xs text-gray-400">{company.company_code} — {company.country}</p>
                     </div>
                   </div>
 

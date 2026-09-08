@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -24,11 +24,27 @@ import {
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { useApp } from '../contexts/AppContext'
-import { getProjectsByCompany, getCustomersByCompany } from '../data/mockData'
+import {
+  useWorkItemById,
+  useWorkItemMaterials,
+  useDocuments,
+  useNotes,
+  useReportIssues,
+  useAttachments,
+  useAuditEvents,
+} from '../hooks/useData'
+import type {
+  WorkItem,
+  WorkItemMaterial,
+  Document,
+  Note,
+  ReportIssue,
+  Attachment,
+} from '../lib/data'
+import type { WorkItemStatus } from '../types'
 import AttachmentUploadModal from '../components/common/AttachmentUploadModal'
 import ConfirmModal from '../components/common/ConfirmModal'
 import ProjectFormModal from '../components/projects/ProjectFormModal'
-import type { WorkItemStatus, WorkItem, Document, ProjectNote, ReportIssue } from '../types'
 
 const STATUS_OPTIONS: { value: WorkItemStatus; label: string; colorClass: string; labelAr: string }[] = [
   { value: 'in_progress', label: 'In Progress', labelAr: 'قيد التنفيذ', colorClass: 'bg-blue-50 text-blue-700' },
@@ -62,7 +78,8 @@ const TABS: { id: TabId; label: string; labelAr: string; icon: typeof FileText }
   { id: 'notes', label: 'Notes', labelAr: 'الملاحظات', icon: MessageSquare },
 ]
 
-function formatFileSize(bytes: number) {
+function formatFileSize(bytes: number | null) {
+  if (!bytes) return '—'
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
@@ -75,16 +92,35 @@ export default function ProjectDetailPage() {
   const { currentCompany } = useCompany()
   const { currentUser } = useApp()
 
-  const allProjects = getProjectsByCompany(currentCompany.id)
-  const project = allProjects.find((p) => p.id === id)
+  // ── Supabase hooks ────────────────────────────────
+  const { data: workItem, loading: projectLoading } = useWorkItemById(id)
+  const { data: rawMaterials } = useWorkItemMaterials(id)
+  const { data: rawDocs } = useDocuments(id)
+  const { data: rawNotes } = useNotes(id)
+  const { data: rawIssues } = useReportIssues(id)
+  const { data: rawAttachments } = useAttachments(id)
+  useAuditEvents(currentCompany.id) // Available for future timeline enhancements
+
+  // Resolve nullable hook data to always be arrays
+  const hookMaterials = rawMaterials ?? []
+  const hookDocs = rawDocs ?? []
+  const hookNotes = rawNotes ?? []
+  const hookIssues = rawIssues ?? []
+  const hookAttachments = rawAttachments ?? []
+
+  // ── Local state for optimistic updates ────────────
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [projectNotes, setProjectNotes] = useState<Note[]>([])
+  const [reportIssues, setReportIssues] = useState<ReportIssue[]>([])
+
+  // Sync local state from hooks when data loads
+  useEffect(() => { setAttachments(hookAttachments) }, [hookAttachments])
+  useEffect(() => { setProjectNotes(hookNotes) }, [hookNotes])
+  useEffect(() => { setReportIssues(hookIssues) }, [hookIssues])
 
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [showInvoiceDropdown, setShowInvoiceDropdown] = useState(false)
   const [showAttachmentModal, setShowAttachmentModal] = useState(false)
-  const [attachments, setAttachments] = useState(project?.attachments || [])
-  const [projectNotes, setProjectNotes] = useState<ProjectNote[]>(project?.projectNotes || [])
-  const [reportIssues, setReportIssues] = useState<ReportIssue[]>(project?.reportIssues || [])
-  const [documents, setDocuments] = useState<Document[]>(project?.documents || [])
   const [newNote, setNewNote] = useState('')
   const [showNoteForm, setShowNoteForm] = useState(false)
   const [showIssueForm, setShowIssueForm] = useState(false)
@@ -109,7 +145,7 @@ export default function ProjectDetailPage() {
   const saveEditNote = () => {
     if (editingNoteId && editingNoteContent.trim()) {
       setProjectNotes(prev => prev.map(n =>
-        n.id === editingNoteId ? { ...n, content: editingNoteContent.trim() } : n
+        n.id === editingNoteId ? { ...n, body: editingNoteContent.trim() } : n
       ))
       setEditingNoteId(null)
       setEditingNoteContent('')
@@ -121,7 +157,17 @@ export default function ProjectDetailPage() {
     setEditingNoteContent('')
   }
 
-  if (!project) {
+  // ── Loading state ─────────────────────────────────
+  if (projectLoading) {
+    return (
+      <div className="text-center py-20">
+        <div className="inline-block w-8 h-8 border-2 border-brand-200 border-t-brand-700 rounded-full animate-spin mb-4" />
+        <p className="text-gray-400 text-lg">{t('Loading...', 'جاري التحميل...')}</p>
+      </div>
+    )
+  }
+
+  if (!workItem) {
     return (
       <div className="text-center py-20">
         <p className="text-gray-400 text-lg">{t('Project not found', 'المشروع غير موجود')}</p>
@@ -133,8 +179,45 @@ export default function ProjectDetailPage() {
     )
   }
 
-  const statusOpt = getStatusBadge(project.status)
-  const totalValue = project.materials.reduce((s, m) => s + m.quantity * m.unitPrice, 0)
+  // Cast status for badge lookup
+  const statusOpt = getStatusBadge(workItem.status as WorkItemStatus)
+  const totalValue = hookMaterials.reduce((s, m) => s + m.quantity * (m.price || 0), 0)
+
+  // Map work item to UI format for ProjectFormModal
+  const workItemForModal = {
+    ...workItem,
+    isPinned: workItem.pinned,
+    customerName: workItem.customer_name,
+    destinationCountry: workItem.destination_country,
+    destinationCity: workItem.destination_city,
+    portOfLoading: workItem.port_of_loading,
+    portOfDischarge: workItem.port_of_discharge,
+    paymentTerms: workItem.payment_terms,
+    vesselName: workItem.vessel_name,
+    voyageNumber: workItem.voyage_number,
+    containerNumber: workItem.container_number,
+    createdAt: workItem.created_at,
+    updatedAt: workItem.updated_at,
+    createdBy: workItem.created_by,
+    materials: hookMaterials.map(m => ({
+      id: m.id,
+      materialId: m.material_id || '',
+      materialName: m.description_override || '—',
+      grade: m.hs_code || undefined,
+      quantity: m.quantity,
+      weightUnit: m.weight_unit,
+      unitPrice: m.price || 0,
+      currency: m.currency || 'SAR',
+      packing: m.packing_description || undefined,
+      packingUnit: m.packing_unit || undefined,
+      origin: m.origin || undefined,
+      hsCode: m.hs_code || undefined,
+    })),
+    documents: hookDocs,
+    attachments: attachments,
+    reportIssues: reportIssues,
+    projectNotes: projectNotes,
+  }
 
   return (
     <>
@@ -150,19 +233,19 @@ export default function ProjectDetailPage() {
           </button>
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-xl font-bold text-brand-900">{project.name}</h1>
+              <h1 className="text-xl font-bold text-brand-900">{workItem.name}</h1>
               <span className={`status-badge ${statusOpt.colorClass}`}>
                 {t(statusOpt.label, statusOpt.labelAr)}
               </span>
-              {project.isPinned && (
+              {workItem.pinned && (
                 <span className="text-xs text-amber-500 font-medium">
                   {t('📌 Pinned', '📌 مثبّت')}
                 </span>
               )}
             </div>
             <p className="text-sm text-gray-500 mt-1">
-              {t('Created by', 'أنشأه')} {project.createdBy || '—'} &middot;{' '}
-              {new Date(project.createdAt).toLocaleDateString('en-US', {
+              {t('Created by', 'أنشأه')} {workItem.created_by || '—'} &middot;{' '}
+              {new Date(workItem.created_at).toLocaleDateString('en-US', {
                 month: 'long',
                 day: 'numeric',
                 year: 'numeric',
@@ -209,17 +292,17 @@ export default function ProjectDetailPage() {
                 {t(tab.label, tab.labelAr)}
                 {tab.id === 'documents' && (
                   <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 ms-0.5">
-                    {project.documents.length}
+                    {hookDocs.length}
                   </span>
                 )}
                 {tab.id === 'attachments' && (
                   <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 ms-0.5">
-                    {project.attachments.length}
+                    {attachments.length}
                   </span>
                 )}
                 {tab.id === 'issues' && (
                   <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 ms-0.5">
-                    {project.reportIssues.length}
+                    {reportIssues.length}
                   </span>
                 )}
               </button>
@@ -239,36 +322,36 @@ export default function ProjectDetailPage() {
                 {t('Shipment Details', 'تفاصيل الشحنة')}
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <InfoField label={t('Customer', 'العميل')} value={project.customerName} />
+                <InfoField label={t('Customer', 'العميل')} value={workItem.customer_name} />
                 <InfoField label={t('Destination', 'الوجهة')} value={
-                  project.destinationCity
-                    ? `${project.destinationCity}, ${project.destinationCountry}`
-                    : project.destinationCountry
+                  workItem.destination_city
+                    ? `${workItem.destination_city}, ${workItem.destination_country}`
+                    : workItem.destination_country
                 } icon={<MapPin className="w-3.5 h-3.5" />} />
-                <InfoField label={t('Incoterm', 'الشروط التجارية')} value={project.incoterm} />
-                <InfoField label={t('Port of Loading', 'ميناء التحميل')} value={project.portOfLoading} icon={<Anchor className="w-3.5 h-3.5" />} />
-                <InfoField label={t('Port of Discharge', 'ميناء التفريغ')} value={project.portOfDischarge} icon={<Anchor className="w-3.5 h-3.5" />} />
-                <InfoField label={t('Payment Terms', 'شروط الدفع')} value={project.paymentTerms} />
-                <InfoField label={t('Currency', 'العملة')} value={project.currency} />
-                {project.vesselName && (
-                  <InfoField label={t('Vessel', 'السفينة')} value={project.vesselName} icon={<Ship className="w-3.5 h-3.5" />} />
+                <InfoField label={t('Incoterm', 'الشروط التجارية')} value={workItem.incoterm} />
+                <InfoField label={t('Port of Loading', 'ميناء التحميل')} value={workItem.port_of_loading} icon={<Anchor className="w-3.5 h-3.5" />} />
+                <InfoField label={t('Port of Discharge', 'ميناء التفريغ')} value={workItem.port_of_discharge} icon={<Anchor className="w-3.5 h-3.5" />} />
+                <InfoField label={t('Payment Terms', 'شروط الدفع')} value={workItem.payment_terms} />
+                <InfoField label={t('Currency', 'العملة')} value={workItem.currency} />
+                {workItem.vessel_name && (
+                  <InfoField label={t('Vessel', 'السفينة')} value={workItem.vessel_name} icon={<Ship className="w-3.5 h-3.5" />} />
                 )}
-                {project.voyageNumber && (
-                  <InfoField label={t('Voyage #', 'رحلة #')} value={project.voyageNumber} />
+                {workItem.voyage_number && (
+                  <InfoField label={t('Voyage #', 'رحلة #')} value={workItem.voyage_number} />
                 )}
-                {project.containerNumber && (
-                  <InfoField label={t('Container #', 'حاوية #')} value={project.containerNumber} icon={<Package className="w-3.5 h-3.5" />} />
+                {workItem.container_number && (
+                  <InfoField label={t('Container #', 'حاوية #')} value={workItem.container_number} icon={<Package className="w-3.5 h-3.5" />} />
                 )}
               </div>
             </div>
 
             {/* Materials Table */}
-            {project.materials.length > 0 && (
+            {hookMaterials.length > 0 && (
               <div className="card overflow-hidden">
                 <div className="px-5 py-3 border-b border-gray-100">
                   <h3 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
                     {t('Materials', 'المواد')}
-                    <span className="ms-2 text-gray-400 font-normal normal-case">({project.materials.length})</span>
+                    <span className="ms-2 text-gray-400 font-normal normal-case">({hookMaterials.length})</span>
                   </h3>
                 </div>
                 <div className="overflow-x-auto">
@@ -296,22 +379,22 @@ export default function ProjectDetailPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {project.materials.map((mat) => (
+                      {hookMaterials.map((mat) => (
                         <tr key={mat.id} className="table-row-hover">
                           <td className="px-5 py-3">
-                            <p className="text-sm font-medium text-brand-900">{mat.materialName}</p>
-                            {mat.grade && <p className="text-xs text-gray-400">{mat.grade}</p>}
+                            <p className="text-sm font-medium text-brand-900">{mat.description_override || '—'}</p>
+                            {mat.hs_code && <p className="text-xs text-gray-400">{mat.hs_code}</p>}
                           </td>
                           <td className="px-5 py-3 text-sm text-gray-600">
-                            {mat.quantity} {mat.weightUnit}
+                            {mat.quantity} {mat.weight_unit}
                           </td>
                           <td className="px-5 py-3 text-sm text-gray-600">
-                            {mat.unitPrice.toLocaleString()} {mat.currency}
+                            {(mat.price || 0).toLocaleString()} {mat.currency || 'SAR'}
                           </td>
                           <td className="px-5 py-3 text-sm font-medium text-brand-900">
-                            {(mat.quantity * mat.unitPrice).toLocaleString()} {mat.currency}
+                            {(mat.quantity * (mat.price || 0)).toLocaleString()} {mat.currency || 'SAR'}
                           </td>
-                          <td className="px-5 py-3 text-sm text-gray-600">{mat.packing || '—'}</td>
+                          <td className="px-5 py-3 text-sm text-gray-600">{mat.packing_description || '—'}</td>
                           <td className="px-5 py-3 text-sm text-gray-600">{mat.origin || '—'}</td>
                         </tr>
                       ))}
@@ -322,7 +405,7 @@ export default function ProjectDetailPage() {
                           {t('Total Value', 'القيمة الإجمالية')}
                         </td>
                         <td className="px-5 py-3 text-sm font-bold text-brand-900">
-                          {totalValue.toLocaleString()} {project.currency || 'SAR'}
+                          {totalValue.toLocaleString()} {workItem.currency || 'SAR'}
                         </td>
                         <td colSpan={2} />
                       </tr>
@@ -340,28 +423,28 @@ export default function ProjectDetailPage() {
               <h3 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
                 {t('Summary', 'ملخص')}
               </h3>
-              <SummaryRow label={t('Documents', 'المستندات')} value={String(project.documents.length)} />
-              <SummaryRow label={t('Attachments', 'المرفقات')} value={String(project.attachments.length)} />
-              <SummaryRow label={t('Issues', 'المشكلات')} value={String(project.reportIssues.length)} />
-              <SummaryRow label={t('Notes', 'الملاحظات')} value={String(project.projectNotes.length)} />
+              <SummaryRow label={t('Documents', 'المستندات')} value={String(hookDocs.length)} />
+              <SummaryRow label={t('Attachments', 'المرفقات')} value={String(attachments.length)} />
+              <SummaryRow label={t('Issues', 'المشكلات')} value={String(reportIssues.length)} />
+              <SummaryRow label={t('Notes', 'الملاحظات')} value={String(projectNotes.length)} />
               <div className="pt-2 border-t border-gray-100">
-                <SummaryRow label={t('Total Value', 'القيمة الإجمالية')} value={`${totalValue.toLocaleString()} ${project.currency || 'SAR'}`} highlight />
+                <SummaryRow label={t('Total Value', 'القيمة الإجمالية')} value={`${totalValue.toLocaleString()} ${workItem.currency || 'SAR'}`} highlight />
               </div>
             </div>
 
             {/* Customer Info */}
-            {project.customerName && (
+            {workItem.customer_name && (
               <div className="card p-4">
                 <h3 className="text-sm font-semibold text-brand-900 uppercase tracking-wide mb-3">
                   {t('Customer', 'العميل')}
                 </h3>
-                <p className="text-sm font-medium text-brand-900">{project.customerName}</p>
-                {project.destinationCountry && (
+                <p className="text-sm font-medium text-brand-900">{workItem.customer_name}</p>
+                {workItem.destination_country && (
                   <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
-                    {project.destinationCity
-                      ? `${project.destinationCity}, ${project.destinationCountry}`
-                      : project.destinationCountry}
+                    {workItem.destination_city
+                      ? `${workItem.destination_city}, ${workItem.destination_country}`
+                      : workItem.destination_country}
                   </p>
                 )}
               </div>
@@ -376,7 +459,7 @@ export default function ProjectDetailPage() {
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <Calendar className="w-3.5 h-3.5 text-gray-400" />
                   {t('Created', 'أنشأ')}:{' '}
-                  {new Date(project.createdAt).toLocaleDateString('en-US', {
+                  {new Date(workItem.created_at).toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric',
@@ -385,7 +468,7 @@ export default function ProjectDetailPage() {
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <Calendar className="w-3.5 h-3.5 text-gray-400" />
                   {t('Updated', 'حُدّث')}:{' '}
-                  {new Date(project.updatedAt).toLocaleDateString('en-US', {
+                  {new Date(workItem.updated_at).toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric',
@@ -401,7 +484,7 @@ export default function ProjectDetailPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
-              {t('Documents', 'المستندات')} ({documents.length})
+              {t('Documents', 'المستندات')} ({hookDocs.length})
             </h3>
             <div className="relative">
               <button onClick={() => setShowInvoiceDropdown(!showInvoiceDropdown)} className="btn-primary">
@@ -413,7 +496,7 @@ export default function ProjectDetailPage() {
                 <div className="absolute end-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
                   <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase">{t('Invoice', 'الفاتورة')}</div>
                   {(['QUOT','PINV','TINV','CINV'] as const).map(type => (
-                    <button key={type} onClick={() => { setShowInvoiceDropdown(false); navigate(`/documents/new/form?type=${type}&projectId=${project.id}`) }}
+                    <button key={type} onClick={() => { setShowInvoiceDropdown(false); navigate(`/documents/new/form?type=${type}&projectId=${workItem.id}`) }}
                       className="w-full text-start px-4 py-2.5 text-sm hover:bg-brand-50 flex items-center gap-3 transition-colors">
                       <span className="w-10 text-xs font-bold text-brand-600 bg-brand-50 rounded px-1.5 py-0.5 text-center">{type}</span>
                       <span className="text-gray-700">{t(DOC_TYPE_LABELS[type].en, DOC_TYPE_LABELS[type].ar)}</span>
@@ -422,7 +505,7 @@ export default function ProjectDetailPage() {
                   <div className="border-t border-gray-100 my-1" />
                   <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase">{t('Other Documents', 'مستندات أخرى')}</div>
                   {(['PKL','DN','BL'] as const).map(type => (
-                    <button key={type} onClick={() => { setShowInvoiceDropdown(false); navigate(`/documents/new/form?type=${type}&projectId=${project.id}`) }}
+                    <button key={type} onClick={() => { setShowInvoiceDropdown(false); navigate(`/documents/new/form?type=${type}&projectId=${workItem.id}`) }}
                       className="w-full text-start px-4 py-2.5 text-sm hover:bg-brand-50 flex items-center gap-3 transition-colors">
                       <span className="w-10 text-xs font-bold text-brand-600 bg-brand-50 rounded px-1.5 py-0.5 text-center">{type}</span>
                       <span className="text-gray-700">{t(DOC_TYPE_LABELS[type].en, DOC_TYPE_LABELS[type].ar)}</span>
@@ -432,7 +515,7 @@ export default function ProjectDetailPage() {
               )}
             </div>
           </div>
-          {documents.length === 0 ? (
+          {hookDocs.length === 0 ? (
             <div className="card empty-state">
               <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-400">{t('No documents yet', 'لا توجد مستندات بعد')}</p>
@@ -463,8 +546,8 @@ export default function ProjectDetailPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {documents.map((doc) => {
-                    const typeLabel = DOC_TYPE_LABELS[doc.type]
+                  {hookDocs.map((doc) => {
+                    const typeLabel = DOC_TYPE_LABELS[doc.document_type]
                     return (
                       <tr key={doc.id} className="table-row-hover">
                         <td className="px-5 py-3.5">
@@ -472,15 +555,15 @@ export default function ProjectDetailPage() {
                             to={`/documents/${doc.id}/preview`}
                             className="text-sm font-medium text-brand-700 hover:text-brand-900 transition-colors flex items-center gap-1.5"
                           >
-                            {doc.number}
+                            {doc.document_number}
                             <ExternalLink className="w-3 h-3" />
                           </Link>
                         </td>
                         <td className="px-5 py-3.5 text-sm text-gray-600">
-                          {typeLabel ? t(typeLabel.en, typeLabel.ar) : doc.type}
+                          {typeLabel ? t(typeLabel.en, typeLabel.ar) : doc.document_type}
                         </td>
                         <td className="px-5 py-3.5 text-sm text-gray-600">
-                          {new Date(doc.date).toLocaleDateString('en-US', {
+                          {new Date(doc.created_date).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',
@@ -498,7 +581,7 @@ export default function ProjectDetailPage() {
                           </span>
                         </td>
                         <td className="px-5 py-3.5 text-sm text-gray-600">
-                          {doc.preparedBy || '—'}
+                          {doc.prepared_by || '—'}
                         </td>
                         <td className="px-5 py-3.5 text-end">
                           <div className="flex items-center justify-end gap-1">
@@ -508,7 +591,7 @@ export default function ProjectDetailPage() {
                             <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => alert(t('Download will be available in production.', 'سيتوفر التحميل في الإنتاج.'))}>
                               <Download className="w-4 h-4" />
                             </button>
-                            <button className="btn-ghost p-1.5" title={t('Edit', 'تعديل')} onClick={() => navigate(`/documents/${doc.id}/form?projectId=${project.id}`)}>
+                            <button className="btn-ghost p-1.5" title={t('Edit', 'تعديل')} onClick={() => navigate(`/documents/${doc.id}/form?projectId=${workItem.id}`)}>
                               <Edit3 className="w-4 h-4" />
                             </button>
                           </div>
@@ -567,17 +650,17 @@ export default function ProjectDetailPage() {
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
                           <Paperclip className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm font-medium text-brand-900">{att.name}</span>
+                          <span className="text-sm font-medium text-brand-900">{att.original_name}</span>
                         </div>
                       </td>
                       <td className="px-5 py-3.5 text-sm text-gray-500">
                         {formatFileSize(att.size)}
                       </td>
                       <td className="px-5 py-3.5 text-sm text-gray-600">
-                        {att.uploadedBy || '—'}
+                        {att.uploaded_by || '—'}
                       </td>
                       <td className="px-5 py-3.5 text-sm text-gray-600">
-                        {new Date(att.uploadedAt).toLocaleDateString('en-US', {
+                        {new Date(att.created_at).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
@@ -632,7 +715,7 @@ export default function ProjectDetailPage() {
               </div>
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowIssueForm(false)} className="btn-ghost">{t('Cancel', 'إلغاء')}</button>
-                <button onClick={() => { if (issueDesc.trim()) { setReportIssues(prev => [{ id: `ri-${Date.now()}`, description: issueDesc, severity: issueSeverity, status: 'open', reporter: currentUser.name, createdAt: new Date().toISOString() }, ...prev]); setIssueDesc(''); setShowIssueForm(false) } }} className="btn-primary">{t('Submit', 'إرسال')}</button>
+                <button onClick={() => { if (issueDesc.trim()) { setReportIssues(prev => [{ id: `ri-${Date.now()}`, company_id: workItem.company_id, work_item_id: workItem.id, reporter_user_id: currentUser.id, body: issueDesc, severity: issueSeverity, status: 'open', resolved_by: null, resolved_at: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, ...prev]); setIssueDesc(''); setShowIssueForm(false) } }} className="btn-primary">{t('Submit', 'إرسال')}</button>
               </div>
             </div>
           )}
@@ -647,7 +730,7 @@ export default function ProjectDetailPage() {
                 return (
                   <div key={issue.id} className="card p-4">
                     <div className="flex items-start justify-between">
-                      <p className="text-sm text-gray-700 flex-1">{issue.description}</p>
+                      <p className="text-sm text-gray-700 flex-1">{issue.body}</p>
                     </div>
                     <div className="flex items-center gap-3 mt-3">
                       <div>
@@ -678,10 +761,10 @@ export default function ProjectDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                      <span>{t('Reported by', 'أبلغه')} {issue.reporter || '—'}</span>
+                      <span>{t('Reported by', 'أبلغه')} {issue.reporter_user_id || '—'}</span>
                       <span>&middot;</span>
                       <span>
-                        {new Date(issue.createdAt).toLocaleDateString('en-US', {
+                        {new Date(issue.created_at).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
@@ -715,7 +798,7 @@ export default function ProjectDetailPage() {
               </div>
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowNoteForm(false)} className="btn-ghost">{t('Cancel', 'إلغاء')}</button>
-                <button onClick={() => { if (newNote.trim()) { setProjectNotes(prev => [{ id: `pn-${Date.now()}`, content: newNote, author: currentUser.name, createdAt: new Date().toISOString() }, ...prev]); setNewNote(''); setShowNoteForm(false) } }} className="btn-primary">{t('Save Note', 'حفظ الملاحظة')}</button>
+                <button onClick={() => { if (newNote.trim()) { setProjectNotes(prev => [{ id: `pn-${Date.now()}`, company_id: workItem.company_id, work_item_id: workItem.id, author_user_id: currentUser.id, body: newNote, created_at: new Date().toISOString() }, ...prev]); setNewNote(''); setShowNoteForm(false) } }} className="btn-primary">{t('Save Note', 'حفظ الملاحظة')}</button>
               </div>
             </div>
           )}
@@ -749,19 +832,19 @@ export default function ProjectDetailPage() {
                     </div>
                   ) : (
                     <>
-                      <p className="text-sm text-gray-700">{note.content}</p>
+                      <p className="text-sm text-gray-700">{note.body}</p>
                       <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                        <span>{note.author || '—'}</span>
+                        <span>{note.author_user_id || '—'}</span>
                         <span>&middot;</span>
                         <span>
-                          {new Date(note.createdAt).toLocaleDateString('en-US', {
+                          {new Date(note.created_at).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',
                           })}
                         </span>
                         <button
-                          onClick={() => startEditNote(note.id, note.content)}
+                          onClick={() => startEditNote(note.id, note.body)}
                           className="ms-auto text-gray-400 hover:text-brand-600 transition-colors"
                           title={t('Edit', 'تعديل')}
                         >
@@ -777,9 +860,9 @@ export default function ProjectDetailPage() {
         </div>
       )}
     </div>
-    <AttachmentUploadModal open={showAttachmentModal} onClose={() => setShowAttachmentModal(false)} onSave={(att) => { setAttachments(prev => [{ id: `att-${Date.now()}`, name: att.name, type: 'application/pdf', size: 245000, uploadedBy: currentUser.name, uploadedAt: new Date().toISOString().split('T')[0] }, ...prev]); setShowAttachmentModal(false) }} />
+    <AttachmentUploadModal open={showAttachmentModal} onClose={() => setShowAttachmentModal(false)} onSave={(att) => { setAttachments(prev => [{ id: `att-${Date.now()}`, company_id: workItem.company_id, work_item_id: workItem.id, category: 'general', r2_object_key: '', original_name: att.name, mime_type: 'application/pdf', size: 245000, uploaded_by: currentUser.name, active: true, created_at: new Date().toISOString() }, ...prev]); setShowAttachmentModal(false) }} />
     <ConfirmModal open={!!deleteAttachmentId} onClose={() => setDeleteAttachmentId(null)} onConfirm={() => { setAttachments(prev => prev.filter(a => a.id !== deleteAttachmentId)); setDeleteAttachmentId(null) }} title={t('Delete Attachment', 'حذف المرفق')} message={t('Are you sure you want to delete this attachment?', 'هل أنت متأكد من حذف هذا المرفق؟')} confirmLabel={t('Delete', 'حذف')} cancelLabel={t('Cancel', 'إلغاء')} variant="danger" />
-    <ProjectFormModal open={showEditForm} onClose={() => setShowEditForm(false)} onSave={(data) => { Object.assign(project, data); setShowEditForm(false) }} item={project} mode="project" />
+    <ProjectFormModal open={showEditForm} onClose={() => setShowEditForm(false)} onSave={(data) => { Object.assign(workItemForModal, data); setShowEditForm(false) }} item={workItemForModal as any} mode="project" />
     </>
   )
 }

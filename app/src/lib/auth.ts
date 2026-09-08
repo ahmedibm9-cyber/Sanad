@@ -312,17 +312,32 @@ export class AuthService {
    * Get user profile from the users table.
    */
   private async getUserProfile(userId: string) {
+    // Try querying the users table first
     const { data, error } = await (this.supabase as any)
       .from('users')
       .select('*')
       .eq('id', userId)
       .single()
 
-    if (error || !data) {
-      throw new AuthError('User profile not found')
+    if (!error && data) {
+      return data
     }
 
-    return data
+    // Fallback: build profile from auth user metadata (for when RLS blocks users table)
+    const { data: { user }, error: authError } = await this.supabase.auth.getUser()
+    if (authError || !user) {
+      throw new AuthError('User not authenticated')
+    }
+
+    const meta = user.user_metadata || {}
+    return {
+      id: user.id,
+      email: user.email || '',
+      display_name: meta.display_name || user.email?.split('@')[0] || 'User',
+      is_system_admin: meta.is_system_admin === true,
+      active: true,
+      preferred_language: meta.preferred_language || 'en',
+    }
   }
 
   /**

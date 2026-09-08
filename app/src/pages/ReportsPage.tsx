@@ -6,8 +6,68 @@ import {
 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
-import { projects, tasks, users, activityLog, companies } from '../data/mockData'
+import { useWorkItems, useAuditEvents, useCompanyUsers } from '../hooks/useData'
 import type { WorkItem } from '../types'
+import type { WorkItem as ServiceWorkItem } from '../hooks/useData'
+import type { AuditEvent } from '../hooks/useData'
+
+// ─── Type Mapping Helpers ──────────────────────────────
+function mapWorkItem(item: ServiceWorkItem, materials?: any[]): WorkItem {
+  return {
+    id: item.id,
+    type: item.type,
+    companyId: item.company_id,
+    name: item.name,
+    customerId: item.customer_id || undefined,
+    status: item.status,
+    isPinned: item.pinned,
+    materials: materials || [],
+    destinationCountry: item.destination_country || undefined,
+    destinationCity: item.destination_city || undefined,
+    currency: item.currency || undefined,
+    incoterm: item.incoterm || undefined,
+    paymentTerms: item.payment_terms || undefined,
+    deliveryTerms: item.delivery_terms || undefined,
+    containerNumber: item.container_number || undefined,
+    vesselName: item.vessel_name || undefined,
+    voyageNumber: item.voyage_number || undefined,
+    portOfLoading: item.port_of_loading || undefined,
+    portOfDischarge: item.port_of_discharge || undefined,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+    createdBy: item.created_by || undefined,
+    documents: [],
+    attachments: [],
+    reportIssues: [],
+    projectNotes: [],
+  }
+}
+
+function mapAuditEventToActivityLog(event: AuditEvent) {
+  return {
+    id: event.id,
+    userId: event.actor_user_id,
+    userName: '', // Will be resolved from company users if needed
+    companyId: event.company_id || '',
+    action: event.action,
+    entityType: event.entity_type,
+    entityId: event.entity_id || '',
+    entityRef: event.entity_reference || undefined,
+    before: event.before_json || undefined,
+    after: event.after_json || undefined,
+    timestamp: event.created_at,
+  }
+}
+
+function mapCompany(company: any) {
+  return {
+    id: company.id,
+    nameEn: company.name_en || company.nameEn || '',
+    nameAr: company.name_ar || company.nameAr || '',
+    shortName: company.short_name || company.shortName || '',
+    code: company.company_code || company.code || '',
+  }
+}
 
 // ─── Filter State ──────────────────────────────────────
 interface ReportFiltersState {
@@ -29,8 +89,8 @@ function filterWorkItems(items: WorkItem[], filters: ReportFiltersState): WorkIt
   return items.filter(item => {
     if (filters.status && item.status !== filters.status) return false
     if (filters.companyId && item.companyId !== filters.companyId) return false
-    if (filters.dateFrom && item.createdAt < filters.dateFrom) return false
-    if (filters.dateTo && item.createdAt > filters.dateTo) return false
+    if (filters.dateFrom && item.createdAt.substring(0, 10) < filters.dateFrom) return false
+    if (filters.dateTo && item.createdAt.substring(0, 10) > filters.dateTo) return false
     return true
   })
 }
@@ -254,12 +314,13 @@ function ProjectsByDateReport({ filtered }: { filtered: WorkItem[] }) {
 // ─── Report: Projects by Company ───────────────────────
 function ProjectsByCompanyReport({ filtered }: { filtered: WorkItem[] }) {
   const { t } = useLanguage()
+  const { companies: allCompanies } = useCompany()
   const byCompany = useMemo(() => filtered.reduce((acc, p) => {
-    const comp = companies.find(c => c.id === p.companyId)
-    const name = comp?.nameEn || p.companyId
+    const comp = allCompanies.find(c => c.id === p.companyId)
+    const name = comp?.name_en || comp?.nameEn || p.companyId
     acc[name] = (acc[name] || 0) + 1
     return acc
-  }, {} as Record<string, number>), [filtered])
+  }, {} as Record<string, number>), [filtered, allCompanies])
 
   return (
     <div className="card overflow-hidden">
@@ -445,11 +506,18 @@ function OverdueTasksReport({ filtered }: { filtered: WorkItem[] }) {
 // ─── Report: User Activity ─────────────────────────────
 function UserActivityReport({ filtered }: { filtered: WorkItem[] }) {
   const { t } = useLanguage()
+  const { currentCompany } = useCompany()
+  const { data: companyUsers = [] } = useCompanyUsers(currentCompany.id)
+  const { data: auditEvents = [] } = useAuditEvents(currentCompany.id)
+  
   const companyIds = useMemo(() => new Set(filtered.map(p => p.companyId)), [filtered])
-  const userActivity = useMemo(() => users.map(u => {
-    const count = activityLog.filter(a => a.userId === u.id && companyIds.has(a.companyId)).length
-    return { ...u, actionCount: count }
-  }), [companyIds])
+  const userActivity = useMemo(() => companyUsers.map((u: any) => {
+    const count = (auditEvents || []).filter(a => 
+      a.actor_user_id === u.id && 
+      companyIds.has(a.company_id || '')
+    ).length
+    return { ...u, actionCount: count, role: u.base_role || u.role || 'user' }
+  }), [companyIds, companyUsers, auditEvents])
 
   return (
     <div className="card overflow-hidden">
@@ -463,7 +531,7 @@ function UserActivityReport({ filtered }: { filtered: WorkItem[] }) {
           </tr>
         </thead>
         <tbody>
-          {userActivity.map(u => (
+          {userActivity.map((u: any) => (
             <tr key={u.id} className="border-b border-gray-100 table-row-hover">
               <td className="px-4 py-3 font-medium">{u.name}</td>
               <td className="px-4 py-3 text-gray-500">{u.email}</td>
@@ -573,8 +641,15 @@ function MaterialExportHistoryReport({ filtered }: { filtered: WorkItem[] }) {
 }
 
 // ─── Report: Audit ─────────────────────────────────────
-function AuditReport({ auditLog }: { auditLog: typeof activityLog }) {
+function AuditReport({ auditEvents }: { auditEvents: AuditEvent[] }) {
   const { t } = useLanguage()
+  const { currentCompany } = useCompany()
+  const { data: companyUsers = [] } = useCompanyUsers(currentCompany.id)
+  
+  const getUserName = (userId: string) => {
+    const user = (companyUsers || []).find((u: any) => u.id === userId)
+    return user?.name || userId
+  }
 
   return (
     <div className="card overflow-hidden">
@@ -589,26 +664,26 @@ function AuditReport({ auditLog }: { auditLog: typeof activityLog }) {
           </tr>
         </thead>
         <tbody>
-          {auditLog.map(entry => (
-            <tr key={entry.id} className="border-b border-gray-100 table-row-hover">
-              <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{new Date(entry.timestamp).toLocaleString()}</td>
-              <td className="px-4 py-3 font-medium">{entry.userName}</td>
+          {auditEvents.map(event => (
+            <tr key={event.id} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{new Date(event.created_at).toLocaleString()}</td>
+              <td className="px-4 py-3 font-medium">{getUserName(event.actor_user_id)}</td>
               <td className="px-4 py-3">
                 <span className={`status-badge ${
-                  entry.action === 'CREATE' ? 'bg-green-100 text-green-800' :
-                  entry.action === 'EDIT' ? 'bg-blue-100 text-blue-800' :
-                  entry.action === 'DELETE' || entry.action === 'MOVE_TO_TRASH' ? 'bg-red-100 text-red-800' :
-                  entry.action === 'ARCHIVE' ? 'bg-gray-100 text-gray-800' :
+                  event.action === 'CREATE' ? 'bg-green-100 text-green-800' :
+                  event.action === 'EDIT' ? 'bg-blue-100 text-blue-800' :
+                  event.action === 'DELETE' || event.action === 'MOVE_TO_TRASH' ? 'bg-red-100 text-red-800' :
+                  event.action === 'ARCHIVE' ? 'bg-gray-100 text-gray-800' :
                   'bg-purple-100 text-purple-800'
                 }`}>
-                  {entry.action}
+                  {event.action}
                 </span>
               </td>
-              <td className="px-4 py-3 text-gray-600">{entry.entityType}</td>
-              <td className="px-4 py-3 text-gray-500">{entry.entityRef || entry.entityId}</td>
+              <td className="px-4 py-3 text-gray-600">{event.entity_type}</td>
+              <td className="px-4 py-3 text-gray-500">{event.entity_reference || event.entity_id}</td>
             </tr>
           ))}
-          {auditLog.length === 0 && (
+          {auditEvents.length === 0 && (
             <EmptyRow colSpan={5} message={t('No audit entries match the selected filters.', 'لا توجد سجلات تدقيق مطابقة للمرشّحات المحددة.')} />
           )}
         </tbody>
@@ -620,28 +695,48 @@ function AuditReport({ auditLog }: { auditLog: typeof activityLog }) {
 // ─── Main Page ─────────────────────────────────────────
 export default function ReportsPage() {
   const { t } = useLanguage()
+  const { currentCompany } = useCompany()
   const [activeReport, setActiveReport] = useState('by-status')
   const [filters, setFilters] = useState<ReportFiltersState>(defaultFilters)
 
+  // Fetch data using hooks
+  const { data: rawWorkItems = [], loading } = useWorkItems(currentCompany.id)
+  const { data: rawAuditEvents = [] } = useAuditEvents(currentCompany.id)
+
+  // Map service WorkItems to frontend WorkItem type
+  const allWorkItems = useMemo(() => (rawWorkItems || []).map(item => mapWorkItem(item)), [rawWorkItems])
+  
+  // Separate projects and tasks
+  const projects = useMemo(() => allWorkItems.filter(item => item.type === 'project'), [allWorkItems])
+  const tasks = useMemo(() => allWorkItems.filter(item => item.type === 'task'), [allWorkItems])
+
   // Apply common WorkItem filters to projects
-  const filteredProjects = useMemo(() => filterWorkItems(projects, filters), [filters])
+  const filteredProjects = useMemo(() => filterWorkItems(projects, filters), [projects, filters])
   // Apply common WorkItem filters to tasks, with overdue constraint
-  const filteredTasks = useMemo(() => filterWorkItems(tasks, filters), [filters])
+  const filteredTasks = useMemo(() => filterWorkItems(tasks, filters), [tasks, filters])
   const filteredOverdueTasks = useMemo(() =>
     filteredTasks.filter(task => task.status === 'in_progress' && task.createdAt < '2024-11-15'),
     [filteredTasks]
   )
-  // Filter audit log by company + date range
-  const filteredAuditLog = useMemo(() => {
-    return activityLog.filter(entry => {
-      if (filters.companyId && entry.companyId !== filters.companyId) return false
-      if (filters.dateFrom && entry.timestamp.substring(0, 10) < filters.dateFrom) return false
-      if (filters.dateTo && entry.timestamp.substring(0, 10) > filters.dateTo) return false
+  // Filter audit events by company + date range
+  const filteredAuditEvents = useMemo(() => {
+    return (rawAuditEvents || []).filter(event => {
+      if (filters.companyId && event.company_id !== filters.companyId) return false
+      if (filters.dateFrom && event.created_at.substring(0, 10) < filters.dateFrom) return false
+      if (filters.dateTo && event.created_at.substring(0, 10) > filters.dateTo) return false
       return true
-    }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-  }, [filters])
+    }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  }, [rawAuditEvents, filters])
 
   const reportTitle = reports.find(r => r.id === activeReport)
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-gray-500">{t('Loading...', 'جاري التحميل...')}</div>
+      </div>
+    )
+  }
 
   return (
     <div className="h-full flex overflow-hidden">
@@ -692,7 +787,7 @@ export default function ReportsPage() {
         {activeReport === 'user-activity' && <UserActivityReport filtered={filteredProjects} />}
         {activeReport === 'customer-export-history' && <CustomerExportHistoryReport filtered={filteredProjects} />}
         {activeReport === 'material-export-history' && <MaterialExportHistoryReport filtered={filteredProjects} />}
-        {activeReport === 'audit' && <AuditReport auditLog={filteredAuditLog} />}
+        {activeReport === 'audit' && <AuditReport auditEvents={filteredAuditEvents} />}
       </div>
     </div>
   )

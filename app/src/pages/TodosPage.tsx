@@ -1,8 +1,8 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useApp } from '../contexts/AppContext'
-import { getTodosForUser } from '../data/mockData'
-import type { ToDo } from '../types'
+import { useTodos, useCreateTodo, useUpdateTodo, useDeleteTodo } from '../hooks/useData'
+import type { ToDo } from '../lib/data'
 import {
   CheckSquare, Mic, Plus, Calendar, Clock, AlertTriangle,
   ChevronDown, ChevronUp, Trash2, Filter,
@@ -11,9 +11,14 @@ import {
 export default function TodosPage() {
   const { t } = useLanguage()
   const { currentUser } = useApp()
-  const initialTodos = useMemo(() => getTodosForUser(currentUser.id), [currentUser.id])
 
-  const [todos, setTodos] = useState<ToDo[]>(initialTodos)
+  const { data: todosData, loading, refetch } = useTodos(currentUser.id)
+  const { create: createTodo, loading: creating } = useCreateTodo()
+  const { update: updateTodo } = useUpdateTodo()
+  const { remove: deleteTodo, loading: deleting } = useDeleteTodo()
+
+  const todos = todosData || []
+
   const [showForm, setShowForm] = useState(false)
   const [filterPriority, setFilterPriority] = useState<'all' | 'low' | 'medium' | 'high'>('all')
   const [filterDone, setFilterDone] = useState<'all' | 'done' | 'pending'>('all')
@@ -39,14 +44,14 @@ export default function TodosPage() {
   const filteredTodos = useMemo(() => {
     return todos.filter((td) => {
       if (filterPriority !== 'all' && td.priority !== filterPriority) return false
-      if (filterDone === 'done' && !td.done) return false
-      if (filterDone === 'pending' && td.done) return false
+      if (filterDone === 'done' && !td.is_done) return false
+      if (filterDone === 'pending' && td.is_done) return false
       return true
     })
   }, [todos, filterPriority, filterDone])
 
-  const pendingCount = todos.filter((td) => !td.done).length
-  const doneCount = todos.filter((td) => td.done).length
+  const pendingCount = todos.filter((td) => !td.is_done).length
+  const doneCount = todos.filter((td) => td.is_done).length
 
   const priorityColors: Record<string, string> = {
     high: 'bg-red-100 text-red-700 border border-red-200',
@@ -60,22 +65,19 @@ export default function TodosPage() {
     low: { en: 'Low', ar: 'منخفضة' },
   }
 
-  function handleAddTodo(e: React.FormEvent) {
+  async function handleAddTodo(e: React.FormEvent) {
     e.preventDefault()
     if (!formTitle.trim()) return
 
-    const newTodo: ToDo = {
-      id: `td-new-${Date.now()}`,
+    await createTodo({
       title: formTitle.trim(),
-      description: formDescription.trim() || undefined,
-      dueDate: formDate || undefined,
-      dueTime: formTime || undefined,
+      description: formDescription.trim() || null,
+      due_date: formDate || null,
+      due_time: formTime || null,
       priority: formPriority,
-      done: false,
-      createdAt: new Date().toISOString().split('T')[0],
-    }
+    }, currentUser.id)
 
-    setTodos((prev) => [newTodo, ...prev])
+    refetch()
     setFormTitle('')
     setFormDescription('')
     setFormDate('')
@@ -84,14 +86,17 @@ export default function TodosPage() {
     setShowForm(false)
   }
 
-  function toggleDone(id: string) {
-    setTodos((prev) =>
-      prev.map((td) => (td.id === id ? { ...td, done: !td.done } : td))
-    )
+  async function toggleDone(id: string) {
+    const todo = todos.find((td) => td.id === id)
+    if (todo) {
+      await updateTodo(id, { is_done: !todo.is_done })
+      refetch()
+    }
   }
 
-  function deleteTodo(id: string) {
-    setTodos((prev) => prev.filter((td) => td.id !== id))
+  async function handleDeleteTodo(id: string) {
+    await deleteTodo(id)
+    refetch()
   }
 
   function handleVoiceInput() {
@@ -129,13 +134,13 @@ export default function TodosPage() {
     voiceTimers.current.push(t3)
   }
 
-  function formatDate(dateStr?: string) {
+  function formatDate(dateStr?: string | null) {
     if (!dateStr) return null
     const d = new Date(dateStr + 'T00:00:00')
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
   }
 
-  function formatTime(timeStr?: string) {
+  function formatTime(timeStr?: string | null) {
     if (!timeStr) return null
     const [h, m] = timeStr.split(':')
     const hour = parseInt(h, 10)
@@ -144,7 +149,7 @@ export default function TodosPage() {
     return `${displayHour}:${m} ${ampm}`
   }
 
-  function isOverdue(dateStr?: string, done?: boolean) {
+  function isOverdue(dateStr?: string | null, done?: boolean) {
     if (!dateStr || done) return false
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -175,6 +180,14 @@ export default function TodosPage() {
           {t('New To-do', 'مهمة جديدة')}
         </button>
       </div>
+
+      {/* Loading State */}
+      {loading && (
+        <div className="card p-8 text-center mb-6">
+          <div className="animate-spin w-8 h-8 border-4 border-brand-200 border-t-brand-600 rounded-full mx-auto mb-3" />
+          <p className="text-gray-400">{t('Loading to-dos...', 'جاري تحميل المهام...')}</p>
+        </div>
+      )}
 
       {/* Add Form */}
       {showForm && (
@@ -246,9 +259,9 @@ export default function TodosPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button type="submit" className="btn-primary">
+              <button type="submit" className="btn-primary" disabled={creating}>
                 <Plus size={16} className="ms-1.5" />
-                {t('Add To-do', 'إضافة المهمة')}
+                {creating ? t('Adding...', 'جاري الإضافة...') : t('Add To-do', 'إضافة المهمة')}
               </button>
               <button
                 type="button"
@@ -318,7 +331,7 @@ export default function TodosPage() {
 
       {/* Todo List */}
       <div className="space-y-2">
-        {filteredTodos.length === 0 && (
+        {!loading && filteredTodos.length === 0 && (
           <div className="card p-8 text-center empty-state">
             <CheckSquare size={40} className="mx-auto text-gray-300 mb-3" />
             <p className="text-gray-500 text-sm">
@@ -328,14 +341,14 @@ export default function TodosPage() {
         )}
 
         {filteredTodos.map((todo) => {
-          const overdue = isOverdue(todo.dueDate, todo.done)
+          const overdue = isOverdue(todo.due_date, todo.is_done)
           const isExpanded = expandedId === todo.id
 
           return (
             <div
               key={todo.id}
               className={`card p-4 transition-all ${
-                todo.done ? 'opacity-60' : ''
+                todo.is_done ? 'opacity-60' : ''
               } ${overdue ? 'border-s-4 border-s-red-400' : ''}`}
             >
               <div className="flex items-start gap-3">
@@ -343,12 +356,12 @@ export default function TodosPage() {
                 <button
                   onClick={() => toggleDone(todo.id)}
                   className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${
-                    todo.done
+                    todo.is_done
                       ? 'bg-status-completed border-status-completed text-white'
                       : 'border-gray-300 hover:border-brand-400'
                   }`}
                 >
-                  {todo.done && (
+                  {todo.is_done && (
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                       <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
@@ -360,13 +373,13 @@ export default function TodosPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4
                       className={`text-sm font-semibold ${
-                        todo.done ? 'line-through text-gray-400' : 'text-brand-900'
+                        todo.is_done ? 'line-through text-gray-400' : 'text-brand-900'
                       }`}
                     >
                       {todo.title}
                     </h4>
                     <span className={`status-badge ${priorityColors[todo.priority]}`}>
-                      {t(priorityLabels[todo.priority].en, priorityLabels[todo.priority].ar)}
+                      {t(priorityLabels[todo.priority]?.en || todo.priority, priorityLabels[todo.priority]?.ar || todo.priority)}
                     </span>
                     {overdue && (
                       <span className="status-badge bg-red-100 text-red-700 border border-red-200">
@@ -378,19 +391,19 @@ export default function TodosPage() {
 
                   {/* Meta row */}
                   <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500 flex-wrap">
-                    {todo.dueDate && (
+                    {todo.due_date && (
                       <span className="inline-flex items-center gap-1">
                         <Calendar size={12} />
-                        {formatDate(todo.dueDate)}
+                        {formatDate(todo.due_date)}
                       </span>
                     )}
-                    {todo.dueTime && (
+                    {todo.due_time && (
                       <span className="inline-flex items-center gap-1">
                         <Clock size={12} />
-                        {formatTime(todo.dueTime)}
+                        {formatTime(todo.due_time)}
                       </span>
                     )}
-                    {!todo.dueDate && !todo.dueTime && (
+                    {!todo.due_date && !todo.due_time && (
                       <span className="text-gray-400 italic">
                         {t('No due date', 'بلا تاريخ استحقاق')}
                       </span>
@@ -433,9 +446,10 @@ export default function TodosPage() {
                     <Mic size={14} />
                   </button>
                   <button
-                    onClick={() => deleteTodo(todo.id)}
+                    onClick={() => handleDeleteTodo(todo.id)}
                     className="btn-ghost p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50"
                     title={t('Delete', 'حذف')}
+                    disabled={deleting}
                   >
                     <Trash2 size={14} />
                   </button>

@@ -19,11 +19,14 @@ import NotificationsPage from './pages/NotificationsPage'
 import DocumentFormPage from './pages/DocumentFormPage'
 import DocumentPreviewPage from './pages/DocumentPreviewPage'
 import UsersPage from './pages/UsersPage'
+import LoginPage from './pages/LoginPage'
+import { ProtectedRoute } from './components/auth/ProtectedRoute'
 
 export default function App() {
   return (
     <Routes>
-      <Route element={<AppLayout />}>
+      <Route path="/login" element={<LoginPage />} />
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/projects" element={<ProjectsPage />} />

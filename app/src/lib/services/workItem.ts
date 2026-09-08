@@ -43,6 +43,8 @@ export interface WorkItem {
   created_by: string | null
   updated_by: string | null
   deleted_at: string | null
+  // Joined fields
+  customer_name?: string
 }
 
 export interface WorkItemMaterial {
@@ -150,7 +152,7 @@ export class WorkItemService {
 
     let query = (this.supabase as any)
       .from('work_items')
-      .select('*', { count: 'exact' })
+      .select('*, customers!inner(name)', { count: 'exact' })
       .eq('company_id', companyId)
       .eq('active', true)
       .is('deleted_at', null)
@@ -180,8 +182,13 @@ export class WorkItemService {
       throw handleSupabaseError(error)
     }
 
+    const items = (data || []).map((item: any) => ({
+      ...item,
+      customer_name: item.customers?.name,
+    }))
+
     return {
-      data: data || [],
+      data: items,
       total: count || 0,
     }
   }
@@ -196,7 +203,7 @@ export class WorkItemService {
 
     const { data, error } = await (this.supabase as any)
       .from('work_items')
-      .select('*')
+      .select('*, customers!inner(name)')
       .eq('id', id)
       .eq('active', true)
       .is('deleted_at', null)
@@ -206,7 +213,10 @@ export class WorkItemService {
       throw new NotFoundError('Work Item', id)
     }
 
-    return data
+    return {
+      ...data,
+      customer_name: data.customers?.name,
+    }
   }
 
   /**

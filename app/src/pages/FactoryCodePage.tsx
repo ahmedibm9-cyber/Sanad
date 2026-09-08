@@ -1,43 +1,41 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Search, Download, Upload, FileSpreadsheet, Database, CheckCircle, AlertCircle, Info, X } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
-import { factoryCodes } from '../data/mockData'
+import { useFactoryCodeSearch } from '../hooks/useData'
 
 type UploadStep = 'select' | 'validate' | 'preview' | 'summary'
+
+function useDebouncedValue(value: string, delay: number) {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(timer)
+  }, [value, delay])
+  return debounced
+}
 
 export default function FactoryCodePage() {
   const { t } = useLanguage()
   const { currentCompany } = useCompany()
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 400)
+  const { data, loading, error } = useFactoryCodeSearch(debouncedSearch)
+  const results = data ?? []
+
   const [uploadOpen, setUploadOpen] = useState(false)
   const [uploadStep, setUploadStep] = useState<UploadStep>('select')
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return factoryCodes
-    const q = search.toLowerCase()
-    return factoryCodes.filter(
-      fc =>
-        fc.factoryCode.toLowerCase().includes(q) ||
-        fc.factoryName.toLowerCase().includes(q) ||
-        fc.city.toLowerCase().includes(q) ||
-        fc.region.toLowerCase().includes(q) ||
-        fc.activity.toLowerCase().includes(q) ||
-        fc.product.toLowerCase().includes(q) ||
-        fc.hsCode.toLowerCase().includes(q)
-    )
-  }, [search])
-
   const [exportMsg, setExportMsg] = useState<string | null>(null)
 
   const handleExportFiltered = () => {
-    setExportMsg(`Exported ${filtered.length} filtered records to Excel`)
+    setExportMsg(`Exported ${results.length} filtered records to Excel`)
     setTimeout(() => setExportMsg(null), 2000)
   }
 
   const handleExportFull = () => {
-    setExportMsg(`Exported full database (${factoryCodes.length} records) to Excel`)
+    setExportMsg('Export full database requires a server-side export job')
     setTimeout(() => setExportMsg(null), 2000)
   }
 
@@ -110,7 +108,12 @@ export default function FactoryCodePage() {
             />
           </div>
           <span className="text-sm text-gray-500 whitespace-nowrap">
-            {t(`${filtered.length} of ${factoryCodes.length} records`, `${filtered.length} من ${factoryCodes.length} سجل`)}
+            {loading
+              ? t('Searching...', 'جارٍ البحث...')
+              : debouncedSearch
+                ? t(`${results.length} results`, `${results.length} نتيجة`)
+                : t('Type to search', 'اكتب للبحث')
+            }
           </span>
         </div>
       </div>
@@ -118,46 +121,69 @@ export default function FactoryCodePage() {
       {/* Table */}
       <div className="flex-1 overflow-auto px-6 pb-6">
         <div className="card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50/80">
-                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Factory Code', 'كود المصنع')}</th>
-                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Factory Name', 'اسم المصنع')}</th>
-                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('City', 'المدينة')}</th>
-                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Region', 'المنطقة')}</th>
-                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Activity', 'النشاط')}</th>
-                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Product', 'المنتج')}</th>
-                <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('HS Code', 'كود النظام المنسق')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(fc => (
-                <tr key={fc.id} className="border-b border-gray-100 table-row-hover">
-                  <td className="px-4 py-3 font-mono text-brand-700 font-medium">{fc.factoryCode}</td>
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900">{fc.factoryName}</div>
-                    {fc.factoryNameAr && (
-                      <div className="text-xs text-gray-400 mt-0.5">{fc.factoryNameAr}</div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{fc.city}</td>
-                  <td className="px-4 py-3">
-                    <span className="status-badge bg-blue-50 text-blue-700">{fc.region}</span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{fc.activity}</td>
-                  <td className="px-4 py-3 text-gray-600">{fc.product}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-500">{fc.hsCode}</td>
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="w-10 h-10 border-4 border-brand-200 border-t-brand-700 rounded-full animate-spin mb-4" />
+              <p className="text-sm text-gray-500">{t('Searching factory codes...', 'جارٍ البحث في أكواد المصانع...')}</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-2 p-4 text-sm text-red-700 bg-red-50 border-b border-red-200">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {t('Failed to load factory codes. Please try again.', 'فشل تحميل أكواد المصانع. يرجى المحاولة مرة أخرى.')}
+            </div>
+          )}
+
+          {!loading && !error && (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50/80">
+                  <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Factory Code', 'كود المصنع')}</th>
+                  <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Factory Name', 'اسم المصنع')}</th>
+                  <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('City', 'المدينة')}</th>
+                  <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Region', 'المنطقة')}</th>
+                  <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Activity', 'النشاط')}</th>
+                  <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Product', 'المنتج')}</th>
+                  <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('HS Code', 'كود النظام المنسق')}</th>
                 </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="empty-state py-12 text-center text-gray-400">
-                    {t('No factory codes match your search.', 'لا توجد أكواد مطابقة لبحثك.')}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {results.map(fc => (
+                  <tr key={fc.id} className="border-b border-gray-100 table-row-hover">
+                    <td className="px-4 py-3 font-mono text-brand-700 font-medium">{fc.factory_code}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-gray-900">{fc.factory_name}</div>
+                      {fc.factory_name_ar && (
+                        <div className="text-xs text-gray-400 mt-0.5">{fc.factory_name_ar}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{fc.city}</td>
+                    <td className="px-4 py-3">
+                      <span className="status-badge bg-blue-50 text-blue-700">{fc.region}</span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{fc.activity}</td>
+                    <td className="px-4 py-3 text-gray-600">{fc.product}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-500">{fc.hs_code}</td>
+                  </tr>
+                ))}
+                {results.length === 0 && !loading && debouncedSearch && (
+                  <tr>
+                    <td colSpan={7} className="empty-state py-12 text-center text-gray-400">
+                      {t('No factory codes match your search.', 'لا توجد أكواد مطابقة لبحثك.')}
+                    </td>
+                  </tr>
+                )}
+                {!debouncedSearch && results.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="empty-state py-12 text-center text-gray-400">
+                      {t('Type in the search box to find factory codes.', 'اكتب في مربع البحث للعثور على أكواد المصانع.')}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

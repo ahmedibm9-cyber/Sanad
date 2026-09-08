@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Bell, CheckCheck, Filter, Clock, AlertTriangle, FileText,
   CheckCircle, AlertCircle, Upload, Shield, Archive, Users,
@@ -6,8 +6,9 @@ import {
 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useApp } from '../contexts/AppContext'
-import { notifications } from '../data/mockData'
+import { useNotifications } from '../hooks/useData'
 import type { Notification } from '../types'
+import type { Notification as DbNotification } from '../lib/data'
 
 const typeIcons: Record<string, React.ReactNode> = {
   task_assigned: <CheckCircle className="w-5 h-5 text-blue-600" />,
@@ -66,9 +67,31 @@ function formatTimeAgo(dateStr: string): string {
 export default function NotificationsPage() {
   const { t } = useLanguage()
   const { currentUser } = useApp()
-  const [notifs, setNotifs] = useState<Notification[]>(notifications)
+
+  const { data: dbNotifications = [], loading } = useNotifications(currentUser.id)
+
+  // Map Supabase Notification to UI Notification type
+  const mappedNotifications = useMemo<Notification[]>(() => {
+    return (dbNotifications ?? []).map((n: DbNotification) => ({
+      id: n.id,
+      type: n.type,
+      title: n.title,
+      message: n.body ?? '',
+      read: !!n.read_at,
+      createdAt: n.created_at,
+      entityId: n.entity_id ?? undefined,
+      entityType: n.entity_type ?? undefined,
+    }))
+  }, [dbNotifications])
+
+  const [notifs, setNotifs] = useState<Notification[]>(mappedNotifications)
   const [typeFilter, setTypeFilter] = useState('')
   const [showUnreadOnly, setShowUnreadOnly] = useState(false)
+
+  // Sync hook data into local state when it loads
+  useEffect(() => {
+    setNotifs(mappedNotifications)
+  }, [mappedNotifications])
 
   const filtered = useMemo(() => {
     return notifs.filter(n => {
@@ -103,7 +126,9 @@ export default function NotificationsPage() {
               )}
             </div>
             <p className="text-sm text-gray-500 mt-1">
-              {t('Stay updated on project and system activities', 'تابع أحدث أنشطة المشاريع والنظام')}
+              {loading
+                ? t('Loading notifications...', 'جارٍ تحميل الإشعارات...')
+                : t('Stay updated on project and system activities', 'تابع أحدث أنشطة المشاريع والنظام')}
             </p>
           </div>
           <button

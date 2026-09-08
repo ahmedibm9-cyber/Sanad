@@ -2,7 +2,8 @@ import { Fragment, useState, useMemo } from 'react'
 import { Search, ChevronDown, ChevronRight, Clock, User, FileText, Edit3, Trash2, Archive, Download, Upload, RotateCcw, Shield, Database, Key, ArrowRight, ChevronDown as ChevronDownSmall } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
-import { activityLog } from '../data/mockData'
+import { useAuditEvents } from '../hooks/useData'
+import type { AuditEvent } from '../lib/data'
 
 const actionIcons: Record<string, React.ReactNode> = {
   CREATE: <FileText className="w-4 h-4 text-green-600" />,
@@ -37,6 +38,25 @@ const actionColors: Record<string, string> = {
 export default function ActivityPage() {
   const { t } = useLanguage()
   const { currentCompany } = useCompany()
+
+  const { data: auditEvents = [], loading } = useAuditEvents(currentCompany.id)
+
+  // Map Supabase AuditEvent to local ActivityLogEntry shape
+  const activityLog = useMemo(() => {
+    return (auditEvents ?? []).map((e: AuditEvent) => ({
+      id: e.id,
+      userId: e.actor_user_id,
+      userName: e.actor_user_id, // No name field in AuditEvent; display user ID
+      companyId: e.company_id ?? '',
+      action: e.action,
+      entityType: e.entity_type,
+      entityId: e.entity_id ?? '',
+      entityRef: e.entity_reference ?? undefined,
+      before: e.before_json ?? undefined,
+      after: e.after_json ?? undefined,
+      timestamp: e.created_at,
+    }))
+  }, [auditEvents])
 
   const [userSearch, setUserSearch] = useState('')
   const [entitySearch, setEntitySearch] = useState('')
@@ -130,7 +150,9 @@ export default function ActivityPage() {
       <div className="flex-shrink-0 px-6 pt-6 pb-4">
         <h1 className="text-2xl font-bold text-gray-900">{t('Activity Log', 'سجل النشاط')}</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {t('Track all user actions and system events', 'تتبع جميع إجراءات المستخدمين والأحداث')}
+          {loading
+            ? t('Loading activity data...', 'جارٍ تحميل بيانات النشاط...')
+            : t('Track all user actions and system events', 'تتبع جميع إجراءات المستخدمين والأحداث')}
         </p>
       </div>
 

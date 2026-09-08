@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
-import { projects, customersFulla } from '../data/mockData'
+import { useWorkItems, useCustomers } from '../hooks/useData'
 import type { DocumentType } from '../types'
 import {
   ArrowLeft, Printer, Download, FileText, Languages,
@@ -488,9 +488,14 @@ export default function DocumentPreviewPage() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
 
+  const { data: workItems } = useWorkItems(currentCompany.id)
+  const { data: customers } = useCustomers(currentCompany.id)
+  const workItemsList = workItems ?? []
+  const customersList = customers ?? []
+
   const typeFromUrl = (searchParams.get('type') || 'CINV') as DocumentType
   const projectId = searchParams.get('projectId') || 'proj-1'
-  const project = projects.find(p => p.id === projectId) || projects[0]
+  const project = workItemsList.find(p => p.id === projectId) || workItemsList[0]
 
   /* ── state ─────────────────────────────────────────── */
   const [template, setTemplate] = useState<'template-a' | 'template-b'>(
@@ -498,54 +503,44 @@ export default function DocumentPreviewPage() {
   )
   const [previewLang, setPreviewLang] = useState<'en' | 'ar'>('en')
 
-  /* ── build document data from mock + project ───────── */
+  /* ── build document data from project + hooks ──────── */
   const docData: DocPreviewData = useMemo(() => {
-    const existingDoc = project.documents.find(d => d.id === id)
-    const docType = existingDoc?.type || typeFromUrl
+    if (!project) return sampleDoc
+    const docType = typeFromUrl
 
-    // Build realistic item data from project materials
-    const items = project.materials.length > 0
-      ? project.materials.map(m => ({
-          material: m.materialName,
-          description: m.grade || '',
-          hsCode: m.hsCode || '',
-          origin: m.origin || 'Saudi Arabia',
-          quantity: m.quantity,
-          unit: m.weightUnit,
-          unitPrice: m.unitPrice,
-          currency: m.currency,
-          total: m.quantity * m.unitPrice,
-        }))
-      : [{
-          material: 'HDPE 952',
-          description: 'Blow Molding Grade',
-          hsCode: '3901.20',
-          origin: 'Saudi Arabia',
-          quantity: 50,
-          unit: 'MT',
-          unitPrice: 1050,
-          currency: 'SAR',
-          total: 52500,
-        }]
+    // Build item data — service WorkItem doesn't include materials inline,
+    // so fall back to sample items. A dedicated useWorkItemMaterials() call
+    // can be added later to populate real line items.
+    const items = [{
+      material: 'HDPE 952',
+      description: 'Blow Molding Grade',
+      hsCode: '3901.20',
+      origin: 'Saudi Arabia',
+      quantity: 50,
+      unit: 'MT',
+      unitPrice: 1050,
+      currency: 'SAR',
+      total: 52500,
+    }]
 
-    const subtotal = items.reduce((s, i) => s + i.total, 0)
-    const vatRate = existingDoc?.vatRate ?? 0
+    const subtotal = items.reduce((s: number, i: DocPreviewItem) => s + i.total, 0)
+    const vatRate = 0
     const vatAmount = Math.round(subtotal * (vatRate / 100) * 100) / 100
 
-    const customer = customersFulla.find(c => c.id === project.customerId) || customersFulla[0]
+    const customer = customersList.find(c => c.id === project.customer_id) || customersList[0]
 
     return {
-      id: existingDoc?.id || id || 'doc-preview',
+      id: id || 'doc-preview',
       type: docType,
-      number: existingDoc?.number || `${docType}-${new Date().getFullYear()}-013`,
-      date: existingDoc?.date || '2024-11-25',
-      language: existingDoc?.language || 'en',
-      template: existingDoc?.template || template,
-      preparedBy: existingDoc?.preparedBy || 'Mohamed Al-Hassan',
-      showSignature: existingDoc?.showSignature ?? true,
-      showStamp: existingDoc?.showStamp ?? true,
+      number: `${docType}-${new Date().getFullYear()}-013`,
+      date: new Date().toISOString().split('T')[0],
+      language: 'en' as const,
+      template,
+      preparedBy: 'Mohamed Al-Hassan',
+      showSignature: true,
+      showStamp: true,
       vatRate,
-      status: existingDoc?.status || 'draft',
+      status: 'draft' as const,
       notes: '',
       terms: 'Payment to be effected within 30 days from the date of invoice. Goods remain property of the seller until full payment is received. In case of dispute, the courts of Riyadh shall have jurisdiction.',
       items,
@@ -565,16 +560,16 @@ export default function DocumentPreviewPage() {
         swift: currentCompany.swift || '',
       },
       buyer: {
-        name: customer.name,
-        nameAr: customer.nameAr || customer.name,
-        address: customer.address || '',
-        contactPerson: customer.contactPerson || '',
+        name: customer?.name || '',
+        nameAr: customer?.name_ar || customer?.name || '',
+        address: customer?.address || '',
+        contactPerson: customer?.contact_person || '',
       },
       incoterm: project.incoterm || currentCompany.defaultIncoterm || 'FOB',
-      portOfLoading: project.portOfLoading || 'Jubail Port, Saudi Arabia',
-      portOfDischarge: project.portOfDischarge || 'Jebel Ali Port, Dubai, UAE',
+      portOfLoading: project.port_of_loading || 'Jubail Port, Saudi Arabia',
+      portOfDischarge: project.port_of_discharge || 'Jebel Ali Port, Dubai, UAE',
     }
-  }, [id, typeFromUrl, project, currentCompany, template])
+  }, [id, typeFromUrl, project, currentCompany, template, customersList])
 
   /* ── print ─────────────────────────────────────────── */
   const handlePrint = useCallback(() => {

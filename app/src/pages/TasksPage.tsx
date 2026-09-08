@@ -9,18 +9,17 @@ import {
   ArrowRight,
   Filter,
   X,
-  FolderOpen,
   ArrowRightLeft,
   ClipboardList,
   Pin,
-  RotateCcw,
 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
-import { getTasksByCompany, getCustomersByCompany } from '../data/mockData'
+import { useWorkItems, useCustomers, useCreateWorkItem, useUpdateWorkItem } from '../hooks/useData'
 import ProjectFormModal from '../components/projects/ProjectFormModal'
 import ConfirmModal from '../components/common/ConfirmModal'
-import type { WorkItemStatus, WorkItem } from '../types'
+import type { WorkItemStatus, WorkItem as FrontendWorkItem } from '../types'
+import type { WorkItem as DataWorkItem } from '../lib/services/workItem'
 
 const STATUS_OPTIONS: { value: WorkItemStatus; label: string; labelAr: string; colorClass: string }[] = [
   { value: 'in_progress', label: 'In Progress', labelAr: 'قيد التنفيذ', colorClass: 'bg-blue-50 text-blue-700' },
@@ -29,7 +28,7 @@ const STATUS_OPTIONS: { value: WorkItemStatus; label: string; labelAr: string; c
   { value: 'archived', label: 'Archived', labelAr: 'مؤرشفة', colorClass: 'bg-gray-100 text-gray-600' },
 ]
 
-function getStatusBadge(status: WorkItemStatus) {
+function getStatusBadge(status: string) {
   const opt = STATUS_OPTIONS.find((s) => s.value === status)
   return opt || STATUS_OPTIONS[0]
 }
@@ -44,23 +43,27 @@ export default function TasksPage() {
   const [showStatusFilter, setShowStatusFilter] = useState(false)
   const [archivedExpanded, setArchivedExpanded] = useState(false)
   const [showTaskForm, setShowTaskForm] = useState(false)
-  const [taskItems, setTaskItems] = useState<WorkItem[]>(() => getTasksByCompany(currentCompany.id))
-  const [convertingTask, setConvertingTask] = useState<WorkItem | null>(null)
+  const [convertingTask, setConvertingTask] = useState<DataWorkItem | null>(null)
 
-  const allTasks = taskItems
-  const customers = getCustomersByCompany(currentCompany.id)
+  const { data: tasksData, loading, refetch } = useWorkItems(currentCompany.id, 'task')
+  const { data: customersData } = useCustomers(currentCompany.id)
+  const { create: createWorkItem, loading: creating } = useCreateWorkItem()
+  const { update: updateWorkItem } = useUpdateWorkItem()
+
+  const allTasks = tasksData || []
+  const customers = customersData || []
 
   // Filter logic
   const filteredTasks = useMemo(() => {
     return allTasks.filter((p) => {
       if (p.status === 'archived') return false
-      if (selectedStatuses.length > 0 && !selectedStatuses.includes(p.status)) return false
-      if (selectedCustomerId && p.customerId !== selectedCustomerId) return false
+      if (selectedStatuses.length > 0 && !selectedStatuses.includes(p.status as WorkItemStatus)) return false
+      if (selectedCustomerId && p.customer_id !== selectedCustomerId) return false
       if (searchQuery) {
         const q = searchQuery.toLowerCase()
         return (
           p.name.toLowerCase().includes(q) ||
-          (p.customerName || '').toLowerCase().includes(q)
+          (p.customer_name || '').toLowerCase().includes(q)
         )
       }
       return true
@@ -74,7 +77,7 @@ export default function TasksPage() {
         const q = searchQuery.toLowerCase()
         return (
           p.name.toLowerCase().includes(q) ||
-          (p.customerName || '').toLowerCase().includes(q)
+          (p.customer_name || '').toLowerCase().includes(q)
         )
       }
       return true
@@ -96,6 +99,30 @@ export default function TasksPage() {
     setSearchQuery('')
   }
 
+  async function handleTogglePin(task: DataWorkItem) {
+    await updateWorkItem(task.id, { pinned: !task.pinned })
+    refetch()
+  }
+
+  async function handleConvertToProject() {
+    if (convertingTask) {
+      await updateWorkItem(convertingTask.id, { type: 'project' } as Partial<DataWorkItem>)
+      refetch()
+      setConvertingTask(null)
+    }
+  }
+
+  async function handleCreateTask(formData: Partial<FrontendWorkItem>) {
+    await createWorkItem({
+      type: 'task',
+      name: formData.name || 'New Task',
+      customer_id: formData.customerId || null,
+      status: 'in_progress',
+    }, currentCompany.id)
+    refetch()
+    setShowTaskForm(false)
+  }
+
   return (
     <>
     <div className="space-y-6">
@@ -113,7 +140,7 @@ export default function TasksPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => { if (taskItems.length > 0) setConvertingTask(taskItems[0]) }} className="btn-secondary">
+          <button onClick={() => { if (allTasks.length > 0) setConvertingTask(allTasks[0]) }} className="btn-secondary">
             <ArrowRightLeft className="w-4 h-4 ms-1.5" />
             {t('Convert to Project', 'تحويل إلى مشروع')}
           </button>
@@ -222,100 +249,110 @@ export default function TasksPage() {
         )}
       </div>
 
-      {/* Tasks Table */}
-      <div className="card overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-brand-900">
-            {t('All Tasks', 'جميع المهام')}
-            <span className="ms-2 text-gray-400 font-normal">({filteredTasks.length})</span>
-          </h2>
+      {/* Loading State */}
+      {loading && (
+        <div className="card p-8 text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-brand-200 border-t-brand-600 rounded-full mx-auto mb-3" />
+          <p className="text-gray-400">{t('Loading tasks...', 'جاري تحميل المهام...')}</p>
         </div>
-        {filteredTasks.length === 0 && archivedTasks.length === 0 ? (
-          <div className="empty-state">
-            <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400">{t('No tasks found', 'لم يتم العثور على مهام')}</p>
+      )}
+
+      {/* Tasks Table */}
+      {!loading && (
+        <div className="card overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-brand-900">
+              {t('All Tasks', 'جميع المهام')}
+              <span className="ms-2 text-gray-400 font-normal">({filteredTasks.length})</span>
+            </h2>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100 bg-sand-50/50">
-                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
-                    {t('Task', 'المهمة')}
-                  </th>
-                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
-                    {t('Customer', 'العميل')}
-                  </th>
-                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
-                    {t('Status', 'الحالة')}
-                  </th>
-                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
-                    {t('Created by', 'أنشأه')}
-                  </th>
-                  <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
-                    {t('Date', 'التاريخ')}
-                  </th>
-                  <th className="w-10 px-5 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredTasks.map((task) => {
-                  const statusOpt = getStatusBadge(task.status)
-                  return (
-                    <tr
-                      key={task.id}
-                      className="table-row-hover"
-                    >
-                      <td className="px-5 py-3.5">
-                        <Link
-                          to={`/tasks/${task.id}`}
-                          className="text-sm font-medium text-brand-900 hover:text-brand-600 transition-colors"
-                        >
-                          {task.name}
-                        </Link>
-                      </td>
-                      <td className="px-5 py-3.5 text-sm text-gray-600">
-                        {task.customerName || '—'}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className={`status-badge ${statusOpt.colorClass}`}>
-                          {t(statusOpt.label, statusOpt.labelAr)}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 text-sm text-gray-600">
-                        {task.createdBy || '—'}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1 text-xs text-gray-400">
-                          <Calendar className="w-3.5 h-3.5" />
-                          {new Date(task.createdAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => setTaskItems(prev => prev.map(t => t.id === task.id ? { ...t, isPinned: !t.isPinned } : t))} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-amber-500" title={task.isPinned ? t('Unpin', 'إلغاء التثبيت') : t('Pin', 'تثبيت')}>
-                            <Pin className={`w-4 h-4 ${task.isPinned ? 'fill-amber-400 text-amber-500' : ''}`} />
-                          </button>
-                          <Link to={`/tasks/${task.id}`} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-brand-600 transition-colors">
-                            <ArrowRight className="w-4 h-4" />
+          {filteredTasks.length === 0 && archivedTasks.length === 0 ? (
+            <div className="empty-state">
+              <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-400">{t('No tasks found', 'لم يتم العثور على مهام')}</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-sand-50/50">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                      {t('Task', 'المهمة')}
+                    </th>
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                      {t('Customer', 'العميل')}
+                    </th>
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                      {t('Status', 'الحالة')}
+                    </th>
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                      {t('Created by', 'أنشأه')}
+                    </th>
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                      {t('Date', 'التاريخ')}
+                    </th>
+                    <th className="w-10 px-5 py-3" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredTasks.map((task) => {
+                    const statusOpt = getStatusBadge(task.status)
+                    return (
+                      <tr
+                        key={task.id}
+                        className="table-row-hover"
+                      >
+                        <td className="px-5 py-3.5">
+                          <Link
+                            to={`/tasks/${task.id}`}
+                            className="text-sm font-medium text-brand-900 hover:text-brand-600 transition-colors"
+                          >
+                            {task.name}
                           </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                        </td>
+                        <td className="px-5 py-3.5 text-sm text-gray-600">
+                          {task.customer_name || '—'}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <span className={`status-badge ${statusOpt.colorClass}`}>
+                            {t(statusOpt.label, statusOpt.labelAr)}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 text-sm text-gray-600">
+                          {task.created_by || '—'}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-1 text-xs text-gray-400">
+                            <Calendar className="w-3.5 h-3.5" />
+                            {new Date(task.created_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => handleTogglePin(task)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-amber-500" title={task.pinned ? t('Unpin', 'إلغاء التثبيت') : t('Pin', 'تثبيت')}>
+                              <Pin className={`w-4 h-4 ${task.pinned ? 'fill-amber-400 text-amber-500' : ''}`} />
+                            </button>
+                            <Link to={`/tasks/${task.id}`} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-brand-600 transition-colors">
+                              <ArrowRight className="w-4 h-4" />
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Archived Section (Collapsible) */}
-      {archivedTasks.length > 0 && (
+      {!loading && archivedTasks.length > 0 && (
         <div className="card overflow-hidden">
           <button
             className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-sand-50/50 transition-colors"
@@ -367,10 +404,10 @@ export default function TasksPage() {
                         </Link>
                       </td>
                       <td className="px-5 py-3 text-sm text-gray-500">
-                        {task.customerName || '—'}
+                        {task.customer_name || '—'}
                       </td>
                       <td className="px-5 py-3 text-xs text-gray-400">
-                        {new Date(task.createdAt).toLocaleDateString('en-US', {
+                        {new Date(task.created_at).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
@@ -393,23 +430,8 @@ export default function TasksPage() {
         </div>
       )}
     </div>
-    <ProjectFormModal open={showTaskForm} onClose={() => setShowTaskForm(false)} onSave={(data) => {
-      const newTask: WorkItem = {
-        id: `task-new-${Date.now()}`, type: 'task', companyId: currentCompany.id,
-        name: data.name || 'New Task', customerId: data.customerId, customerName: data.customerName,
-        status: 'in_progress', materials: data.materials || [],
-        documents: [], attachments: [], reportIssues: [], projectNotes: [],
-        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), createdBy: 'Mohamed Al-Hassan',
-      }
-      setTaskItems(prev => [newTask, ...prev])
-      setShowTaskForm(false)
-    }} mode="task" />
-    <ConfirmModal open={!!convertingTask} onClose={() => setConvertingTask(null)} onConfirm={() => {
-      if (convertingTask) {
-        setTaskItems(prev => prev.map(t => t.id === convertingTask.id ? { ...t, type: 'project' as const } : t))
-        setConvertingTask(null)
-      }
-    }} title={t('Convert Task to Project', 'تحويل المهمة إلى مشروع')} message={t(`Convert "${convertingTask?.name}" from a Task to a Project?`, `تحويل "${convertingTask?.name}" من مهمة إلى مشروع؟`)} details={t('All data, documents, and attachments will be preserved.', 'جميع البيانات والمستندات والمرفقات ستبقى محفوظة.')} confirmLabel={t('Convert to Project', 'تحويل إلى مشروع')} cancelLabel={t('Cancel', 'إلغاء')} variant="info" />
+    <ProjectFormModal open={showTaskForm} onClose={() => setShowTaskForm(false)} onSave={handleCreateTask} mode="task" />
+    <ConfirmModal open={!!convertingTask} onClose={() => setConvertingTask(null)} onConfirm={handleConvertToProject} title={t('Convert Task to Project', 'تحويل المهمة إلى مشروع')} message={t(`Convert "${convertingTask?.name}" from a Task to a Project?`, `تحويل "${convertingTask?.name}" من مهمة إلى مشروع؟`)} details={t('All data, documents, and attachments will be preserved.', 'جميع البيانات والمستندات والمرفقات ستبقى محفوظة.')} confirmLabel={t('Convert to Project', 'تحويل إلى مشروع')} cancelLabel={t('Cancel', 'إلغاء')} variant="info" />
     </>
   )
 }

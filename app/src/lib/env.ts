@@ -53,7 +53,10 @@ function getValidatedClientEnv(): ClientEnvironment {
   const supabaseUrl = validateRequired(import.meta.env.VITE_SUPABASE_URL, 'VITE_SUPABASE_URL')
   validateUrl(supabaseUrl, 'VITE_SUPABASE_URL')
 
-  const supabaseAnonKey = validateRequired(import.meta.env.VITE_SUPABASE_ANON_KEY, 'VITE_SUPABASE_ANON_KEY')
+  const supabaseAnonKey = validateRequired(
+    import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+    'VITE_SUPABASE_ANON_KEY or VITE_SUPABASE_PUBLISHABLE_KEY'
+  )
 
   _clientEnv = {
     supabaseUrl,

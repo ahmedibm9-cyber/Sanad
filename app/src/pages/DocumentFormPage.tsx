@@ -3,7 +3,7 @@ import { useSearchParams, useParams, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { useApp } from '../contexts/AppContext'
-import { projects, customersFulla } from '../data/mockData'
+import { useWorkItems, useCustomers } from '../hooks/useData'
 import FormSection from '../components/common/FormSection'
 import type { DocumentType, ProjectMaterial } from '../types'
 import {
@@ -64,8 +64,15 @@ export default function DocumentFormPage() {
 
   const typeFromUrl = (searchParams.get('type') || 'QUOT') as DocumentType
   const projectId = searchParams.get('projectId') || 'proj-1'
-  const project = projects.find(p => p.id === projectId) || projects[0]
-  const customer = customersFulla.find(c => c.id === project.customerId) || customersFulla[0]
+
+  const { data: workItemsRaw } = useWorkItems(currentCompany.id)
+  const { data: customersRaw } = useCustomers(currentCompany.id)
+
+  const workItems = workItemsRaw || []
+  const customersList = customersRaw || []
+
+  const project = workItems.find((p: any) => p.id === projectId) || workItems[0]
+  const customer = customersList.find((c: any) => c.id === project?.customer_id) || customersList[0]
 
   /* ── form state ─────────────────────────────────────── */
   const [docType] = useState<DocumentType>(typeFromUrl)
@@ -101,11 +108,11 @@ export default function DocumentFormPage() {
   ])
 
   // Shipping
-  const [vesselName, setVesselName] = useState(project.vesselName || 'MV Pacific Star')
-  const [voyageNumber, setVoyageNumber] = useState(project.voyageNumber || 'PS-2024-0412')
-  const [portOfLoading, setPortOfLoading] = useState(project.portOfLoading || 'Jubail Port')
-  const [portOfDischarge, setPortOfDischarge] = useState(project.portOfDischarge || 'Jebel Ali Port')
-  const [containerNumber, setContainerNumber] = useState(project.containerNumber || 'MSKU 7283456')
+  const [vesselName, setVesselName] = useState(project.vessel_name || 'MV Pacific Star')
+  const [voyageNumber, setVoyageNumber] = useState(project.voyage_number || 'PS-2024-0412')
+  const [portOfLoading, setPortOfLoading] = useState(project.port_of_loading || 'Jubail Port')
+  const [portOfDischarge, setPortOfDischarge] = useState(project.port_of_discharge || 'Jebel Ali Port')
+  const [containerNumber, setContainerNumber] = useState(project.container_number || 'MSKU 7283456')
   const [sealNumber, setSealNumber] = useState('SH-2024-8891')
   const [marksAndNumbers, setMarksAndNumbers] = useState('N/M')
   const [freightTerms, setFreightTerms] = useState('Freight Collect')
@@ -339,7 +346,7 @@ export default function DocumentFormPage() {
           <>
             <div>
               <label className="label-field">{t('Contact Person', 'جهة الاتصال')}</label>
-              <input type="text" className="input-field bg-gray-50" value={customer.contactPerson || '—'} readOnly />
+              <input type="text" className="input-field bg-gray-50" value={customer.contact_person || '—'} readOnly />
             </div>
             <div>
               <label className="label-field">{t('Country', 'الدولة')}</label>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -9,7 +9,6 @@ import {
   AlertTriangle,
   MessageSquare,
   Calendar,
-  Package,
   ArrowRightLeft,
   ExternalLink,
   Printer,
@@ -18,13 +17,20 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
 import { useApp } from '../contexts/AppContext'
-import { getTasksByCompany, getProjectsByCompany } from '../data/mockData'
+import {
+  useWorkItemById,
+  useDocuments,
+  useNotes,
+  useReportIssues,
+  useAttachments,
+  useWorkItemMaterials,
+} from '../hooks/useData'
 import AttachmentUploadModal from '../components/common/AttachmentUploadModal'
 import ConfirmModal from '../components/common/ConfirmModal'
 import ProjectFormModal from '../components/projects/ProjectFormModal'
 import type { WorkItemStatus, Document, ProjectNote, ReportIssue } from '../types'
+import type { WorkItemMaterial, Document as DbDocument, Note, ReportIssue as DbReportIssue, Attachment as DbAttachment } from '../lib/data'
 
 const STATUS_OPTIONS: { value: WorkItemStatus; label: string; colorClass: string; labelAr: string }[] = [
   { value: 'in_progress', label: 'In Progress', labelAr: 'قيد التنفيذ', colorClass: 'bg-blue-50 text-blue-700' },
@@ -68,20 +74,128 @@ export default function TaskDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { t } = useLanguage()
-  const { currentCompany } = useCompany()
   const { currentUser } = useApp()
 
-  const allTasks = getTasksByCompany(currentCompany.id)
-  const [taskItems, setTaskItems] = useState(allTasks)
-  const task = taskItems.find((tk) => tk.id === id)
+  // Fetch work item from Supabase
+  const { data: dbTask, loading: taskLoading } = useWorkItemById(id)
+  const { data: dbDocs = [] } = useDocuments(id)
+  const { data: dbNotes = [] } = useNotes(id)
+  const { data: dbIssues = [] } = useReportIssues(id)
+  const { data: dbAttachments = [] } = useAttachments(id)
+  const { data: dbMaterials = [] } = useWorkItemMaterials(id)
+
+  // Map Supabase data to UI types
+  const task = useMemo(() => {
+    if (!dbTask) return null
+    return {
+      id: dbTask.id,
+      type: dbTask.type as 'task' | 'project',
+      companyId: dbTask.company_id,
+      name: dbTask.name,
+      customerId: dbTask.customer_id ?? undefined,
+      customerName: dbTask.customer_name ?? undefined,
+      status: dbTask.status as WorkItemStatus,
+      isPinned: dbTask.pinned,
+      materials: [] as import('../types').ProjectMaterial[],
+      destinationCountry: dbTask.destination_country ?? undefined,
+      destinationCity: dbTask.destination_city ?? undefined,
+      currency: dbTask.currency ?? undefined,
+      incoterm: dbTask.incoterm ?? undefined,
+      paymentTerms: dbTask.payment_terms ?? undefined,
+      deliveryTerms: dbTask.delivery_terms ?? undefined,
+      portOfLoading: dbTask.port_of_loading ?? undefined,
+      portOfDischarge: dbTask.port_of_discharge ?? undefined,
+      vesselName: dbTask.vessel_name ?? undefined,
+      voyageNumber: dbTask.voyage_number ?? undefined,
+      containerNumber: dbTask.container_number ?? undefined,
+      createdAt: dbTask.created_at,
+      updatedAt: dbTask.updated_at,
+      createdBy: dbTask.created_by ?? undefined,
+      documents: [] as Document[],
+      attachments: [] as import('../types').Attachment[],
+      reportIssues: [] as ReportIssue[],
+      projectNotes: [] as ProjectNote[],
+    }
+  }, [dbTask])
+
+  // Map materials
+  const mappedMaterials = useMemo(() => {
+    return (dbMaterials ?? []).map((m: WorkItemMaterial) => ({
+      id: m.id,
+      materialId: m.material_id ?? '',
+      materialName: m.description_override ?? '',
+      grade: undefined,
+      quantity: m.quantity,
+      weightUnit: m.weight_unit,
+      unitPrice: m.price ?? 0,
+      currency: m.currency ?? 'SAR',
+      packing: m.packing_description ?? undefined,
+      packingUnit: m.packing_unit ?? undefined,
+      origin: m.origin ?? undefined,
+      hsCode: m.hs_code ?? undefined,
+    }))
+  }, [dbMaterials])
+
+  // Map documents
+  const mappedDocs = useMemo<Document[]>(() => {
+    return (dbDocs ?? []).map((d: DbDocument) => ({
+      id: d.id,
+      companyId: d.company_id,
+      workItemId: d.work_item_id,
+      type: d.document_type as Document['type'],
+      number: d.document_number,
+      date: d.created_date,
+      language: (d.language || 'en') as 'en' | 'ar',
+      template: (d.template_key || 'template-a') as 'template-a' | 'template-b',
+      preparedBy: d.prepared_by ?? undefined,
+      status: d.status as 'draft' | 'final',
+      materials: [],
+      createdAt: d.created_at,
+      updatedAt: d.updated_at,
+    }))
+  }, [dbDocs])
+
+  // Map notes
+  const mappedNotes = useMemo<ProjectNote[]>(() => {
+    return (dbNotes ?? []).map((n: Note) => ({
+      id: n.id,
+      content: n.body,
+      author: n.author_user_id,
+      createdAt: n.created_at,
+    }))
+  }, [dbNotes])
+
+  // Map issues
+  const mappedIssues = useMemo<ReportIssue[]>(() => {
+    return (dbIssues ?? []).map((i: DbReportIssue) => ({
+      id: i.id,
+      description: i.body,
+      severity: i.severity as ReportIssue['severity'],
+      status: i.status as ReportIssue['status'],
+      reporter: i.reporter_user_id,
+      createdAt: i.created_at,
+    }))
+  }, [dbIssues])
+
+  // Map attachments
+  const mappedAttachments = useMemo(() => {
+    return (dbAttachments ?? []).map((a: DbAttachment) => ({
+      id: a.id,
+      name: a.original_name,
+      type: a.mime_type ?? 'application/octet-stream',
+      size: a.size ?? 0,
+      uploadedBy: a.uploaded_by ?? undefined,
+      uploadedAt: a.created_at,
+    }))
+  }, [dbAttachments])
 
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [showInvoiceDropdown, setShowInvoiceDropdown] = useState(false)
   const [showAttachmentModal, setShowAttachmentModal] = useState(false)
-  const [attachments, setAttachments] = useState(task?.attachments || [])
-  const [taskNotes, setTaskNotes] = useState<ProjectNote[]>(task?.projectNotes || [])
-  const [taskIssues, setTaskIssues] = useState<ReportIssue[]>(task?.reportIssues || [])
-  const [taskDocs, setTaskDocs] = useState<Document[]>(task?.documents || [])
+  const [attachments, setAttachments] = useState(mappedAttachments)
+  const [taskNotes, setTaskNotes] = useState<ProjectNote[]>(mappedNotes)
+  const [taskIssues, setTaskIssues] = useState<ReportIssue[]>(mappedIssues)
+  const [taskDocs, setTaskDocs] = useState<Document[]>(mappedDocs)
   const [newNote, setNewNote] = useState('')
   const [showNoteForm, setShowNoteForm] = useState(false)
   const [showIssueForm, setShowIssueForm] = useState(false)
@@ -90,6 +204,29 @@ export default function TaskDetailPage() {
   const [showConvertModal, setShowConvertModal] = useState(false)
   const [showEditForm, setShowEditForm] = useState(false)
   const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(null)
+
+  // Sync hook data into local state when it loads
+  useEffect(() => {
+    setAttachments(mappedAttachments)
+  }, [mappedAttachments])
+  useEffect(() => {
+    setTaskNotes(mappedNotes)
+  }, [mappedNotes])
+  useEffect(() => {
+    setTaskIssues(mappedIssues)
+  }, [mappedIssues])
+  useEffect(() => {
+    setTaskDocs(mappedDocs)
+  }, [mappedDocs])
+
+  if (taskLoading) {
+    return (
+      <div className="text-center py-20">
+        <div className="animate-spin w-8 h-8 border-4 border-brand-200 border-t-brand-700 rounded-full mx-auto mb-4" />
+        <p className="text-gray-400">{t('Loading...', 'جارٍ التحميل...')}</p>
+      </div>
+    )
+  }
 
   if (!task) {
     return (
@@ -104,7 +241,7 @@ export default function TaskDetailPage() {
   }
 
   const statusOpt = getStatusBadge(task.status)
-  const totalValue = task.materials.reduce((s, m) => s + m.quantity * m.unitPrice, 0)
+  const totalValue = mappedMaterials.reduce((s, m) => s + m.quantity * m.unitPrice, 0)
 
   return (
     <>
@@ -229,12 +366,12 @@ export default function TaskDetailPage() {
             </div>
 
             {/* Materials Table (if any) */}
-            {task.materials.length > 0 && (
+            {mappedMaterials.length > 0 && (
               <div className="card overflow-hidden">
                 <div className="px-5 py-3 border-b border-gray-100">
                   <h3 className="text-sm font-semibold text-brand-900 uppercase tracking-wide">
                     {t('Related Materials', 'المواد المرتبطة')}
-                    <span className="ms-2 text-gray-400 font-normal normal-case">({task.materials.length})</span>
+                    <span className="ms-2 text-gray-400 font-normal normal-case">({mappedMaterials.length})</span>
                   </h3>
                 </div>
                 <div className="overflow-x-auto">
@@ -256,7 +393,7 @@ export default function TaskDetailPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {task.materials.map((mat) => (
+                      {mappedMaterials.map((mat) => (
                         <tr key={mat.id} className="table-row-hover">
                           <td className="px-5 py-3">
                             <p className="text-sm font-medium text-brand-900">{mat.materialName}</p>
@@ -699,7 +836,7 @@ export default function TaskDetailPage() {
       open={showConvertModal}
       onClose={() => setShowConvertModal(false)}
       onConfirm={() => {
-        setTaskItems(prev => prev.map(t => t.id === task.id ? {...t, type: 'project' as const} : t))
+        // TODO: Persist type change to Supabase via useUpdateWorkItem
         setShowConvertModal(false)
       }}
       title={t('Convert to Project', 'تحويل إلى مشروع')}
@@ -721,7 +858,7 @@ export default function TaskDetailPage() {
       open={showEditForm}
       onClose={() => setShowEditForm(false)}
       onSave={(data) => {
-        setTaskItems(prev => prev.map(t => t.id === task.id ? {...t, ...data} : t))
+        // TODO: Persist updates to Supabase via useUpdateWorkItem
         setShowEditForm(false)
       }}
       item={task}

@@ -2,9 +2,9 @@ import { useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
-import { getCustomersByCompany, getProjectsByCompany } from '../data/mockData'
+import { useWorkItems, useCustomerById } from '../hooks/useData'
 import CustomerFormModal from '../components/customers/CustomerFormModal'
-import type { DocumentType, Customer } from '../types'
+import type { DocumentType, Customer, WorkItem } from '../types'
 import {
   ArrowLeft, Edit3, Phone, Mail, MapPin, Building2, Calendar,
   FolderOpen, FileText, Clock, ExternalLink, User, ChevronRight,
@@ -30,20 +30,49 @@ export default function CustomerDetailPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
   const [showEditForm, setShowEditForm] = useState(false)
 
-  const customers = useMemo(
-    () => getCustomersByCompany(currentCompany.id),
-    [currentCompany.id]
-  )
-  const customer = customers.find((c) => c.id === id)
+  const { data: customer, loading: customerLoading } = useCustomerById(id)
 
-  const allProjects = useMemo(
-    () => getProjectsByCompany(currentCompany.id),
-    [currentCompany.id]
-  )
+  // Map Supabase customer to UI type for the form modal
+  const uiCustomer = useMemo<Customer | null>(() => {
+    if (!customer) return null
+    return {
+      id: customer.id,
+      companyId: customer.company_id,
+      name: customer.name,
+      contactPerson: customer.contact_person ?? undefined,
+      phone: customer.phone ?? undefined,
+      email: customer.email ?? undefined,
+      country: customer.country ?? undefined,
+      city: customer.city ?? undefined,
+      address: customer.address ?? undefined,
+      vatNumber: customer.vat_number ?? undefined,
+      notes: customer.notes ?? undefined,
+      createdAt: customer.created_at,
+    }
+  }, [customer])
 
-  const relatedProjects = useMemo(
-    () => allProjects.filter((p) => p.customerId === id),
-    [allProjects, id]
+  const { data: allWorkItems } = useWorkItems(currentCompany.id)
+
+  const relatedProjects: WorkItem[] = useMemo(
+    () => (allWorkItems ?? [])
+      .filter((p) => (p as any).customer_id === id)
+      .map((p) => ({
+        ...p,
+        customerId: (p as any).customer_id,
+        companyId: (p as any).company_id,
+        createdAt: (p as any).created_at,
+        updatedAt: (p as any).updated_at,
+        destinationCountry: (p as any).destination_country,
+        destinationCity: (p as any).destination_city,
+        customerName: (p as any).customer_name,
+        isPinned: (p as any).pinned,
+        materials: (p as any).materials ?? [],
+        documents: (p as any).documents ?? [],
+        attachments: (p as any).attachments ?? [],
+        reportIssues: (p as any).report_issues ?? [],
+        projectNotes: (p as any).project_notes ?? [],
+      })) as WorkItem[],
+    [allWorkItems, id]
   )
 
   const relatedDocuments = useMemo(() => {
@@ -62,6 +91,17 @@ export default function CustomerDetailPage() {
       return sum + p.materials.reduce((mSum, m) => mSum + m.quantity * m.unitPrice, 0)
     }, 0)
   }, [relatedProjects])
+
+  if (customerLoading) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="card p-12 text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-brand-200 border-t-brand-700 rounded-full mx-auto mb-4" />
+          <p className="text-sm text-gray-400">{t('Loading...', 'جارٍ التحميل...')}</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!customer) {
     return (
@@ -110,10 +150,10 @@ export default function CustomerDetailPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-brand-900">{customer.name}</h1>
-              {customer.contactPerson && (
+              {customer.contact_person && (
                 <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-1">
                   <User size={14} className="text-gray-400" />
-                  {customer.contactPerson}
+                  {customer.contact_person}
                 </p>
               )}
               <div className="flex items-center gap-4 mt-2 flex-wrap">
@@ -125,7 +165,7 @@ export default function CustomerDetailPage() {
                 )}
                 <span className="text-xs text-gray-400 inline-flex items-center gap-1">
                   <Calendar size={12} />
-                  {t('Since', 'منذ')} {new Date(customer.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                  {t('Since', 'منذ')} {new Date(customer.created_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
                 </span>
               </div>
             </div>
@@ -175,7 +215,7 @@ export default function CustomerDetailPage() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">{t('Contact Person', 'جهة الاتصال')}</p>
-                  <p className="text-sm font-medium text-gray-800">{customer.contactPerson || '—'}</p>
+                  <p className="text-sm font-medium text-gray-800">{customer.contact_person || '—'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -225,14 +265,14 @@ export default function CustomerDetailPage() {
                   </p>
                 </div>
               </div>
-              {customer.vatNumber && (
+              {customer.vat_number && (
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center">
                     <FileText size={14} className="text-gray-400" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">{t('VAT Number', 'الرقم الضريبي')}</p>
-                    <p className="text-sm font-medium text-gray-800">{customer.vatNumber}</p>
+                    <p className="text-sm font-medium text-gray-800">{customer.vat_number}</p>
                   </div>
                 </div>
               )}
@@ -488,7 +528,7 @@ export default function CustomerDetailPage() {
         </div>
       )}
     </div>
-    <CustomerFormModal open={showEditForm} onClose={() => setShowEditForm(false)} onSave={() => setShowEditForm(false)} customer={customer} />
+    <CustomerFormModal open={showEditForm} onClose={() => setShowEditForm(false)} onSave={() => setShowEditForm(false)} customer={uiCustomer} />
     </>
   )
 }

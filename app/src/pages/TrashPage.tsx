@@ -1,54 +1,56 @@
 import { useState, useMemo } from 'react'
-import { Search, RotateCcw, Trash2, X, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Search, RotateCcw, Trash2, AlertTriangle, CheckCircle } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
-import { trashEntries as initialTrash } from '../data/mockData'
-import type { TrashEntry } from '../types'
+import { useTrashEntries, useRestoreTrashEntry } from '../hooks/useData'
 
 export default function TrashPage() {
   const { t } = useLanguage()
   const { currentCompany } = useCompany()
 
+  const { data: trashEntries = [], loading } = useTrashEntries(currentCompany.id)
+  const { restore: restoreEntry, loading: restoring } = useRestoreTrashEntry()
+
   const [search, setSearch] = useState('')
   const [entityTypeFilter, setEntityTypeFilter] = useState('')
   const [confirmRestore, setConfirmRestore] = useState<string | null>(null)
-  const [items, setItems] = useState<TrashEntry[]>(initialTrash)
   const [restoredMsg, setRestoredMsg] = useState<string | null>(null)
 
-  const entityTypes = useMemo(() => {
-    const types = new Set(items.filter(e => e.companyId === currentCompany.id).map(e => e.entityType))
+  const entityTypes = useMemo((): string[] => {
+    const types = new Set<string>(trashEntries.map((e: any) => String(e.entity_type)))
     return Array.from(types).sort()
-  }, [currentCompany.id, items])
+  }, [trashEntries])
 
   const filtered = useMemo(() => {
-    return items
-      .filter(e => e.companyId === currentCompany.id)
-      .filter(e => {
-        if (entityTypeFilter && e.entityType !== entityTypeFilter) return false
+    return trashEntries
+      .filter((e: any) => {
+        if (entityTypeFilter && e.entity_type !== entityTypeFilter) return false
         if (search.trim()) {
           const q = search.toLowerCase()
           if (
-            !e.entityName.toLowerCase().includes(q) &&
-            !e.entityType.toLowerCase().includes(q) &&
-            !e.deletedBy.toLowerCase().includes(q)
+            !(e.entity_reference || e.entity_id || '').toLowerCase().includes(q) &&
+            !e.entity_type.toLowerCase().includes(q) &&
+            !(e.deleted_by || '').toLowerCase().includes(q)
           ) return false
         }
         return true
       })
-      .sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime())
-  }, [search, entityTypeFilter, currentCompany.id, items])
+      .sort((a: any, b: any) => new Date(b.deleted_at).getTime() - new Date(a.deleted_at).getTime())
+  }, [search, entityTypeFilter, trashEntries])
 
   const handleRestore = (id: string) => {
     setConfirmRestore(id)
   }
 
-  const confirmRestoreAction = () => {
+  const confirmRestoreAction = async () => {
     if (confirmRestore) {
-      const item = items.find(e => e.id === confirmRestore)
-      setItems(prev => prev.filter(e => e.id !== confirmRestore))
-      setRestoredMsg(item?.entityName || 'Item')
-      setConfirmRestore(null)
-      setTimeout(() => setRestoredMsg(null), 3000)
+      const item = trashEntries.find((e: any) => e.id === confirmRestore) as any
+      if (item) {
+        await restoreEntry(item.entity_type, item.entity_id)
+        setRestoredMsg(item.entity_reference || item.entity_id || 'Item')
+        setConfirmRestore(null)
+        setTimeout(() => setRestoredMsg(null), 3000)
+      }
     }
   }
 
@@ -139,27 +141,34 @@ export default function TrashPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(entry => (
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-12 text-center text-gray-400">
+                    {t('Loading...', 'جاري التحميل...')}
+                  </td>
+                </tr>
+              ) : filtered.map((entry: any) => (
                 <tr key={entry.id} className="border-b border-gray-100 table-row-hover">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <span>{entityTypeIcons[entry.entityType] || '📄'}</span>
-                      <span className="font-medium text-gray-900">{entry.entityName}</span>
+                      <span>{entityTypeIcons[entry.entity_type] || '📄'}</span>
+                      <span className="font-medium text-gray-900">{entry.entity_reference || entry.entity_id}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`status-badge ${entityTypeBadge[entry.entityType] || 'bg-gray-100 text-gray-800'}`}>
-                      {entry.entityType}
+                    <span className={`status-badge ${entityTypeBadge[entry.entity_type] || 'bg-gray-100 text-gray-800'}`}>
+                      {entry.entity_type}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{entry.deletedBy}</td>
+                  <td className="px-4 py-3 text-gray-600">{entry.deleted_by}</td>
                   <td className="px-4 py-3 text-gray-500">
-                    {new Date(entry.deletedAt).toLocaleString()}
+                    {new Date(entry.deleted_at).toLocaleString()}
                   </td>
                   <td className="px-4 py-3">
                     <button
                       onClick={() => handleRestore(entry.id)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
+                      disabled={restoring}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors disabled:opacity-50"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                       {t('Restore', 'استعادة')}
@@ -167,7 +176,7 @@ export default function TrashPage() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {!loading && filtered.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-12 empty-state">
                     <Trash2 className="w-8 h-8 mb-2 text-gray-300" />
@@ -199,7 +208,7 @@ export default function TrashPage() {
                 {t('Are you sure you want to restore this item?', 'هل أنت متأكد من استعادة هذا العنصر؟')}
               </p>
               <p className="text-sm font-medium text-gray-900 mb-4">
-                "{items.find((e: TrashEntry) => e.id === confirmRestore)?.entityName}"
+                "{(trashEntries.find((e: any) => e.id === confirmRestore) as any)?.entity_reference || (trashEntries.find((e: any) => e.id === confirmRestore) as any)?.entity_id}"
               </p>
               <p className="text-xs text-gray-400">
                 {t(
@@ -214,7 +223,8 @@ export default function TrashPage() {
               </button>
               <button
                 onClick={confirmRestoreAction}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                disabled={restoring}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50"
               >
                 <RotateCcw className="w-4 h-4" />
                 {t('Restore', 'استعادة')}

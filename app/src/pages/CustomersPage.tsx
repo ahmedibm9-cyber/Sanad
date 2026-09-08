@@ -1,24 +1,72 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
-import { getCustomersByCompany } from '../data/mockData'
+import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer } from '../hooks/useData'
+import type { Customer } from '../types'
+import { type Customer as DbCustomer } from '../lib/data'
 import CustomerFormModal from '../components/customers/CustomerFormModal'
 import ConfirmModal from '../components/common/ConfirmModal'
 import Pagination from '../components/common/Pagination'
-import type { Customer } from '../types'
 import { Users, Search, Plus, Phone, Mail, MapPin, Eye, Pencil, Trash2 } from 'lucide-react'
+
+/** Map snake_case DB Customer → camelCase UI Customer */
+function toUICustomer(c: DbCustomer): Customer {
+  return {
+    id: c.id,
+    companyId: c.company_id,
+    name: c.name,
+    nameAr: c.name_ar ?? undefined,
+    contactPerson: c.contact_person ?? undefined,
+    phone: c.phone ?? undefined,
+    phoneSecondary: c.phone_secondary ?? undefined,
+    email: c.email ?? undefined,
+    country: c.country ?? undefined,
+    city: c.city ?? undefined,
+    address: c.address ?? undefined,
+    postalCode: c.postal_code ?? undefined,
+    vatNumber: c.vat_number ?? undefined,
+    notes: c.notes ?? undefined,
+    createdAt: c.created_at,
+  }
+}
+
+/** Map camelCase form data → snake_case DB partial */
+function toDbUpdates(data: Partial<Customer>): Record<string, unknown> {
+  const r: Record<string, unknown> = {}
+  if (data.name !== undefined) r.name = data.name
+  if (data.nameAr !== undefined) r.name_ar = data.nameAr
+  if (data.contactPerson !== undefined) r.contact_person = data.contactPerson
+  if (data.phone !== undefined) r.phone = data.phone
+  if (data.phoneSecondary !== undefined) r.phone_secondary = data.phoneSecondary
+  if (data.email !== undefined) r.email = data.email
+  if (data.country !== undefined) r.country = data.country
+  if (data.city !== undefined) r.city = data.city
+  if (data.address !== undefined) r.address = data.address
+  if (data.postalCode !== undefined) r.postal_code = data.postalCode
+  if (data.vatNumber !== undefined) r.vat_number = data.vatNumber
+  if (data.notes !== undefined) r.notes = data.notes
+  return r
+}
 
 export default function CustomersPage() {
   const { t } = useLanguage()
   const { currentCompany } = useCompany()
   const [search, setSearch] = useState('')
-  const [customers, setCustomers] = useState<Customer[]>(() => getCustomersByCompany(currentCompany.id))
   const [showForm, setShowForm] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
   const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null)
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 10
+
+  // ── Supabase data hooks ──
+  const { data: dbCustomers, loading, refetch } = useCustomers(currentCompany.id)
+  const { create } = useCreateCustomer()
+  const { update } = useUpdateCustomer()
+  const { remove } = useDeleteCustomer()
+
+  // Map DB rows to UI shape
+  const customers = useMemo(() => (dbCustomers ?? []).map(toUICustomer), [dbCustomers])
 
   const filteredCustomers = useMemo(() => {
     if (!search.trim()) return customers
@@ -42,26 +90,24 @@ export default function CustomersPage() {
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5)
   }, [customers])
 
-  const handleSave = (data: Partial<Customer>) => {
+  const handleSave = async (data: Partial<Customer>) => {
     if (editingCustomer) {
-      setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...c, ...data } as Customer : c))
-    } else {
-      const newCustomer: Customer = {
-        id: `cust-new-${Date.now()}`, companyId: currentCompany.id,
-        name: data.name || 'New Customer', contactPerson: data.contactPerson,
-        phone: data.phone, email: data.email, country: data.country,
-        city: data.city, address: data.address, postalCode: data.postalCode,
-        vatNumber: data.vatNumber, notes: data.notes,
-        createdAt: new Date().toISOString().split('T')[0],
+      const updates = toDbUpdates(data)
+      if (Object.keys(updates).length > 0) {
+        await update(editingCustomer.id, updates as Record<string, unknown>)
       }
-      setCustomers(prev => [newCustomer, ...prev])
+    } else {
+      const dbData = toDbUpdates(data)
+      await create(dbData as Record<string, unknown>, currentCompany.id)
     }
+    refetch()
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deletingCustomer) {
-      setCustomers(prev => prev.filter(c => c.id !== deletingCustomer.id))
+      await remove(deletingCustomer.id)
       setDeletingCustomer(null)
+      refetch()
     }
   }
 
@@ -77,81 +123,92 @@ export default function CustomersPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-        {countryCounts.map(([country, count]) => (
-          <div key={country} className="card px-4 py-3 text-center">
-            <p className="text-lg font-bold text-brand-700">{count}</p>
-            <p className="text-xs text-gray-500 truncate">{country}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="relative mb-4">
-        <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input type="text" className="input-field ps-9" placeholder={t('Search by name, contact, phone, email, country...', 'بحث بالاسم، جهة الاتصال، الهاتف، البريد، الدولة...')} value={search} onChange={e => setSearch(e.target.value)} />
-      </div>
-
-      <div className="card overflow-hidden">
-        {filteredCustomers.length === 0 ? (
-          <div className="empty-state">
-            <Users size={40} className="mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500 text-sm">{search ? t('No customers match your search.', 'لا توجد عملاء يطابق بحثك.') : t('No customers yet. Add your first customer.', 'لا يوجد عملاء بعد. أضف أول عميل.')}</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Name', 'الاسم')}</th>
-                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Contact', 'جهة الاتصال')}</th>
-                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Phone', 'الهاتف')}</th>
-                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Country', 'الدولة')}</th>
-                  <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden lg:table-cell">{t('Email', 'البريد')}</th>
-                  <th className="text-end text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Actions', 'الإجراءات')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {paginatedCustomers.map(customer => (
-                  <tr key={customer.id} className="table-row-hover">
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center text-brand-700 text-xs font-bold shrink-0">
-                          {customer.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-brand-900 truncate">{customer.name}</p>
-                          {customer.city && <p className="text-xs text-gray-400 flex items-center gap-1"><MapPin size={10} />{customer.city}</p>}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-sm text-gray-700">{customer.contactPerson || '—'}</td>
-                    <td className="px-5 py-3.5">{customer.phone ? <span className="text-sm text-gray-700 inline-flex items-center gap-1.5"><Phone size={12} className="text-gray-400" />{customer.phone}</span> : <span className="text-gray-300">—</span>}</td>
-                    <td className="px-5 py-3.5">{customer.country ? <span className="status-badge bg-brand-50 text-brand-700 border border-brand-200">{customer.country}</span> : <span className="text-gray-300">—</span>}</td>
-                    <td className="px-5 py-3.5 hidden lg:table-cell">{customer.email ? <span className="text-sm text-gray-700 inline-flex items-center gap-1.5"><Mail size={12} className="text-gray-400" />{customer.email}</span> : <span className="text-gray-300">—</span>}</td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => setViewingCustomer(customer)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600" title={t('View', 'عرض')}><Eye size={15} /></button>
-                        <button onClick={() => { setEditingCustomer(customer); setShowForm(true) }} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600" title={t('Edit', 'تعديل')}><Pencil size={15} /></button>
-                        <button onClick={() => setDeletingCustomer(customer)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-red-600" title={t('Delete', 'حذف')}><Trash2 size={15} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {filteredCustomers.length > 0 && (
-        <p className="text-xs text-gray-400 mt-3 text-end">{t(`Showing ${Math.min(page * PAGE_SIZE, filteredCustomers.length)} of ${filteredCustomers.length} customers`, `عرض ${Math.min(page * PAGE_SIZE, filteredCustomers.length)} من ${filteredCustomers.length} عميل`)}</p>
+      {loading && (
+        <div className="card p-8 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600 mx-auto mb-3" />
+          <p className="text-sm text-gray-500">{t('Loading customers...', 'جاري تحميل العملاء...')}</p>
+        </div>
       )}
 
-      {/* Pagination */}
-      {filteredCustomers.length > 0 && (
-        <div className="mt-2">
-          <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
-        </div>
+      {!loading && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+            {countryCounts.map(([country, count]) => (
+              <div key={country} className="card px-4 py-3 text-center">
+                <p className="text-lg font-bold text-brand-700">{count}</p>
+                <p className="text-xs text-gray-500 truncate">{country}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="relative mb-4">
+            <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input type="text" className="input-field ps-9" placeholder={t('Search by name, contact, phone, email, country...', 'بحث بالاسم، جهة الاتصال، الهاتف، البريد، الدولة...')} value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+
+          <div className="card overflow-hidden">
+            {filteredCustomers.length === 0 ? (
+              <div className="empty-state">
+                <Users size={40} className="mx-auto text-gray-300 mb-3" />
+                <p className="text-gray-500 text-sm">{search ? t('No customers match your search.', 'لا توجد عملاء يطابق بحثك.') : t('No customers yet. Add your first customer.', 'لا يوجد عملاء بعد. أضف أول عميل.')}</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Name', 'الاسم')}</th>
+                      <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Contact', 'جهة الاتصال')}</th>
+                      <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Phone', 'الهاتف')}</th>
+                      <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Country', 'الدولة')}</th>
+                      <th className="text-start text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden lg:table-cell">{t('Email', 'البريد')}</th>
+                      <th className="text-end text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{t('Actions', 'الإجراءات')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {paginatedCustomers.map(customer => (
+                      <tr key={customer.id} className="table-row-hover">
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center text-brand-700 text-xs font-bold shrink-0">
+                              {customer.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-brand-900 truncate">{customer.name}</p>
+                              {customer.city && <p className="text-xs text-gray-400 flex items-center gap-1"><MapPin size={10} />{customer.city}</p>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5 text-sm text-gray-700">{customer.contactPerson || '—'}</td>
+                        <td className="px-5 py-3.5">{customer.phone ? <span className="text-sm text-gray-700 inline-flex items-center gap-1.5"><Phone size={12} className="text-gray-400" />{customer.phone}</span> : <span className="text-gray-300">—</span>}</td>
+                        <td className="px-5 py-3.5">{customer.country ? <span className="status-badge bg-brand-50 text-brand-700 border border-brand-200">{customer.country}</span> : <span className="text-gray-300">—</span>}</td>
+                        <td className="px-5 py-3.5 hidden lg:table-cell">{customer.email ? <span className="text-sm text-gray-700 inline-flex items-center gap-1.5"><Mail size={12} className="text-gray-400" />{customer.email}</span> : <span className="text-gray-300">—</span>}</td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => setViewingCustomer(customer)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600" title={t('View', 'عرض')}><Eye size={15} /></button>
+                            <button onClick={() => { setEditingCustomer(customer); setShowForm(true) }} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600" title={t('Edit', 'تعديل')}><Pencil size={15} /></button>
+                            <button onClick={() => setDeletingCustomer(customer)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-red-600" title={t('Delete', 'حذف')}><Trash2 size={15} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {filteredCustomers.length > 0 && (
+            <p className="text-xs text-gray-400 mt-3 text-end">{t(`Showing ${Math.min(page * PAGE_SIZE, filteredCustomers.length)} of ${filteredCustomers.length} customers`, `عرض ${Math.min(page * PAGE_SIZE, filteredCustomers.length)} من ${filteredCustomers.length} عميل`)}</p>
+          )}
+
+          {/* Pagination */}
+          {filteredCustomers.length > 0 && (
+            <div className="mt-2">
+              <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+            </div>
+          )}
+        </>
       )}
 
       {/* View Customer Detail Modal */}

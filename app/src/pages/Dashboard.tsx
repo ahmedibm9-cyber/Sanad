@@ -1,12 +1,11 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
   FolderKanban,
   ClipboardList,
   AlertTriangle,
-  Clock,
   ArrowRight,
   FileText,
-  CheckSquare,
   AlertCircle,
   Circle,
   CheckCircle2,
@@ -14,13 +13,15 @@ import {
 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
-import { useApp } from '../contexts/AppContext'
+import { useAuth } from '../contexts/AuthContext'
 import {
-  getProjectsByCompany,
-  getTasksByCompany,
-  getActivityByCompany,
-  getTodosForUser,
-} from '../data/mockData'
+  useWorkItems,
+  useTodos,
+  useAuditEvents,
+  useCompanyDocuments,
+  useCompanyReportIssues,
+  type ReportIssue,
+} from '../hooks/useData'
 
 const DOC_TYPE_LABELS: Record<string, { en: string; ar: string }> = {
   QUOT: { en: 'Quotation', ar: 'عرض سعر' },
@@ -41,67 +42,91 @@ const PRIORITY_CONFIG: Record<string, { bg: string; text: string; labelEn: strin
 export default function Dashboard() {
   const { t } = useLanguage()
   const { currentCompany } = useCompany()
-  const { currentUser } = useApp()
+  const { user } = useAuth()
 
-  const allProjects = getProjectsByCompany(currentCompany.id)
-  const allTasks = getTasksByCompany(currentCompany.id)
-  const activity = getActivityByCompany(currentCompany.id)
-  const todos = getTodosForUser(currentUser.id)
+  const { data: rawWorkItems } = useWorkItems(currentCompany.id)
+  const { data: rawTodos } = useTodos(user?.id)
+  const { data: rawAuditEvents } = useAuditEvents(currentCompany.id)
+  const { data: rawDocuments } = useCompanyDocuments(currentCompany.id)
+  const { data: rawReportIssues } = useCompanyReportIssues(currentCompany.id)
+
+  const workItems = rawWorkItems ?? []
+  const todos = rawTodos ?? []
+  const auditEvents = rawAuditEvents ?? []
+  const documents = rawDocuments ?? []
+  const reportIssues: ReportIssue[] = rawReportIssues ?? []
+
+  // ── Derived data via useMemo ─────────────────────
+  const allProjects = useMemo(() => workItems.filter((wi) => wi.type === 'project'), [workItems])
+  const allTasks = useMemo(() => workItems.filter((wi) => wi.type === 'task'), [workItems])
+
+  // Work item name lookup for document display
+  const workItemNameMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const wi of workItems) {
+      map[wi.id] = wi.name
+    }
+    return map
+  }, [workItems])
 
   // ── Operational counts ──────────────────────────────
-  const inProgressProjects = allProjects.filter((p) => p.status === 'in_progress')
-  const completedProjects = allProjects.filter((p) => p.status === 'completed')
-  const activeTasks = allTasks.filter((tk) => tk.status === 'in_progress')
-  const pendingTodos = todos.filter((td) => !td.done)
-  const overdueTodos = pendingTodos.filter((td) => {
-    if (!td.dueDate) return false
-    return new Date(td.dueDate) < new Date()
-  })
+  const inProgressProjects = useMemo(() => allProjects.filter((p) => p.status === 'in_progress'), [allProjects])
+  const completedProjects = useMemo(() => allProjects.filter((p) => p.status === 'completed'), [allProjects])
+  const activeTasks = useMemo(() => allTasks.filter((tk) => tk.status === 'in_progress'), [allTasks])
+  const pendingTodos = useMemo(() => todos.filter((td) => !td.is_done), [todos])
+  const overdueTodos = useMemo(() => pendingTodos.filter((td) => {
+    if (!td.due_date) return false
+    return new Date(td.due_date) < new Date()
+  }), [pendingTodos])
 
   // Overdue tasks: in_progress tasks created more than 30 days ago
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-  const overdueTasks = activeTasks.filter(
-    (tk) => new Date(tk.createdAt) < thirtyDaysAgo
-  )
+  const overdueTasks = useMemo(() => {
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    return activeTasks.filter((tk) => new Date(tk.created_at) < thirtyDaysAgo)
+  }, [activeTasks])
 
   // Open report issues across all company projects
-  const openIssues = allProjects.flatMap((p) =>
-    p.reportIssues
-      .filter((ri) => ri.status === 'open')
-      .map((ri) => ({ ...ri, projectName: p.name, projectId: p.id }))
+  const openIssues = useMemo(
+    () => reportIssues.filter((ri) => ri.status === 'open'),
+    [reportIssues]
   )
 
   // ── My To-dos (pending, sorted by priority then due date) ──
-  const priorityOrder = { high: 0, medium: 1, low: 2 }
-  const myTodos = [...pendingTodos].sort((a, b) => {
-    const pa = priorityOrder[a.priority] ?? 2
-    const pb = priorityOrder[b.priority] ?? 2
-    if (pa !== pb) return pa - pb
-    if (a.dueDate && b.dueDate) return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-    if (a.dueDate) return -1
-    if (b.dueDate) return 1
-    return 0
-  })
+  const myTodos = useMemo(() => {
+    const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 }
+    return [...pendingTodos].sort((a, b) => {
+      const pa = priorityOrder[a.priority] ?? 2
+      const pb = priorityOrder[b.priority] ?? 2
+      if (pa !== pb) return pa - pb
+      if (a.due_date && b.due_date) return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+      if (a.due_date) return -1
+      if (b.due_date) return 1
+      return 0
+    })
+  }, [pendingTodos])
 
   // ── Recently Created/Edited Documents ──
-  // Collect all documents from all work items in the company
-  const allWorkItems = [...allProjects, ...allTasks]
-  const allDocuments = allWorkItems.flatMap((wi) =>
-    wi.documents.map((doc) => ({
-      ...doc,
-      projectName: wi.name,
-      projectType: wi.type,
-    }))
+  const recentDocuments = useMemo(
+    () =>
+      [...documents]
+        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+        .slice(0, 5)
+        .map((doc) => ({
+          ...doc,
+          projectName: workItemNameMap[doc.work_item_id] ?? '',
+        })),
+    [documents, workItemNameMap]
   )
-  const recentDocuments = [...allDocuments]
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 5)
 
   // ── Recent Activity (last 5) ──
-  const recentActivity = [...activity]
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    .slice(0, 5)
+  const recentActivity = useMemo(
+    () =>
+      [...auditEvents]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 5),
+    [auditEvents]
+  )
 
   // ── Attention stat cards ──────────────────────────
   const attentionStats = [
@@ -152,8 +177,8 @@ export default function Dashboard() {
         </h1>
         <p className="text-sm text-gray-500 mt-1">
           {t(
-            `Welcome back, ${currentUser.name}`,
-            `مرحبًا بعودتك، ${currentUser.name}`
+            `Welcome back, ${user?.displayName ?? ''}`,
+            `مرحبًا بعودتك، ${user?.displayName ?? ''}`
           )}
         </p>
       </div>
@@ -210,7 +235,7 @@ export default function Dashboard() {
         ) : (
           <div className="space-y-2">
             {myTodos.slice(0, 5).map((todo) => {
-              const isOverdue = todo.dueDate && new Date(todo.dueDate) < new Date()
+              const isOverdue = todo.due_date && new Date(todo.due_date) < new Date()
               const pConfig = PRIORITY_CONFIG[todo.priority] || PRIORITY_CONFIG.low
               return (
                 <div
@@ -233,9 +258,9 @@ export default function Dashboard() {
                   <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${pConfig.bg} ${pConfig.text} shrink-0`}>
                     {t(pConfig.labelEn, pConfig.labelAr)}
                   </span>
-                  {todo.dueDate && (
+                  {todo.due_date && (
                     <span className={`text-xs shrink-0 ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
-                      {new Date(todo.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {new Date(todo.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                   )}
                 </div>
@@ -270,7 +295,7 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-2">
               {recentDocuments.map((doc) => {
-                const typeLabel = DOC_TYPE_LABELS[doc.type]
+                const typeLabel = DOC_TYPE_LABELS[doc.document_type]
                 const isDraft = doc.status === 'draft'
                 return (
                   <div
@@ -282,7 +307,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-brand-900 truncate">{doc.number}</p>
+                        <p className="text-sm font-medium text-brand-900 truncate">{doc.document_number}</p>
                         {isDraft && (
                           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 shrink-0">
                             {t('Draft', 'مسودة')}
@@ -290,13 +315,13 @@ export default function Dashboard() {
                         )}
                       </div>
                       <p className="text-xs text-gray-400 truncate">
-                        {typeLabel ? t(typeLabel.en, typeLabel.ar) : doc.type}
+                        {typeLabel ? t(typeLabel.en, typeLabel.ar) : doc.document_type}
                         {' · '}
                         {doc.projectName}
                       </p>
                     </div>
                     <span className="text-xs text-gray-400 shrink-0">
-                      {new Date(doc.updatedAt).toLocaleDateString('en-US', {
+                      {new Date(doc.updated_at).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                       })}
@@ -347,14 +372,14 @@ export default function Dashboard() {
                     <span className="text-base mt-0.5">{actionIcons[entry.action] || '📌'}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-700">
-                        <span className="font-medium">{entry.userName}</span>
+                        <span className="font-medium">{entry.actor_user_id}</span>
                         {' '}
                         <span className="text-gray-500">{entry.action.toLowerCase().replace('_', ' ')}</span>
                         {' '}
-                        <span className="font-medium">{entry.entityRef || entry.entityType}</span>
+                        <span className="font-medium">{entry.entity_reference || entry.entity_type}</span>
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {new Date(entry.timestamp).toLocaleDateString('en-US', {
+                        {new Date(entry.created_at).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           hour: '2-digit',
