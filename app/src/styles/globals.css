@@ -114,7 +114,7 @@
 
   /* ── Backdrop ── */
   .backdrop {
-    @apply fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity duration-150;
+    @apply fixed inset-0 bg-black/40 z-40 transition-opacity duration-150;
   }
 
   /* ── Modal container ── */
