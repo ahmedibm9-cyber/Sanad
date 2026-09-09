@@ -4,7 +4,7 @@ import path from 'path'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const BASE_URL = process.env.BASE_URL || 'https://app-wine-three-38.vercel.app'
+const BASE_URL = process.env.BASE_URL || 'https://sanad-jxwossiqy-ibmai1979-2318.vercel.app'
 const AUTH_FILE = path.join(__dirname, 'e2e', '.auth', 'user.json')
 
 export default defineConfig({

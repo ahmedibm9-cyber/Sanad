@@ -112,19 +112,19 @@
     @apply fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-200;
   }
 
-  /* ── Backdrop ── */
-  .backdrop {
-    @apply fixed inset-0 bg-black/40 z-40 transition-opacity duration-150;
-  }
+/* ── Backdrop ── */
+.backdrop {
+  @apply fixed inset-0 bg-black/40 z-40 transition-opacity duration-150;
+}
 
-  /* ── Modal container ── */
-  .modal-overlay {
-    @apply fixed inset-0 z-50 flex items-center justify-center p-4;
-  }
-  .modal-panel {
-    @apply relative bg-white rounded-lg shadow-xl w-full max-h-[90vh] flex flex-col;
-    animation: modal-in 160ms ease-out;
-  }
+/* ── Modal container ── */
+.modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+}
+.modal-panel {
+  @apply relative bg-white rounded-lg shadow-xl w-full max-h-[90vh] flex flex-col z-50;
+  animation: modal-in 160ms ease-out;
+}
   @keyframes modal-in {
     from { opacity: 0; transform: scale(0.97) translateY(4px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
