@@ -75,4 +75,4 @@ jobs:
       - run: npx playwright test --reporter=github
         working-directory: app
         env:
-          BASE_URL: https://app-wine-three-38.vercel.app
+          BASE_URL: https://sanad-jxwossiqy-ibmai1979-2318.vercel.app
