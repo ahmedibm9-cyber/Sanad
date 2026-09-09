@@ -235,14 +235,24 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
 
   const totalResults = flatItems.length
 
+  // Lightweight command palette overlay: no full-screen backdrop.
+  // Clicks pass through the container to sidebar/topbar (pointer-events-none).
+  // Only the search panel is interactive (pointer-events-auto).
+  // Triggered by Cmd+K or clicking the search bar in TopBar.
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={t('Global Search', 'بحث عام')}>
-      {/* Backdrop */}
-      <div className="backdrop" onClick={onClose} aria-hidden="true" />
-
-      {/* Panel */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden"
-           style={{ animation: 'modal-in 160ms ease-out' }}>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 pointer-events-none"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('Global Search', 'بحث عام')}
+    >
+      {/* Panel — interactive, blocks pointer events */}
+      <div
+        className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden pointer-events-auto"
+        onClick={e => e.stopPropagation()}
+        style={{ animation: 'modal-in 160ms ease-out' }}
+      >
 
         {/* Search input */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 shrink-0">

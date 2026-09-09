@@ -85,6 +85,8 @@ export default function Modal({ open, onClose, title, subtitle, children, size =
 
   if (!open) return null
 
+  // Full-screen modal: backdrop covers entire viewport, blocking Sidebar/TopBar.
+  // This is intentional — modals are disruptive overlays requiring user action.
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined}>
       <div className="backdrop" onClick={onClose} aria-hidden="true" />

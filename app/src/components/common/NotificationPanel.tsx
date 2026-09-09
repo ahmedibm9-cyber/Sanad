@@ -94,17 +94,22 @@ export default function NotificationPanel({ open, onClose, onStateChange }: Noti
   const latestFive = notifications.slice(0, 5)
   const hasUnread = notifications.some(n => !n.read)
 
+  // Lightweight slide-in panel: no full-viewport backdrop.
+  // Clicks pass through the container to sidebar/topbar (pointer-events-none).
+  // Only the panel is interactive (pointer-events-auto).
   return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-40" onClick={onClose} aria-hidden="true" />
-
-      {/* Panel */}
+    <div
+      className="fixed inset-0 z-50 pointer-events-none"
+      onClick={onClose}
+      aria-hidden="true"
+    >
+      {/* Panel — interactive, blocks pointer events */}
       <div
         ref={panelRef}
         role="dialog"
         aria-label={t('Notifications', 'الإشعارات')}
-        className="fixed top-14 end-0 z-50 w-full max-w-sm bg-white border border-gray-200 rounded-bl-xl shadow-2xl overflow-hidden flex flex-col"
+        className="fixed top-14 end-0 z-50 w-full max-w-sm bg-white border border-gray-200 rounded-bl-xl shadow-2xl overflow-hidden flex flex-col pointer-events-auto"
+        onClick={e => e.stopPropagation()}
         style={{ height: 'calc(100vh - 3.5rem)' }}
       >
         {/* Header */}
@@ -204,6 +209,6 @@ export default function NotificationPanel({ open, onClose, onStateChange }: Noti
           </button>
         </div>
       </div>
-    </>
+    </div>
   )
 }

@@ -112,12 +112,24 @@
     @apply fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-200;
   }
 
-/* ── Backdrop ── */
+/* ── Backdrop ──
+ * Full-viewport overlay that dims the background and blocks all interaction.
+ * z-40 sits below .modal-overlay (z-50) but above page content (no z-index).
+ * This is INTENTIONAL: modals are disruptive overlays that require user action
+ * before returning to the page. Users must close the modal to interact with
+ * Sidebar, TopBar, or main content. See investigation: .vibeguard/INVESTIGATION_CASE.md
+ */
 .backdrop {
   @apply fixed inset-0 bg-black/40 z-40 transition-opacity duration-150;
 }
 
-/* ── Modal container ── */
+/* ── Modal container ──
+ * Fixed full-viewport wrapper for modal content.
+ * z-50 ensures the modal sits above all page elements (Sidebar, TopBar, content).
+ * Combined with .backdrop, this creates a full-screen modal that blocks interaction
+ * with elements behind it until the modal is closed. This is intentional design
+ * for disruptive overlays (forms, confirmations, search, notifications).
+ */
 .modal-overlay {
   @apply fixed inset-0 z-50 flex items-center justify-center p-4;
 }
