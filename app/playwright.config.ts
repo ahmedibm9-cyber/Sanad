@@ -10,10 +10,10 @@ const AUTH_FILE = path.join(__dirname, 'e2e', '.auth', 'user.json')
 export default defineConfig({
   testDir: './e2e',
   testMatch: 'sanad.spec.ts',
-  fullyParallel: false,
+  fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1,
+  workers: process.env.CI ? 2 : 4,
   reporter: 'list',
   timeout: 30_000,
   globalSetup: './e2e/global-setup',
