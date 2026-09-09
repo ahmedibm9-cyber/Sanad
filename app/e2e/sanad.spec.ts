@@ -670,7 +670,7 @@ test.describe('Project Detail', () => {
   test('Not found state shows error', async ({ authenticatedPage: page }) => {
     await page.goto('/projects/nonexistent-id-12345')
     await page.waitForTimeout(1000)
-    await expect(page.getByText(/not found|error|invalid/i)).toBeVisible()
+    await expect(page.getByText('Project not found')).toBeVisible()
   })
 
   test('Summary sidebar shows document/attachment/issue/note counts', async ({ authenticatedPage: page }) => {
@@ -2531,7 +2531,7 @@ test.describe('Error & Loading States', () => {
   test('Invalid customer ID shows error', async ({ authenticatedPage: page }) => {
     await page.goto('/customers/invalid-id-12345')
     await page.waitForTimeout(1000)
-    await expect(page.getByText(/not found|error|invalid|customer/i)).toBeVisible()
+    await expect(page.getByText('Customer Not Found')).toBeVisible()
   })
 
   test('Invalid task ID shows error', async ({ authenticatedPage: page }) => {
