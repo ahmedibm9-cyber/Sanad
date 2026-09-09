@@ -1,7 +1,7 @@
 import { test as base, expect } from '@playwright/test'
 
-const TEST_EMAIL = 'test@sanad.com'
-const TEST_PASSWORD = 'TestPassword123!'
+const TEST_EMAIL = process.env.TEST_EMAIL || 'admin@sanad.com'
+const TEST_PASSWORD = process.env.TEST_PASSWORD || '123456789'
 
 async function login(page: import('@playwright/test').Page) {
   await page.goto('/login')
