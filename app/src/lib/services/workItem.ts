@@ -506,7 +506,7 @@ export class WorkItemService {
 
     const { data, error } = await (this.supabase as any)
       .from('work_item_materials')
-      .select('*, materials(name, grade, description, hs_code, origin_country, unit)')
+      .select('*, materials(name, grade, hs_code, origin_country, unit)')
       .eq('work_item_id', workItemId)
       .order('sort_order')
 
