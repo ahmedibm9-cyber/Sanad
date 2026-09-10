@@ -164,9 +164,15 @@ export function adaptInvoiceData(data: DocPreviewData): Record<string, unknown> 
     'customer.contact': customer.contactPerson || '',
     'customer.phone': customer.phone || '',
 
-    // Company (for reference, not directly in data-fields but useful)
+    // Company
     'company.name': company.nameEn || '',
     'company.address': companyAddress,
+    'company.phone': company.phone || '',
+    'company.email': company.email || '',
+    'company.website': company.website || '',
+    'company.vat': company.vatNumber || '',
+    'company.cr': company.crNumber || '',
+    'company.logo': '',
 
     // Items (indexed)
     ...itemFields(data.items, 'items'),
@@ -200,6 +206,7 @@ export function adaptInvoiceData(data: DocPreviewData): Record<string, unknown> 
 
 export function adaptPackingData(data: DocPreviewData): Record<string, unknown> {
   const customer = data.customer
+  const company = data.company
   const totalPkgs = data.items.reduce((s, i) => s + (i.packages || 0), 0)
   const totalNet = data.items.reduce((s, i) => s + (i.netWeight || 0), 0)
   const totalGross = data.items.reduce((s, i) => s + (i.grossWeight || 0), 0)
@@ -211,6 +218,13 @@ export function adaptPackingData(data: DocPreviewData): Record<string, unknown> 
     date: formatDate(data.date),
     invoice_reference: data.invoiceReference || '',
     marks_numbers: data.shipping.marksAndNumbers || '',
+
+    'company.name': company.nameEn || '',
+    'company.address': company.address || '',
+    'company.phone': company.phone || '',
+    'company.email': company.email || '',
+    'company.vat': company.vatNumber || '',
+    'company.logo': '',
 
     'customer.name': customer.name || '',
     'customer.address_line1': customer.address || '',
@@ -232,6 +246,7 @@ export function adaptPackingData(data: DocPreviewData): Record<string, unknown> 
 
 export function adaptDeliveryData(data: DocPreviewData): Record<string, unknown> {
   const customer = data.customer
+  const company = data.company
 
   return {
     delivery_note_number: data.number || '',
@@ -241,6 +256,9 @@ export function adaptDeliveryData(data: DocPreviewData): Record<string, unknown>
     shipping_method: data.shipping.shippingMethod || '',
     destination: data.shipping.destination || '',
     prepare_before: data.shipping.deliverBefore ? formatDate(data.shipping.deliverBefore) : '',
+
+    'company.name': company.nameEn || '',
+    'company.logo': '',
 
     'customer.name': customer.name || '',
 

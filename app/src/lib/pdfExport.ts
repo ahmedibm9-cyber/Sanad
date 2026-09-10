@@ -1,39 +1,15 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import QRCode from 'qrcode'
 import html2canvas from 'html2canvas'
-
-/* ── Document type labels ──────────────────────────────── */
-const docTypeLabels: Record<string, { en: string; ar: string }> = {
-  QUOT: { en: 'QUOTATION', ar: 'عرض أسعار' },
-  PINV: { en: 'PROFORMA INVOICE', ar: 'فاتورة مبدئية' },
-  TINV: { en: 'TAX INVOICE', ar: 'فاتورة ضريبية' },
-  CINV: { en: 'COMMERCIAL INVOICE', ar: 'فاتورة تجارية' },
-  PKL:  { en: 'PACKING LIST', ar: 'قائمة التعبئة' },
-  DN:   { en: 'DELIVERY NOTE', ar: 'إشعار التسليم' },
-  BL:   { en: 'BILL OF LADING', ar: 'بوليصة الشحن' },
-}
+import { renderFullaTemplate } from '../templates/fullaTemplateRenderer'
+import { adaptForTemplate } from '../templates/fullaSchemaAdapter'
+import type { DocPreviewData } from '../templates/fullaSchemaAdapter'
 
 /* ── Shared helpers ────────────────────────────────────── */
 
 const PAGE_W = 210
 const MARGIN = 15
 const CONTENT_W = PAGE_W - MARGIN * 2
-
-const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/
-
-function isArabicText(text: string): boolean {
-  return ARABIC_RE.test(text)
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-}
 
 function setFont(doc: jsPDF, weight: 'normal' | 'bold' = 'normal', size = 10) {
   doc.setFont('helvetica', weight)
@@ -73,246 +49,48 @@ function addPageFooter(doc: jsPDF, docNumber: string) {
   }
 }
 
-/**
- * Generate a ZATCA-compliant QR code as a data URL.
- * Encodes: Seller Name, VAT Registration, Timestamp, Invoice Total, VAT Amount.
- */
-async function generateZatcaQr(data: {
-  sellerName: string
-  vatNumber: string
-  timestamp: string
-  totalWithVat: string
-  vatAmount: string
-}): Promise<string> {
-  // ZATCA TLV format: each field is Tag-Length-Value
-  const encoder = new TextEncoder()
-  
-  function tlv(tag: number, value: string): number[] {
-    const bytes = encoder.encode(value)
-    return [tag, bytes.length, ...bytes]
-  }
-  
-  const fields = [
-    tlv(1, data.sellerName),       // Seller Name
-    tlv(2, data.vatNumber),         // VAT Registration Number
-    tlv(3, data.timestamp),         // Timestamp (ISO 8601)
-    tlv(4, data.totalWithVat),      // Invoice Total with VAT
-    tlv(5, data.vatAmount),         // VAT Amount
-  ]
-  
-  const tlvBytes = fields.flat()
-  const base64 = btoa(String.fromCharCode(...tlvBytes))
-  
-  return QRCode.toDataURL(base64, { width: 200, margin: 1 })
-}
+/* ── Document PDF (uses same Fulla HTML as preview) ───── */
 
-/* ── Arabic HTML-to-PDF fallback ────────────────────────── */
-
-async function downloadDocumentPdfArabic(docData: {
-  number: string
-  type: string
-  date: string
-  language?: string
-  items?: Array<{
-    material: string
-    description: string
-    hsCode?: string
-    origin?: string
-    quantity: number
-    unit: string
-    unitPrice: number
-    currency: string
-    total?: number
-  }>
-  buyer?: { name?: string; nameAr?: string; address?: string; contactPerson?: string }
-  company?: {
-    nameEn?: string
-    nameAr?: string
-    crNumber?: string
-    vatNumber?: string
-    address?: string
-    phone?: string
-    email?: string
-    bankName?: string
-    iban?: string
-    swift?: string
-  }
-  subtotal?: number
-  vatAmount?: number
-  vatRate?: number
-  total?: number
-  preparedBy?: string
-  showSignature?: boolean
-  showStamp?: boolean
-  notes?: string
-  terms?: string
-  incoterm?: string
-  portOfLoading?: string
-  portOfDischarge?: string
-}): Promise<void> {
+export async function downloadDocumentPdf(docData: DocPreviewData): Promise<void> {
   const d = docData
-  const items = d.items || []
-  const label = docTypeLabels[d.type] || { en: d.type, ar: d.type }
-  const docTitle = label.ar
+  const lang = d.language || 'en'
+  const isAr = lang === 'ar'
 
-  const companyName = d.company?.nameAr || d.company?.nameEn || 'SANAD'
-  const buyerName = d.buyer?.nameAr || d.buyer?.name || ''
+  // Use the SAME renderer as the preview — pixel-identical output
+  const templateData = adaptForTemplate(d as any, d.template || 'fulla-commercial-invoice-680')
+  const templateId = (() => {
+    switch (d.template) {
+      case 'fulla-packing-list-680':      return 'packing-list' as const
+      case 'fulla-quotation-680':         return 'quotation' as const
+      case 'fulla-tax-invoice-a-680':     return 'invoice-tax-a' as const
+      case 'fulla-tax-invoice-b-680':     return 'invoice-tax-b' as const
+      case 'fulla-proforma-invoice-680':  return 'invoice-proforma' as const
+      case 'fulla-commercial-invoice-680': return 'invoice-commercial' as const
+      case 'fulla-delivery-note-680':     return 'delivery-note' as const
+      default:                            return 'invoice-commercial' as const
+    }
+  })()
 
-  const formattedDate = d.date
-    ? new Date(d.date).toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' })
-    : '—'
+  const pageHtml = renderFullaTemplate(templateId, templateData)
 
-  const subtotal = d.subtotal ?? items.reduce((s, i) => s + (i.total ?? i.quantity * i.unitPrice), 0)
-  const vatAmount = d.vatAmount ?? 0
-  const total = d.total ?? subtotal + vatAmount
-  const currency = items[0]?.currency || 'SAR'
-  const isCINV = d.type === 'CINV'
-
-  const itemRows = items.map((item, idx) => `
-    <tr>
-      <td style="padding:6px 8px;border:1px solid #ccc;text-align:center;font-size:9pt;">${idx + 1}</td>
-      <td style="padding:6px 8px;border:1px solid #ccc;font-size:9pt;">${escapeHtml(isCINV ? (item.hsCode || '') : item.material)}</td>
-      <td style="padding:6px 8px;border:1px solid #ccc;font-size:9pt;">${escapeHtml(item.description)}</td>
-      ${isCINV ? `<td style="padding:6px 8px;border:1px solid #ccc;font-size:9pt;">${escapeHtml(item.origin || '')}</td>` : ''}
-      <td style="padding:6px 8px;border:1px solid #ccc;font-size:9pt;text-align:center;">${item.quantity} ${escapeHtml(item.unit)}</td>
-      <td style="padding:6px 8px;border:1px solid #ccc;font-size:9pt;text-align:right;">${item.unitPrice.toLocaleString()} ${escapeHtml(item.currency)}</td>
-      <td style="padding:6px 8px;border:1px solid #ccc;font-size:9pt;text-align:right;">${((item.total ?? item.quantity * item.unitPrice) || 0).toLocaleString()} ${escapeHtml(item.currency)}</td>
-    </tr>
-  `).join('')
-
-  const html = `<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8">
+  // Wrap in a full HTML document with the Fulla template CSS
+  const fullHtml = `<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
 <style>
-  @page { size: A4; margin: 15mm; }
-  * { box-sizing: border-box; }
-  body {
-    font-family: 'Inter', 'Noto Sans Arabic', Arial, sans-serif;
-    font-size: 9pt; line-height: 1.5; color: #1e1e1e;
-    margin: 0; padding: 20px; direction: rtl; text-align: right;
-    width: 794px; background: #fff;
-  }
-  .company-name { font-size: 16pt; font-weight: bold; margin: 0; }
-  .company-meta { font-size: 8pt; color: #888; margin: 2px 0; }
-  .bold-sep { border: none; border-top: 2.5px solid #282828; margin: 12px 0; }
-  .doc-title { font-size: 14pt; font-weight: bold; text-align: center; margin: 8px 0; }
-  .doc-meta { font-size: 10pt; color: #555; }
-  .doc-meta strong { color: #1e1e1e; }
-  .parties { display: flex; justify-content: space-between; margin-top: 14px; font-size: 9pt; }
-  .party-label { font-size: 8pt; font-weight: bold; color: #999; }
-  .party-name { font-size: 10pt; font-weight: bold; color: #1e1e1e; }
-  .party-detail { font-size: 8pt; color: #555; }
-  .shipping-bar { border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; padding: 6px 0; margin: 10px 0; font-size: 9pt; color: #555; }
-  table.items { width: 100%; border-collapse: collapse; margin-top: 10px; }
-  table.items th { background: #282828; color: #fff; padding: 6px 8px; font-size: 8pt; border: 1px solid #333; text-align: right; }
-  table.items td { border: 1px solid #ccc; }
-  .totals { width: 280px; margin: 10px 0 0 auto; font-size: 10pt; }
-  .totals td { padding: 4px 8px; }
-  .totals .lbl { text-align: left; color: #555; }
-  .totals .val { text-align: right; }
-  .totals .total-row td { border-top: 2px solid #282828; padding-top: 6px; font-weight: bold; font-size: 12pt; }
-  .notes { font-size: 9pt; color: #555; margin-top: 12px; }
-  .notes strong { color: #999; font-size: 8pt; }
-  .footer-sep { border: none; border-top: 1px solid #ccc; margin-top: 18px; }
-  .prepared { font-size: 9pt; text-align: center; margin-top: 8px; color: #555; }
-  .prepared strong { color: #1e1e1e; }
-  .stamp-area { display: flex; justify-content: space-between; margin-top: 20px; font-size: 8pt; color: #999; }
-  .stamp-area .line { width: 120px; border-bottom: 1px solid #000; margin-bottom: 4px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { margin: 0; padding: 0; background: #fff; }
+  /* Import the Fulla template CSS */
+  ${getFullaCssText()}
 </style>
-</head>
-<body>
-  <div class="company-name">${escapeHtml(companyName)}</div>
-  ${d.company?.crNumber || d.company?.vatNumber ? `<div class="company-meta">${[d.company.crNumber ? `السجل: ${d.company.crNumber}` : '', d.company.vatNumber ? `الرقم الضريبي: ${d.company.vatNumber}` : ''].filter(Boolean).join(' | ')}</div>` : ''}
-  ${d.company?.address ? `<div class="company-meta">${escapeHtml(d.company.address)}</div>` : ''}
-  ${d.company?.phone || d.company?.email ? `<div class="company-meta">${escapeHtml(d.company.phone || '')} | ${escapeHtml(d.company.email || '')}</div>` : ''}
+</head><body>
+${pageHtml}
+</body></html>`
 
-  <hr class="bold-sep">
-
-  <div class="doc-title">${escapeHtml(docTitle)}</div>
-
-  <div style="display:flex;justify-content:space-between;font-size:10pt;color:#555;margin-bottom:10px;">
-    <div><strong>رقم:</strong> <strong style="color:#1e1e1e;">${escapeHtml(d.number || '—')}</strong></div>
-    <div><strong>التاريخ:</strong> <strong style="color:#1e1e1e;">${formattedDate}</strong></div>
-  </div>
-
-  <div class="parties">
-    <div>
-      <div class="party-label">المُصدِّر / البائع</div>
-      <div class="party-name">${escapeHtml(companyName)}</div>
-      ${d.company?.address ? `<div class="party-detail">${escapeHtml(d.company.address)}</div>` : ''}
-      ${d.company?.phone ? `<div class="party-detail">${escapeHtml(d.company.phone)}</div>` : ''}
-    </div>
-    <div>
-      <div class="party-label">المشتري / العميل</div>
-      <div class="party-name">${escapeHtml(buyerName)}</div>
-      ${d.buyer?.address ? `<div class="party-detail">${escapeHtml(d.buyer.address)}</div>` : ''}
-      ${d.buyer?.contactPerson ? `<div class="party-detail">جهة الاتصال: ${escapeHtml(d.buyer.contactPerson)}</div>` : ''}
-    </div>
-  </div>
-
-  ${d.incoterm || d.portOfLoading || d.portOfDischarge ? `
-  <div class="shipping-bar">
-    ${d.incoterm ? `<span>شرطة التجارة: ${escapeHtml(d.incoterm)}</span> &nbsp;&nbsp; ` : ''}
-    ${d.portOfLoading ? `<span>ميناء التحميل: ${escapeHtml(d.portOfLoading)}</span> &nbsp;&nbsp; ` : ''}
-    ${d.portOfDischarge ? `<span>ميناء التفريغ: ${escapeHtml(d.portOfDischarge)}</span>` : ''}
-  </div>` : ''}
-
-  ${items.length > 0 ? `
-  <table class="items">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>${isCINV ? 'كود النظام المنسق' : 'المادة'}</th>
-        <th>الوصف</th>
-        ${isCINV ? '<th>المصدر</th>' : ''}
-        <th>الكمية</th>
-        <th>سعر الوحدة</th>
-        <th>المجموع</th>
-      </tr>
-    </thead>
-    <tbody>${itemRows}</tbody>
-  </table>
-
-  <table class="totals">
-    <tr>
-      <td class="lbl">المجموع الفرعي</td>
-      <td class="val">${subtotal.toLocaleString()} ${currency}</td>
-    </tr>
-    ${vatAmount > 0 ? `
-    <tr>
-      <td class="lbl">الضريبة (${d.vatRate || 0}%)</td>
-      <td class="val">${vatAmount.toLocaleString()} ${currency}</td>
-    </tr>` : ''}
-    <tr class="total-row">
-      <td class="lbl">المجموع</td>
-      <td class="val">${total.toLocaleString()} ${currency}</td>
-    </tr>
-  </table>` : ''}
-
-  ${d.notes ? `<div class="notes"><strong>ملاحظات:</strong> ${escapeHtml(d.notes)}</div>` : ''}
-  ${d.terms ? `<div class="notes"><strong>الشروط والأحكام:</strong> ${escapeHtml(d.terms)}</div>` : ''}
-
-  <hr class="footer-sep">
-
-  ${d.preparedBy ? `<div class="prepared"><strong>أعدّه:</strong> ${escapeHtml(d.preparedBy)}</div>` : ''}
-
-  <div class="stamp-area">
-    <div>
-      <div class="line"></div>
-      <span>التوقيع</span>
-    </div>
-    <div>
-      <div class="line"></div>
-      <span>الختم</span>
-    </div>
-  </div>
-</body>
-</html>`
-
+  // Inject into hidden DOM element
   const container = document.createElement('div')
-  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;'
-  container.innerHTML = html
+  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;z-index:-1;'
+  container.innerHTML = fullHtml
   document.body.appendChild(container)
 
   try {
@@ -344,386 +122,153 @@ async function downloadDocumentPdfArabic(docData: {
       heightLeft -= pdfH
     }
 
+    addPageFooter(pdf, d.number)
     pdf.save(`${d.number || 'document'}.pdf`)
   } finally {
     document.body.removeChild(container)
   }
 }
 
-/* ── Document PDF ──────────────────────────────────────── */
-
-export async function downloadDocumentPdf(docData: {
-  number: string
-  type: string
-  date: string
-  language?: string
-  items?: Array<{
-    material: string
-    description: string
-    hsCode?: string
-    origin?: string
-    quantity: number
-    unit: string
-    unitPrice: number
-    currency: string
-    total?: number
-  }>
-  buyer?: { name?: string; nameAr?: string; address?: string; contactPerson?: string }
-  company?: {
-    nameEn?: string
-    nameAr?: string
-    crNumber?: string
-    vatNumber?: string
-    address?: string
-    phone?: string
-    email?: string
-    bankName?: string
-    iban?: string
-    swift?: string
-  }
-  subtotal?: number
-  vatAmount?: number
-  vatRate?: number
-  total?: number
-  preparedBy?: string
-  showSignature?: boolean
-  showStamp?: boolean
-  notes?: string
-  terms?: string
-  incoterm?: string
-  portOfLoading?: string
-  portOfDischarge?: string
-}): Promise<void> {
-  if (docData.language === 'ar') {
-    return downloadDocumentPdfArabic(docData)
-  }
-
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  const isAr = docData.language === 'ar'
-  const d = docData
-  const items = d.items || []
-
-  const label = docTypeLabels[d.type] || { en: d.type, ar: d.type }
-  const docTitle = isAr ? label.ar : label.en
-
-  let y = MARGIN
-
-  /* ── Company header ─────────────────────────────────── */
-  const companyName = isAr
-    ? (d.company?.nameAr || d.company?.nameEn || 'SANAD')
-    : (d.company?.nameEn || d.company?.nameAr || 'SANAD')
-
-  setFont(doc, 'bold', 16)
-  doc.setTextColor(20, 20, 20)
-  doc.text(companyName, MARGIN, y + 4)
-
-  if (d.company?.crNumber || d.company?.vatNumber) {
-    setFont(doc, 'normal', 8)
-    doc.setTextColor(120, 120, 120)
-    const parts: string[] = []
-    if (d.company.crNumber) parts.push(`CR: ${d.company.crNumber}`)
-    if (d.company.vatNumber) parts.push(`VAT: ${d.company.vatNumber}`)
-    doc.text(parts.join('  |  '), MARGIN, y + 9)
-  }
-  if (d.company?.address) {
-    setFont(doc, 'normal', 8)
-    doc.setTextColor(120, 120, 120)
-    doc.text(d.company.address, MARGIN, y + 13)
-  }
-  if (d.company?.phone || d.company?.email) {
-    setFont(doc, 'normal', 8)
-    doc.setTextColor(120, 120, 120)
-    doc.text(`${d.company.phone || ''}  |  ${d.company.email || ''}`.trim(), MARGIN, y + 17)
-  }
-
-  y += 24
-
-  /* ── Separator ──────────────────────────────────────── */
-  drawBoldLine(doc, y)
-  y += 8
-
-  /* ── Document title ─────────────────────────────────── */
-  setFont(doc, 'bold', 14)
-  doc.setTextColor(20, 20, 20)
-  doc.text(docTitle, PAGE_W / 2, y, { align: 'center' })
-  y += 8
-
-  /* ── Doc number & date row ──────────────────────────── */
-  setFont(doc, 'normal', 10)
-  doc.setTextColor(80, 80, 80)
-  doc.text(`${isAr ? 'رقم:' : 'No:'} `, MARGIN, y)
-  setFont(doc, 'bold', 10)
-  doc.text(d.number || '—', MARGIN + 15, y)
-
-  setFont(doc, 'normal', 10)
-  const dateLabelW = isAr ? 'التاريخ:' : 'Date:'
-  doc.text(`${dateLabelW} `, PAGE_W - MARGIN - 50, y)
-  setFont(doc, 'bold', 10)
-  const formattedDate = d.date
-    ? new Date(d.date).toLocaleDateString(isAr ? 'ar-SA' : 'en-GB', { year: 'numeric', month: 'long', day: 'numeric' })
-    : '—'
-  doc.text(formattedDate, PAGE_W - MARGIN - 35, y)
-  y += 10
-
-  /* ── Shipper / Buyer side-by-side ───────────────────── */
-  const midX = MARGIN + CONTENT_W / 2
-
-  // Shipper
-  setFont(doc, 'bold', 8)
-  doc.setTextColor(150, 150, 150)
-  doc.text(isAr ? 'المُصدِّر / البائع' : 'Exporter / Seller', MARGIN, y)
-  setFont(doc, 'bold', 10)
-  doc.setTextColor(20, 20, 20)
-  doc.text(isAr ? (d.company?.nameAr || '') : (d.company?.nameEn || ''), MARGIN, y + 5)
-  setFont(doc, 'normal', 8)
-  doc.setTextColor(80, 80, 80)
-  if (d.company?.address) doc.text(d.company.address, MARGIN, y + 10)
-  if (d.company?.phone) doc.text(d.company.phone, MARGIN, y + 15)
-
-  // Buyer
-  setFont(doc, 'bold', 8)
-  doc.setTextColor(150, 150, 150)
-  doc.text(isAr ? 'المشتري / العميل' : 'Buyer / Customer', midX + 5, y)
-  setFont(doc, 'bold', 10)
-  doc.setTextColor(20, 20, 20)
-  const buyerName = isAr ? (d.buyer?.nameAr || d.buyer?.name || '') : (d.buyer?.name || '')
-  doc.text(buyerName, midX + 5, y + 5)
-  setFont(doc, 'normal', 8)
-  doc.setTextColor(80, 80, 80)
-  if (d.buyer?.address) doc.text(d.buyer.address, midX + 5, y + 10)
-  if (d.buyer?.contactPerson) {
-    const cpLabel = isAr ? 'جهة الاتصال:' : 'Contact:'
-    doc.text(`${cpLabel} ${d.buyer.contactPerson}`, midX + 5, y + 15)
-  }
-
-  y += 24
-
-  /* ── Shipping info bar ──────────────────────────────── */
-  if (d.incoterm || d.portOfLoading || d.portOfDischarge) {
-    drawLine(doc, y)
-    y += 5
-    setFont(doc, 'normal', 9)
-    doc.setTextColor(80, 80, 80)
-
-    let shippingX = MARGIN
-    if (d.incoterm) {
-      const incLabel = isAr ? 'شرطة التجارة:' : 'Incoterm:'
-      doc.text(`${incLabel} ${d.incoterm}`, shippingX, y)
-      shippingX += 50
-    }
-    if (d.portOfLoading) {
-      const polLabel = isAr ? 'ميناء التحميل:' : 'Port of Loading:'
-      doc.text(`${polLabel} ${d.portOfLoading}`, shippingX, y)
-      shippingX += 75
-    }
-    if (d.portOfDischarge) {
-      const podLabel = isAr ? 'ميناء التفريغ:' : 'Port of Discharge:'
-      doc.text(`${podLabel} ${d.portOfDischarge}`, shippingX, y)
-    }
-    y += 8
-    drawLine(doc, y)
-    y += 5
-  }
-
-  /* ── Items table ────────────────────────────────────── */
-  if (items.length > 0) {
-    const isCINV = d.type === 'CINV'
-
-    const headCols = isAr
-      ? [
-          { header: '#', dataKey: 'idx' },
-          { header: isCINV ? 'كود النظام المنسق' : 'البضاعة', dataKey: 'col1' },
-          { header: 'الوصف', dataKey: 'description' },
-          ...(isCINV ? [{ header: 'المصدر', dataKey: 'origin' }] : []),
-          { header: 'الكمية', dataKey: 'qty' },
-          { header: 'سعر الوحدة', dataKey: 'unitPrice' },
-          { header: 'المجموع', dataKey: 'total' },
-        ]
-      : [
-          { header: '#', dataKey: 'idx' },
-          { header: 'Description', dataKey: 'col1' },
-          ...(isCINV ? [{ header: 'HS Code', dataKey: 'hsCode' }] : []),
-          ...(isCINV ? [{ header: 'Origin', dataKey: 'origin' }] : []),
-          { header: 'Quantity', dataKey: 'qty' },
-          { header: 'Unit Price', dataKey: 'unitPrice' },
-          { header: 'Total', dataKey: 'total' },
-        ]
-
-    const rows = items.map((item, idx) => {
-      const descCol = isCINV ? (item.hsCode || '') : (`${item.material} — ${item.description}`)
-      const base: Record<string, string | number> = {
-        idx: idx + 1,
-        col1: descCol,
-        description: item.description,
-        qty: `${item.quantity} ${item.unit}`,
-        unitPrice: `${(item.unitPrice || 0).toLocaleString()} ${item.currency}`,
-        total: `${((item.total ?? item.quantity * item.unitPrice) || 0).toLocaleString()} ${item.currency}`,
-      }
-      if (isCINV) {
-        base.hsCode = item.hsCode || ''
-        base.origin = item.origin || ''
-      }
-      return base
-    })
-
-    const headStyles = isAr
-      ? { fillColor: [40, 40, 40] as [number, number, number], textColor: [255, 255, 255] as [number, number, number], halign: 'right' as const, fontStyle: 'bold' as const }
-      : { fillColor: [40, 40, 40] as [number, number, number], textColor: [255, 255, 255] as [number, number, number], halign: 'left' as const, fontStyle: 'bold' as const }
-
-    autoTable(doc, {
-      startY: y,
-      head: [headCols.map(c => c.header)],
-      body: rows.map(r => headCols.map(c => String(r[c.dataKey] ?? ''))),
-      theme: 'grid',
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-        overflow: 'linebreak',
-        font: 'helvetica',
-        halign: isAr ? 'right' : 'left',
-        lineColor: [200, 200, 200],
-        lineWidth: 0.2,
-      },
-      headStyles,
-      alternateRowStyles: { fillColor: [248, 248, 248] },
-      columnStyles: {
-        0: { cellWidth: 10, halign: 'center' },
-      },
-      margin: { left: MARGIN, right: MARGIN },
-    })
-
-    const table = (doc as any).lastAutoTable
-    y = (table?.finalY ?? y) + 5
-  }
-
-  /* ── Totals section ─────────────────────────────────── */
-  const currency = items[0]?.currency || 'SAR'
-  const subtotal = d.subtotal ?? items.reduce((s, i) => s + (i.total ?? i.quantity * i.unitPrice), 0)
-  const vatAmount = d.vatAmount ?? 0
-  const total = d.total ?? subtotal + vatAmount
-
-  const totalsX = PAGE_W - MARGIN - 70
-  const totalsW = 70
-
-  // Check if we need a page break
-  if (y > 250) {
-    doc.addPage()
-    y = MARGIN
-  }
-
-  // Subtotal
-  setFont(doc, 'normal', 10)
-  doc.setTextColor(80, 80, 80)
-  doc.text(isAr ? 'المجموع الفرعي' : 'Subtotal', totalsX, y)
-  setFont(doc, 'normal', 10)
-  doc.text(`${subtotal.toLocaleString()} ${currency}`, totalsX + totalsW, y, { align: 'right' })
-  y += 6
-
-  // VAT if applicable
-  if (vatAmount > 0) {
-    setFont(doc, 'normal', 10)
-    doc.setTextColor(80, 80, 80)
-    doc.text(isAr ? `الضريبة (${d.vatRate || 0}%)` : `VAT (${d.vatRate || 0}%)`, totalsX, y)
-    doc.text(`${vatAmount.toLocaleString()} ${currency}`, totalsX + totalsW, y, { align: 'right' })
-    y += 6
-  }
-
-  // Total line
-  drawBoldLine(doc, y - 2)
-  y += 3
-  setFont(doc, 'bold', 12)
-  doc.setTextColor(20, 20, 20)
-  doc.text(isAr ? 'المجموع' : 'Total', totalsX, y)
-  doc.text(`${total.toLocaleString()} ${currency}`, totalsX + totalsW, y, { align: 'right' })
-  y += 10
-
-  /* ── Notes ──────────────────────────────────────────── */
-  if (d.notes) {
-    if (y > 250) { doc.addPage(); y = MARGIN }
-    setFont(doc, 'bold', 8)
-    doc.setTextColor(150, 150, 150)
-    doc.text(isAr ? 'ملاحظات' : 'Notes', MARGIN, y)
-    y += 4
-    setFont(doc, 'normal', 9)
-    doc.setTextColor(80, 80, 80)
-    const noteLines = doc.splitTextToSize(d.notes, CONTENT_W)
-    doc.text(noteLines, MARGIN, y)
-    y += noteLines.length * 4 + 4
-  }
-
-  /* ── Terms & Conditions ─────────────────────────────── */
-  if (d.terms) {
-    if (y > 250) { doc.addPage(); y = MARGIN }
-    setFont(doc, 'bold', 8)
-    doc.setTextColor(150, 150, 150)
-    doc.text(isAr ? 'الشروط والأحكام' : 'Terms & Conditions', MARGIN, y)
-    y += 4
-    setFont(doc, 'normal', 9)
-    doc.setTextColor(80, 80, 80)
-    const termLines = doc.splitTextToSize(d.terms, CONTENT_W)
-    doc.text(termLines, MARGIN, y)
-    y += termLines.length * 4 + 4
-  }
-
-  /* ── Footer: Prepared by / Signature / Stamp ────────── */
-  if (y > 250) { doc.addPage(); y = MARGIN }
-  y = Math.max(y, 255)
-
-  drawLine(doc, y)
-  y += 6
-
-  if (d.preparedBy) {
-    setFont(doc, 'normal', 8)
-    doc.setTextColor(150, 150, 150)
-    doc.text(isAr ? 'أعدّه' : 'Prepared by', PAGE_W / 2, y, { align: 'center' })
-    setFont(doc, 'bold', 10)
-    doc.setTextColor(30, 30, 30)
-    doc.text(d.preparedBy, PAGE_W / 2, y + 5, { align: 'center' })
-  }
-
-  if (d.showSignature) {
-    setFont(doc, 'normal', 8)
-    doc.setTextColor(150, 150, 150)
-    const sigX = isAr ? PAGE_W - MARGIN - 30 : MARGIN
-    doc.text(isAr ? 'التوقيع' : 'Signature', sigX, y)
-    doc.line(sigX, y + 1, sigX + 30, y + 1)
-  }
-
-  if (d.showStamp) {
-    setFont(doc, 'normal', 7)
-    doc.setTextColor(180, 180, 180)
-    const stampX = isAr ? MARGIN : PAGE_W - MARGIN - 25
-    doc.roundedRect(stampX, y - 3, 20, 20, 2, 2, 'S')
-    doc.text(isAr ? 'ختم' : 'STAMP', stampX + 10, y + 8, { align: 'center' })
-  }
-
-  /* ── ZATCA QR for Tax Invoices (VAT 15%) ──────────────── */
-  if (d.type === 'TINV' && d.vatRate === 15 && d.company?.vatNumber) {
-    const qrDataUrl = await generateZatcaQr({
-      sellerName: d.company.nameEn || d.company.nameAr || '',
-      vatNumber: d.company.vatNumber,
-      timestamp: d.date || new Date().toISOString(),
-      totalWithVat: String(total),
-      vatAmount: String(vatAmount),
-    })
-    
-    // Draw QR code in bottom-right area
-    const qrSize = 25
-    const qrX = PAGE_W - MARGIN - qrSize - 5
-    const qrY = Math.max(y + 5, 260)
-    doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize)
-    
-    // Label
-    setFont(doc, 'normal', 7)
-    doc.setTextColor(120, 120, 120)
-    doc.text('ZATCA QR', qrX + qrSize / 2, qrY + qrSize + 3, { align: 'center' })
-  }
-
-  /* ── Page numbers ───────────────────────────────────── */
-  addPageFooter(doc, d.number)
-
-  /* ── Save ───────────────────────────────────────────── */
-  doc.save(`${d.number || 'document'}.pdf`)
+/**
+ * Inlined Fulla template CSS for PDF capture.
+ * This ensures the html2canvas render uses the exact same styles as the preview.
+ */
+function getFullaCssText(): string {
+  return `
+:root{--ink:#111;--line:#506066;--accent:#0a4549;--green:#12634c;--pale:#f4eed1}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;font-family:Arial,Helvetica,Tahoma,sans-serif;color:var(--ink)}
+.page{position:relative;width:794px;height:1123px;margin:0 auto;background:#fff;overflow:hidden;font-size:12px;line-height:1.15}
+.page *{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+.invoice-page .sheet{position:absolute;left:30px;right:30px;top:20px}
+.invoice-head{height:119px;position:relative;border-bottom:3px solid var(--accent)}
+.company-block{position:absolute;left:0;top:0;width:270px}
+.company-name{font-size:19px;font-weight:800;line-height:1.0;margin-bottom:6px;letter-spacing:-.2px}
+.company-info{font-size:8.5px;line-height:1.42;color:#222}
+.fulla-logo{position:absolute;left:302px;top:23px;width:185px;height:53px;object-fit:cover;object-position:center}
+.invoice-title{position:absolute;right:0;top:2px;width:250px;text-align:right;font-size:20px;font-weight:900;color:var(--accent);line-height:1.0;letter-spacing:.15px}
+.invoice-title.commercial{line-height:.93}
+.title-ar{font-family:Tahoma,Arial,sans-serif;white-space:nowrap}
+.invoice-meta{position:absolute;right:0;top:28px;width:240px;font-size:11px}
+.meta-row{display:grid;grid-template-columns:87px 1fr;min-height:19px;align-items:center}
+.meta-label{font-weight:700;padding-left:0}
+.meta-val{text-align:right;white-space:nowrap}
+.meta-row.boxed .meta-val{border:1px solid #9ba3a5;padding:2px 5px;min-height:19px}
+.customer-box{margin-top:9px;height:93px;border:1px solid var(--line);padding:7px 7px 4px}
+.section-caption{font-size:11px;font-weight:800;margin-bottom:2px;letter-spacing:.2px}
+.customer-row{display:grid;grid-template-columns:68px 1fr;min-height:18px;align-items:start}
+.customer-row b{font-size:11px}
+.customer-value{font-size:11px}
+.customer-value.strong{font-weight:700}
+.invoice-items{width:100%;border-collapse:collapse;margin-top:8px;table-layout:fixed}
+.invoice-items th,.invoice-items td{border:1px solid var(--line);padding:4px 5px;vertical-align:top}
+.invoice-items th{height:36px;background:#f5f6f7;text-align:center;font-size:12px;font-weight:800}
+.invoice-items td{height:73px;font-size:11px}
+.invoice-items .code{width:96px;text-align:center;font-weight:600}
+.invoice-items .desc{width:337px;text-align:center}
+.invoice-items .qty{width:80px;text-align:center}
+.invoice-items .price{width:96px;text-align:center}
+.invoice-items .total{width:125px;text-align:right}
+.item-name{font-weight:800;font-size:12px;margin:2px 0 5px}
+.item-desc-line{font-size:11px;line-height:1.25}
+.qty-main{font-weight:800;font-size:12px;margin-top:16px}
+.unit-small{font-size:8px;font-weight:800;margin-top:2px}
+.price-main{font-weight:700}
+.total-main{font-weight:700}
+.terms-wrap{display:grid;grid-template-columns:1fr 271px;margin-top:8px;height:201px;border:1px solid var(--line)}
+.terms-left{padding:4px 8px 6px;border-right:1px solid var(--line)}
+.terms-caption{font-size:12px;font-weight:800;margin-bottom:7px}
+.terms-row{display:grid;grid-template-columns:103px 1fr;font-size:11px;line-height:1.35;min-height:20px}
+.validation{margin:4px 0 8px 103px;font-size:11px}
+.bank-title{font-size:12px;font-weight:800;margin:2px 0 4px 5px}
+.bank-row{font-size:11px;line-height:1.35;margin-left:5px}
+.totals{width:100%;border-collapse:collapse;table-layout:fixed;margin:4px 8px 0 8px;width:calc(100% - 16px)}
+.totals td{border:1px solid var(--line);height:25px;padding:4px 6px;font-size:11px}
+.totals td:first-child{width:50%}
+.totals td:last-child{text-align:right}
+.totals .grand td{font-weight:900;font-size:17px;height:32px}
+.totals .currency td:last-child{font-weight:800}
+.arabic-note{height:25px;margin-top:5px;display:flex;align-items:center}
+.arabic-note img{width:225px;height:21px;object-fit:cover}
+.manager{border-top:1px solid #777;padding-top:4px;font-size:12px;font-weight:800;line-height:1.35}
+.stamp{position:absolute;left:0;top:618px;width:152px;height:130px;object-fit:cover}
+.packing-page .sheet{position:absolute;left:26px;right:27px;top:21px}
+.packing-head{height:119px;position:relative;border-bottom:3px solid var(--accent)}
+.packing-head .company-block{left:0;top:0}
+.packing-head .fulla-logo{left:338px;top:1px;width:175px;height:54px}
+.packing-title{position:absolute;right:0;top:0;width:230px;text-align:right;font-size:21.5px;font-weight:900;color:var(--accent)}
+.packing-no{position:absolute;right:0;top:26px;font-weight:800;font-size:11px}
+.packing-date{position:absolute;right:0;top:42px;font-size:9px}
+.packing-info{margin-top:10px;border:1px solid var(--line);height:120px;display:grid;grid-template-columns:491px 249px}
+.packing-info-left{border-right:1px solid var(--line);display:grid;grid-template-rows:37px 1fr}
+.packing-info-top{display:grid;grid-template-columns:291px 200px;border-bottom:1px solid var(--line)}
+.pi-cell{padding:4px}
+.pi-cell+.pi-cell{border-left:1px solid var(--line)}
+.pi-label{font-weight:800;font-size:11px}
+.pi-value{font-size:11px;margin-top:1px}
+.consignee{padding:4px;font-size:11px;line-height:1.28}
+.consignee .pi-label{margin-bottom:1px}
+.marks{padding:4px;font-size:11px}
+.packing-items{width:740px;border-collapse:collapse;table-layout:fixed;margin-top:9px}
+.packing-items th,.packing-items td{border:1px solid var(--line);vertical-align:top;padding:4px}
+.packing-items th{background:#f5f6f7;height:36px;font-weight:800;text-align:left;font-size:11px}
+.packing-items td{height:68px;font-size:11px}
+.packing-items .marks-col{width:64px}
+.packing-items .code-col{width:97px;text-align:center}
+.packing-items .desc-col{width:299px}
+.packing-items .pack-col{width:66px;text-align:center}
+.packing-items .qty-col{width:89px;text-align:center}
+.packing-items .net-col{width:61px;text-align:center}
+.packing-items .gross-col{width:64px;text-align:center}
+.packing-items .desc-col .item-name{text-align:left;margin:0 0 18px}
+.packing-items .desc-col .item-desc-line{text-align:left}
+.container-row{margin-top:12px;border:1px solid var(--line);height:37px;display:grid;grid-template-columns:217px 106px 303px 114px;font-size:11px}
+.container-cell{padding:4px;border-right:1px solid var(--line)}
+.container-cell:last-child{border-right:none}
+.container-cell .v{font-weight:800;margin-top:2px}
+.packing-manager{margin-top:14px;border-top:1px solid #777;padding-top:5px;font-size:12px;font-weight:800;line-height:1.4}
+.packing-stamp{position:absolute;left:0;top:480px;width:152px;height:130px;object-fit:cover}
+.delivery-page .sheet{position:absolute;left:26px;right:27px;top:23px}
+.delivery-banner{height:79px;background:var(--green);color:#fff;text-align:center;padding-top:16px}
+.delivery-banner .big{font-size:20px;font-weight:800;letter-spacing:.2px}
+.delivery-banner .small{font-size:12px;margin-top:7px}
+.delivery-brand{height:97px;border-bottom:2px solid var(--accent);display:flex;align-items:center;justify-content:center}
+.delivery-brand img{width:240px;height:75px;object-fit:cover}
+.delivery-summary{margin-top:9px;border:1px solid var(--line);height:67px;display:grid;grid-template-columns:172px 287px 190px 91px;grid-template-rows:repeat(3,1fr);font-size:11px;background:var(--pale)}
+.delivery-summary>div{padding:3px 4px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.delivery-summary>div:nth-child(4n){border-right:none}
+.delivery-summary>div:nth-last-child(-n+4){border-bottom:none}
+.delivery-summary .label{font-weight:800}
+.delivery-details{margin-top:11px;height:225px;border:1px solid var(--line);padding:8px 9px}
+.delivery-details-title{font-weight:900;font-size:12px;border-bottom:1px solid #333;padding-bottom:6px;margin-bottom:8px}
+.detail-row{display:grid;grid-template-columns:235px 1fr;min-height:22px;font-size:11px;align-items:center}
+.detail-row .label{font-weight:800}
+.detail-row .value.strong{font-weight:900}
+.delivery-items{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:11px}
+.delivery-items th,.delivery-items td{border:1px solid var(--line);height:23px;padding:4px;font-size:11px}
+.delivery-items th{height:36px;background:#f4f5f6;text-align:left;color:white;font-weight:800}
+.delivery-items .n{width:29px;text-align:center}
+.delivery-items .code{width:133px}
+.delivery-items .name{width:185px}
+.delivery-items .unit{width:75px;text-align:center}
+.delivery-items .q{width:88px;text-align:center}
+.delivery-items .origin{width:89px;text-align:center}
+.delivery-items .remarks{width:140px}
+.approvals{margin-top:28px;border:1px solid var(--line);height:78px;font-size:12px}
+.approvals-title{height:22px;border-bottom:1px solid var(--line);padding:3px 4px;color:white;font-weight:800;background:#f5f6f7}
+.approvals-grid{display:grid;grid-template-columns:1fr 1fr;height:56px}
+.approval-col{display:grid;grid-template-rows:22px 1fr;text-align:center;border-right:1px solid var(--line)}
+.approval-col:last-child{border-right:none}
+.approval-head{border-bottom:1px solid var(--line);padding:4px;font-weight:800}
+.approval-name{padding-top:5px;font-size:16px}
+.dynamic-slot:empty{min-height:1em}
+.header-slot{display:inline-block;min-width:26px;min-height:8px}
+.inline-slot{display:inline}
+[data-show-if]{display:none}
+.commercial-page .invoice-meta{top:48px}
+.quotation-page .title-ar{font-size:15px}
+@media print{@page{size:A4;margin:0}html,body{background:#fff;padding:0;margin:0}.page{width:210mm;height:297mm;margin:0;box-shadow:none;page-break-after:always}.page:last-child{page-break-after:auto}.no-print{display:none!important}}
+`
 }
 
 /* ── Work Item / Project Summary PDF ───────────────────── */

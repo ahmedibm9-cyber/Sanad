@@ -5,6 +5,8 @@
  * One renderer for preview, print, AND PDF.
  * ────────────────────────────────────────────────────────────── */
 
+import { appLogger } from '../lib/logger'
+
 /* ── HTML Templates (verbatim from Fulla_Dynamic_HTML_CSS_Templates) ── */
 
 const TEMPLATES: Record<string, string> = {
@@ -12,8 +14,8 @@ const TEMPLATES: Record<string, string> = {
   'invoice': `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Invoice</title></head><body>
 <div class="page invoice-page"><div class="sheet">
   <header class="invoice-head">
-    <div class="company-block"><div class="company-name">Fulla Trading Company</div><div class="company-info">Al Suliy District · Riyadh K.S.A<br>Phone: +96611235998<br>Mob: +966506247907<br>Email: a.masoud@fulla.sa<br>Website: www.Fulla.sa<br>VAT: 312339846000003<br>CR: 1010233879</div></div>
-    <img class="fulla-logo" src="assets/fulla-logo.jpg" alt="FULLA">
+    <div class="company-block"><div class="company-name dynamic-slot" data-field="company.name"></div><div class="company-info"><span class="dynamic-slot" data-field="company.address"></span><br><span data-show-if="company.phone">Phone: </span><span class="dynamic-slot" data-field="company.phone"></span><br><span data-show-if="company.email">Email: </span><span class="dynamic-slot" data-field="company.email"></span><br><span data-show-if="company.website">Website: </span><span class="dynamic-slot" data-field="company.website"></span><br><span data-show-if="company.vat">VAT: </span><span class="dynamic-slot" data-field="company.vat"></span><br><span data-show-if="company.cr">CR: </span><span class="dynamic-slot" data-field="company.cr"></span></div></div>
+    <img class="fulla-logo" data-field="company.logo" alt="Company Logo">
     <div class="invoice-title ">TAX INVOICE</div>
     <div class="invoice-meta">
       <div class="meta-row"><span class="meta-label">Date</span><span class="meta-val dynamic-slot" data-field="date"></span></div>
@@ -60,8 +62,8 @@ const TEMPLATES: Record<string, string> = {
   'quotation': `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quotation</title></head><body>
 <div class="page invoice-page quotation-page"><div class="sheet">
   <header class="invoice-head">
-    <div class="company-block"><div class="company-name">Fulla Trading Company</div><div class="company-info">Al Suliy District · Riyadh K.S.A<br>Phone: +96611235998<br>Mob: +966506247907<br>Email: a.masoud@fulla.sa<br>Website: www.Fulla.sa<br>VAT: 312339846000003<br>CR: 1010233879</div></div>
-    <img class="fulla-logo" src="assets/fulla-logo.jpg" alt="FULLA">
+    <div class="company-block"><div class="company-name dynamic-slot" data-field="company.name"></div><div class="company-info"><span class="dynamic-slot" data-field="company.address"></span><br><span data-show-if="company.phone">Phone: </span><span class="dynamic-slot" data-field="company.phone"></span><br><span data-show-if="company.email">Email: </span><span class="dynamic-slot" data-field="company.email"></span><br><span data-show-if="company.website">Website: </span><span class="dynamic-slot" data-field="company.website"></span><br><span data-show-if="company.vat">VAT: </span><span class="dynamic-slot" data-field="company.vat"></span><br><span data-show-if="company.cr">CR: </span><span class="dynamic-slot" data-field="company.cr"></span></div></div>
+    <img class="fulla-logo" data-field="company.logo" alt="Company Logo">
     <div class="invoice-title ">QUOTATION / <span class="title-ar" dir="rtl">عرض سعر</span></div>
     <div class="invoice-meta">
       <div class="meta-row"><span class="meta-label">Date</span><span class="meta-val dynamic-slot" data-field="date"></span></div>
@@ -108,8 +110,8 @@ const TEMPLATES: Record<string, string> = {
   'commercial': `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Commercial Invoice</title></head><body>
 <div class="page invoice-page commercial-page"><div class="sheet">
   <header class="invoice-head">
-    <div class="company-block"><div class="company-name">Fulla Trading Company</div><div class="company-info">Al Suliy District · Riyadh K.S.A<br>Phone: +96611235998<br>Mob: +966506247907<br>Email: a.masoud@fulla.sa<br>Website: www.Fulla.sa<br>VAT: 312339846000003<br>CR: 1010233879</div></div>
-    <img class="fulla-logo" src="assets/fulla-logo.jpg" alt="FULLA">
+    <div class="company-block"><div class="company-name dynamic-slot" data-field="company.name"></div><div class="company-info"><span class="dynamic-slot" data-field="company.address"></span><br><span data-show-if="company.phone">Phone: </span><span class="dynamic-slot" data-field="company.phone"></span><br><span data-show-if="company.email">Email: </span><span class="dynamic-slot" data-field="company.email"></span><br><span data-show-if="company.website">Website: </span><span class="dynamic-slot" data-field="company.website"></span><br><span data-show-if="company.vat">VAT: </span><span class="dynamic-slot" data-field="company.vat"></span><br><span data-show-if="company.cr">CR: </span><span class="dynamic-slot" data-field="company.cr"></span></div></div>
+    <img class="fulla-logo" data-field="company.logo" alt="Company Logo">
     <div class="invoice-title commercial">COMMERCIAL<br>INVOICE</div>
     <div class="invoice-meta">
       <div class="meta-row"><span class="meta-label">Date</span><span class="meta-val dynamic-slot" data-field="date"></span></div>
@@ -155,7 +157,7 @@ const TEMPLATES: Record<string, string> = {
 
   'packing-list': `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Packing List</title></head><body>
 <div class="page packing-page"><div class="sheet">
-<header class="packing-head"><div class="company-block"><div class="company-name">Fulla Trading Company</div><div class="company-info">Al Suliy District · Riyadh K.S.A<br>Phone: +96611235998<br>Mob: +966506247907<br>Email: a.masoud@fulla.sa<br>Website: www.Fulla.sa<br>VAT: 312339846000003<br>CR: 1010233879</div></div><img class="fulla-logo" src="assets/fulla-logo.jpg" alt="FULLA"><div class="packing-title">PACKING LIST</div><div class="packing-no dynamic-slot" data-field="packing_list_number"></div><div class="packing-date dynamic-slot" data-field="date"></div></header>
+<header class="packing-head"><div class="company-block"><div class="company-name dynamic-slot" data-field="company.name"></div><div class="company-info"><span class="dynamic-slot" data-field="company.address"></span><br><span data-show-if="company.phone">Phone: </span><span class="dynamic-slot" data-field="company.phone"></span><br><span data-show-if="company.email">Email: </span><span class="dynamic-slot" data-field="company.email"></span><br><span data-show-if="company.vat">VAT: </span><span class="dynamic-slot" data-field="company.vat"></span></div></div><img class="fulla-logo" data-field="company.logo" alt="Company Logo"><div class="packing-title">PACKING LIST</div><div class="packing-no dynamic-slot" data-field="packing_list_number"></div><div class="packing-date dynamic-slot" data-field="date"></div></header>
 <section class="packing-info"><div class="packing-info-left"><div class="packing-info-top"><div class="pi-cell"><div class="pi-label">Packing List No·</div><div class="pi-value dynamic-slot" data-field="packing_list_number"></div></div><div class="pi-cell"><div class="pi-label">Date</div><div class="pi-value dynamic-slot" data-field="date"></div></div></div><div class="consignee"><div class="pi-label">Consignee</div><div class="dynamic-slot" data-field="customer.name"></div><div class="dynamic-slot" data-field="customer.address_line1"></div><div class="dynamic-slot" data-field="customer.address_line2"></div><div class="dynamic-slot" data-field="customer.phone"></div></div></div><div class="marks"><div class="pi-label">Invoice Reference</div><div class="pi-value dynamic-slot" data-field="invoice_reference"></div><div class="pi-label" style="margin-top:7px">Marks &amp; Numbers</div><div class="pi-value dynamic-slot" data-field="marks_numbers"></div></div></section>
 <table class="packing-items"><thead><tr><th class="marks-col">Marks</th><th class="code-col">Item Code</th><th class="desc-col">Item Name / Description of Goods</th><th class="pack-col">Packages</th><th class="qty-col">Quantity</th><th class="net-col">Net KG</th><th class="gross-col">Gross<br>KG</th></tr></thead><tbody data-items-body="packing"><tr data-item-row="0"><td class="marks-col dynamic-slot" data-field="items.0.marks"></td><td class="code-col dynamic-slot" data-field="items.0.item_code"></td><td class="desc-col"><div class="item-name dynamic-slot" data-field="items.0.description"></div><div class="item-desc-line"><span data-show-if="items.0.hs_code">HS: </span><span class="dynamic-slot" data-field="items.0.hs_code"></span><span data-show-if="items.0.packing"> · Packing: </span><span class="dynamic-slot" data-field="items.0.packing"></span><span data-show-if="items.0.origin"> · Origin: </span><span class="dynamic-slot" data-field="items.0.origin"></span></div></td><td class="pack-col dynamic-slot" data-field="items.0.packages"></td><td class="qty-col"><span class="dynamic-slot" data-field="items.0.quantity"></span><span data-show-if="items.0.uom"> </span><span class="dynamic-slot" data-field="items.0.uom"></span></td><td class="net-col dynamic-slot" data-field="items.0.net_kg"></td><td class="gross-col dynamic-slot" data-field="items.0.gross_kg"></td></tr></tbody></table>
 <section class="container-row"><div class="container-cell">Container<div class="v dynamic-slot" data-field="container.type"></div></div><div class="container-cell">Seal<div class="v dynamic-slot" data-field="container.seal"></div></div><div class="container-cell">Packages<div class="v dynamic-slot" data-field="container.packages"></div></div><div class="container-cell">CBM<div class="v dynamic-slot" data-field="container.cbm"></div></div></section>
@@ -165,7 +167,7 @@ const TEMPLATES: Record<string, string> = {
   'delivery-note': `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Delivery Note</title></head><body>
 <div class="page delivery-page"><div class="sheet">
 <header class="delivery-banner"><div class="big">DELIVERY NOTE</div><div class="small">Export Material Issue Voucher</div></header>
-<div class="delivery-brand"><img src="assets/delivery-logo.jpg" alt="FULLA - Fulla Trading Company"></div>
+<div class="delivery-brand"><img data-field="company.logo" alt="Company Logo"></div>
 <section class="delivery-summary"><div class="label">Delivery Note No·</div><div class="dynamic-slot" data-field="delivery_note_number"></div><div class="label">Date</div><div class="dynamic-slot" data-field="date"></div><div class="label">Customer / Importer</div><div class="dynamic-slot" data-field="customer.name"></div><div class="label">Shipping Method</div><div class="dynamic-slot" data-field="shipping_method"></div><div class="label">Destination (Country)</div><div class="dynamic-slot" data-field="destination"></div><div class="label">Deliver / Prepare Before</div><div class="dynamic-slot" data-field="prepare_before"></div></section>
 <section class="delivery-details"><div class="delivery-details-title">DELIVERY DETAILS</div><div class="detail-row"><div class="label">Invoice No·:</div><div class="value strong dynamic-slot" data-field="invoice_number"></div></div><div class="detail-row"><div class="label">Document No·:</div><div class="value dynamic-slot" data-field="document_number"></div></div><div class="detail-row"><div class="label">Date:</div><div class="value dynamic-slot" data-field="date"></div></div><div class="detail-row"><div class="label">Customer / Consignee:</div><div class="value dynamic-slot" data-field="customer.name"></div></div><div class="detail-row"><div class="label">Invoice No·:</div><div class="value dynamic-slot" data-field="customer_invoice_number"></div></div><div class="detail-row"><div class="label">Destination:</div><div class="value dynamic-slot" data-field="destination"></div></div><div class="detail-row"><div class="label">Shipping Method:</div><div class="value dynamic-slot" data-field="shipping_method"></div></div><div class="detail-row"><div class="label">Prepare Before:</div><div class="value dynamic-slot" data-field="prepare_before"></div></div></section>
 <table class="delivery-items"><thead><tr><th class="n">#</th><th class="code">Item Code</th><th class="name">Item Name / Material<br>Description</th><th class="unit">Unit</th><th class="q">Quantity<br>Delivered</th><th class="origin">Country of<br>Origin</th><th class="remarks">Remarks</th></tr></thead><tbody><tr data-item-row="0"><td class="n">1</td><td class="code dynamic-slot" data-field="items.0.item_code"></td><td class="name dynamic-slot" data-field="items.0.description"></td><td class="unit dynamic-slot" data-field="items.0.uom"></td><td class="q dynamic-slot" data-field="items.0.quantity"></td><td class="origin dynamic-slot" data-field="items.0.origin"></td><td class="remarks dynamic-slot" data-field="items.0.remarks"></td></tr></tbody></table>
@@ -331,7 +333,7 @@ export function renderFullaTemplate(
 
   let html = TEMPLATES[baseKey]
   if (!html) {
-    console.error(`[fullaTemplateRenderer] Unknown template: ${templateId}`)
+    appLogger.error(`[fullaTemplateRenderer] Unknown template: ${templateId}`)
     return ''
   }
 
@@ -389,7 +391,7 @@ export function renderFullaTemplate(
  * This is the fulla-template.css content, inlined for portability.
  */
 export function getFullaTemplateCSS(): string {
-  // The CSS is imported at the component level via fullaDocStyles.css
+  // The CSS is imported at the component level via fullaTemplateStyles.css
   // This function returns it for PDF export where CSS may not be loaded
   return FULLA_TEMPLATE_CSS
 }
