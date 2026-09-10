@@ -178,6 +178,20 @@ CREATE POLICY report_issues_update ON report_issues
     )
   );
 
+CREATE POLICY report_issues_delete ON report_issues
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM company_memberships cm
+      WHERE cm.company_id = report_issues.company_id
+        AND cm.user_id = auth.uid()
+        AND cm.base_role = 'admin'
+        AND cm.active = TRUE
+    )
+    OR EXISTS (
+      SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.is_system_admin = TRUE
+    )
+  );
+
 -- Attachments: company-scoped read/write
 CREATE POLICY attachments_read ON attachments
   FOR SELECT USING (

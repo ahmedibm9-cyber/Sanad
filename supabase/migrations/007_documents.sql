@@ -60,7 +60,7 @@ ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 -- Documents: company-scoped read
 CREATE POLICY documents_read ON documents
   FOR SELECT USING (
-    active = TRUE AND deleted_at IS NULL AND (
+    deleted_at IS NULL AND (
       EXISTS (
         SELECT 1 FROM company_memberships cm
         WHERE cm.company_id = documents.company_id

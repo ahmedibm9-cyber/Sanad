@@ -36,7 +36,7 @@ export interface Company {
   swift?: string
   bankCurrency?: string
   defaultLanguage?: Language
-  defaultTemplate?: 'template-a' | 'template-b'
+  defaultTemplate?: string
   defaultVatRate?: number
   defaultIncoterm?: string
   defaultPaymentTerms?: string
@@ -175,7 +175,7 @@ export interface Document {
   number: string
   date: string
   language: Language
-  template: 'template-a' | 'template-b'
+  template: string
   preparedBy?: string
   showSignature?: boolean
   showStamp?: boolean

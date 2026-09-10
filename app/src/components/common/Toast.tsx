@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle, X, AlertTriangle, Info } from 'lucide-react'
+import { useLanguage } from '../../contexts/LanguageContext'
 
 interface ToastProps {
   message: string
@@ -21,6 +22,7 @@ const bgColors = {
 }
 
 export default function Toast({ message, type = 'success', duration = 3000, onClose }: ToastProps) {
+  const { t } = useLanguage()
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export default function Toast({ message, type = 'success', duration = 3000, onCl
     >
       {icons[type]}
       <span className="flex-1">{message}</span>
-      <button onClick={() => { setVisible(false); setTimeout(onClose, 200) }} className="p-0.5 hover:bg-black/5 rounded">
+      <button onClick={() => { setVisible(false); setTimeout(onClose, 200) }} className="p-0.5 hover:bg-black/5 rounded" aria-label={t('Dismiss', 'إغلاق')}>
         <X size={14} />
       </button>
     </div>

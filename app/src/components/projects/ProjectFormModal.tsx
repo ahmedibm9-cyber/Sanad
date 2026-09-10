@@ -4,7 +4,7 @@ import { useCompany } from '../../contexts/CompanyContext'
 import Modal from '../common/Modal'
 import FormSection from '../common/FormSection'
 import type { WorkItem, Customer, Material, ProjectMaterial } from '../../types'
-import { getCustomersByCompany, getMaterialsByCompany } from '../../data/mockData'
+import { useCustomers, useMaterials } from '../../hooks/useData'
 import { Plus, Trash2, AlertCircle } from 'lucide-react'
 
 interface ProjectFormModalProps {
@@ -19,8 +19,8 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
   const { t } = useLanguage()
   const { currentCompany } = useCompany()
   const isEdit = !!item
-  const customers = getCustomersByCompany(currentCompany.id)
-  const materials = getMaterialsByCompany(currentCompany.id)
+  const { data: customers } = useCustomers(currentCompany?.id)
+  const { data: materials } = useMaterials(currentCompany?.id)
   const [saving, setSaving] = useState(false)
 
   const [form, setForm] = useState({
@@ -61,7 +61,7 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
 
   const handleCustomerChange = (customerId: string) => {
     update('customerId', customerId)
-    const customer = customers.find(c => c.id === customerId)
+    const customer = (customers || []).find(c => c.id === customerId)
     if (customer && !isEdit) {
       setForm(prev => ({
         ...prev,
@@ -95,41 +95,39 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
   }
 
   const handleMaterialSelect = (idx: number, materialId: string) => {
-    const mat = materials.find(m => m.id === materialId)
+    const mat = (materials || []).find(m => m.id === materialId)
     if (mat) {
       setMaterialLines(prev => prev.map((line, i) => i === idx ? {
         ...line, materialId, materialName: mat.name, grade: mat.grade || '',
-        unitPrice: mat.lastSellingPrice || 0, currency: mat.currency || form.currency,
-        packing: mat.defaultPacking || '', origin: mat.origin || '', hsCode: mat.hsCode || '',
+        unitPrice: mat.last_selling_price || 0, currency: mat.last_selling_currency || form.currency,
+        packing: mat.default_packing || '', origin: mat.origin || '', hsCode: mat.hs_code || '',
       } : line))
     }
   }
 
   const handleSave = () => {
     setSaving(true)
-    setTimeout(() => {
-      onSave({
-        ...item,
-        name: form.name,
-        customerId: form.customerId,
-        customerName: customers.find(c => c.id === form.customerId)?.name,
-        destinationCountry: form.destinationCountry,
-        destinationCity: form.destinationCity,
-        currency: form.currency,
-        incoterm: form.incoterm,
-        paymentTerms: form.paymentTerms,
-        deliveryTerms: form.deliveryTerms,
-        portOfLoading: form.portOfLoading,
-        portOfDischarge: form.portOfDischarge,
-        vesselName: form.vesselName,
-        voyageNumber: form.voyageNumber,
-        containerNumber: form.containerNumber,
-        notes: form.notes,
-        materials: materialLines,
-      })
-      setSaving(false)
-      onClose()
-    }, 500)
+    onSave({
+      ...item,
+      name: form.name,
+      customerId: form.customerId,
+      customerName: (customers || []).find(c => c.id === form.customerId)?.name,
+      destinationCountry: form.destinationCountry,
+      destinationCity: form.destinationCity,
+      currency: form.currency,
+      incoterm: form.incoterm,
+      paymentTerms: form.paymentTerms,
+      deliveryTerms: form.deliveryTerms,
+      portOfLoading: form.portOfLoading,
+      portOfDischarge: form.portOfDischarge,
+      vesselName: form.vesselName,
+      voyageNumber: form.voyageNumber,
+      containerNumber: form.containerNumber,
+      notes: form.notes,
+      materials: materialLines,
+    })
+    setSaving(false)
+    onClose()
   }
 
   return (
@@ -173,7 +171,7 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
             <label className="label-field">Customer *</label>
             <select className="select-field" value={form.customerId} onChange={e => handleCustomerChange(e.target.value)}>
               <option value="">{t('— Select Customer —', '— اختر العميل —')}</option>
-              {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {(customers || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
         </FormSection>
@@ -253,14 +251,14 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
               <div key={line.id} className="p-3 border border-gray-200 rounded-lg space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-gray-500">Material {idx + 1}</span>
-                  <button type="button" onClick={() => removeMaterialLine(idx)} className="btn-ghost text-red-500 hover:text-red-700 p-1"><Trash2 size={14} /></button>
+                  <button type="button" onClick={() => removeMaterialLine(idx)} className="btn-ghost text-red-500 hover:text-red-700 p-1" aria-label={t('Remove material line', 'إزالة صندوق المادة')}><Trash2 size={14} /></button>
                 </div>
                 <div className="grid grid-cols-4 gap-3">
                   <div>
                     <label className="label-field text-xs">Material</label>
                     <select className="select-field text-sm" value={line.materialId} onChange={e => handleMaterialSelect(idx, e.target.value)}>
                       <option value="">Select...</option>
-                      {materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                      {(materials || []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </select>
                   </div>
                   <div>

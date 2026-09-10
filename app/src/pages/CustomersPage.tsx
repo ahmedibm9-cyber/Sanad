@@ -3,7 +3,7 @@ import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer } from '../hooks/useData'
 import type { Customer } from '../types'
-import { type Customer as DbCustomer } from '../lib/data'
+import { type Customer as DbCustomer } from '../hooks/useData'
 import CustomerFormModal from '../components/customers/CustomerFormModal'
 import ConfirmModal from '../components/common/ConfirmModal'
 import Pagination from '../components/common/Pagination'
@@ -185,9 +185,9 @@ export default function CustomersPage() {
                         <td className="px-5 py-3.5 hidden lg:table-cell">{customer.email ? <span className="text-sm text-gray-700 inline-flex items-center gap-1.5"><Mail size={12} className="text-gray-400" />{customer.email}</span> : <span className="text-gray-300">—</span>}</td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => setViewingCustomer(customer)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600" title={t('View', 'عرض')}><Eye size={15} /></button>
-                            <button onClick={() => { setEditingCustomer(customer); setShowForm(true) }} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600" title={t('Edit', 'تعديل')}><Pencil size={15} /></button>
-                            <button onClick={() => setDeletingCustomer(customer)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-red-600" title={t('Delete', 'حذف')}><Trash2 size={15} /></button>
+                            <button onClick={() => setViewingCustomer(customer)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600" title={t('View', 'عرض')} aria-label={t('View customer', 'عرض العميل')}><Eye size={15} /></button>
+                            <button onClick={() => { setEditingCustomer(customer); setShowForm(true) }} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600" title={t('Edit', 'تعديل')} aria-label={t('Edit customer', 'تعديل العميل')}><Pencil size={15} /></button>
+                            <button onClick={() => setDeletingCustomer(customer)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-red-600" title={t('Delete', 'حذف')} aria-label={t('Delete customer', 'حذف العميل')}><Trash2 size={15} /></button>
                           </div>
                         </td>
                       </tr>

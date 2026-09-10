@@ -6,9 +6,9 @@ import {
 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useApp } from '../contexts/AppContext'
-import { useNotifications } from '../hooks/useData'
+import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../hooks/useData'
 import type { Notification } from '../types'
-import type { Notification as DbNotification } from '../lib/data'
+import type { Notification as DbNotification } from '../hooks/useData'
 
 const typeIcons: Record<string, React.ReactNode> = {
   task_assigned: <CheckCircle className="w-5 h-5 text-blue-600" />,
@@ -68,7 +68,9 @@ export default function NotificationsPage() {
   const { t } = useLanguage()
   const { currentUser } = useApp()
 
-  const { data: dbNotifications = [], loading } = useNotifications(currentUser.id)
+  const { data: dbNotifications = [], loading, refetch } = useNotifications(currentUser.id)
+  const { markRead: markReadDb } = useMarkNotificationRead()
+  const { markAllRead: markAllReadDb } = useMarkAllNotificationsRead()
 
   // Map Supabase Notification to UI Notification type
   const mappedNotifications = useMemo<Notification[]>(() => {
@@ -105,10 +107,12 @@ export default function NotificationsPage() {
 
   const handleMarkAsRead = (id: string) => {
     setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
+    markReadDb(id, currentUser.id).then(() => refetch())
   }
 
   const handleMarkAllRead = () => {
     setNotifs(prev => prev.map(n => ({ ...n, read: true })))
+    markAllReadDb(currentUser.id).then(() => refetch())
   }
 
   return (

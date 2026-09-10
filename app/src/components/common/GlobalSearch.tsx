@@ -3,13 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Search, X, FolderKanban, CheckSquare, Users, Package, FileText, Factory } from 'lucide-react'
 import { useLanguage } from '../../contexts/LanguageContext'
 import { useCompany } from '../../contexts/CompanyContext'
-import {
-  getProjectsByCompany,
-  getTasksByCompany,
-  getCustomersByCompany,
-  getMaterialsByCompany,
-  factoryCodes,
-} from '../../data/mockData'
+import { useApp } from '../../contexts/AppContext'
+import { useWorkItems, useCustomers, useMaterials, useFactoryCodeSearch, useCompanyDocuments } from '../../hooks/useData'
 
 // ─── Types ───────────────────────────────────────────
 
@@ -53,16 +48,25 @@ function match(query: string, ...fields: (string | undefined)[]): boolean {
   return fields.some(f => f != null && f.toLowerCase().includes(q))
 }
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
 function highlights(text: string, query: string): string {
-  if (!query) return text
+  if (!query) return escapeHtml(text)
   const idx = text.toLowerCase().indexOf(query.toLowerCase())
-  if (idx === -1) return text
+  if (idx === -1) return escapeHtml(text)
   return (
-    text.slice(0, idx) +
+    escapeHtml(text.slice(0, idx)) +
     '<mark class="bg-yellow-200 rounded px-0.5">' +
-    text.slice(idx, idx + query.length) +
+    escapeHtml(text.slice(idx, idx + query.length)) +
     '</mark>' +
-    text.slice(idx + query.length)
+    escapeHtml(text.slice(idx + query.length))
   )
 }
 
@@ -86,6 +90,14 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
   const navigate = useNavigate()
   const { t } = useLanguage()
   const { currentCompany } = useCompany()
+  const { currentUser } = useApp()
+
+  // ── Load data via hooks ───────────────────────────
+  const { data: allWorkItems } = useWorkItems(currentCompany?.id)
+  const { data: customers } = useCustomers(currentCompany?.id)
+  const { data: materials } = useMaterials(currentCompany?.id)
+  const { data: factoryResults } = useFactoryCodeSearch(query)
+  const { data: documents } = useCompanyDocuments(currentCompany?.id)
 
   // ── Build search results ──────────────────────────
 
@@ -93,9 +105,12 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
     const q = query.trim()
     if (!q || !currentCompany) return []
 
-    const projectMatches: SearchResult[] = getProjectsByCompany(currentCompany.id)
-      .filter(p => match(q, p.name, p.customerName, p.destinationCountry, p.destinationCity))
-      .map(p => ({
+    const projects = (allWorkItems || []).filter((wi: any) => wi.type === 'project')
+    const tasks = (allWorkItems || []).filter((wi: any) => wi.type === 'task')
+
+    const projectMatches: SearchResult[] = projects
+      .filter((p: any) => match(q, p.name, p.customerName, p.destinationCountry, p.destinationCity))
+      .map((p: any) => ({
         id: p.id,
         type: 'project' as ResultType,
         title: p.name,
@@ -103,9 +118,9 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
         route: `/projects/${p.id}`,
       }))
 
-    const taskMatches: SearchResult[] = getTasksByCompany(currentCompany.id)
-      .filter(tk => match(q, tk.name, tk.customerName))
-      .map(tk => ({
+    const taskMatches: SearchResult[] = tasks
+      .filter((tk: any) => match(q, tk.name, tk.customerName))
+      .map((tk: any) => ({
         id: tk.id,
         type: 'task' as ResultType,
         title: tk.name,
@@ -113,9 +128,9 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
         route: `/tasks/${tk.id}`,
       }))
 
-    const customerMatches: SearchResult[] = getCustomersByCompany(currentCompany.id)
-      .filter(c => match(q, c.name, c.contactPerson, c.city, c.country))
-      .map(c => ({
+    const customerMatches: SearchResult[] = (customers || [])
+      .filter((c: any) => match(q, c.name, c.contactPerson, c.city, c.country))
+      .map((c: any) => ({
         id: c.id,
         type: 'customer' as ResultType,
         title: c.name,
@@ -123,9 +138,9 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
         route: `/customers/${c.id}`,
       }))
 
-    const materialMatches: SearchResult[] = getMaterialsByCompany(currentCompany.id)
-      .filter(m => match(q, m.name, m.grade, m.manufacturer, m.hsCode))
-      .map(m => ({
+    const materialMatches: SearchResult[] = (materials || [])
+      .filter((m: any) => match(q, m.name, m.grade, m.manufacturer, m.hsCode))
+      .map((m: any) => ({
         id: m.id,
         type: 'material' as ResultType,
         title: m.name,
@@ -133,29 +148,19 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
         route: `/materials/${m.id}`,
       }))
 
-    // Collect documents from all company projects + tasks
-    const allWorkItems = [
-      ...getProjectsByCompany(currentCompany.id),
-      ...getTasksByCompany(currentCompany.id),
-    ]
-    const documentMatches: SearchResult[] = []
-    for (const wi of allWorkItems) {
-      for (const doc of wi.documents) {
-        if (match(q, doc.number, wi.name, doc.preparedBy, DOC_TYPE_LABELS[doc.type]?.en)) {
-          documentMatches.push({
-            id: doc.id,
-            type: 'document',
-            title: doc.number,
-            subtitle: `${DOC_TYPE_LABELS[doc.type]?.en ?? doc.type} · ${wi.name}`,
-            route: `/documents/${doc.id}/preview`,
-          })
-        }
-      }
-    }
+    const documentMatches: SearchResult[] = (documents || [])
+      .filter((doc: any) => match(q, doc.number, doc.preparedBy, DOC_TYPE_LABELS[doc.type]?.en))
+      .map((doc: any) => ({
+        id: doc.id,
+        type: 'document' as ResultType,
+        title: doc.number,
+        subtitle: DOC_TYPE_LABELS[doc.type]?.en ?? doc.type,
+        route: `/documents/${doc.id}/preview`,
+      }))
 
-    const factoryMatches: SearchResult[] = factoryCodes
-      .filter(fc => match(q, fc.factoryName, fc.factoryNameAr, fc.factoryCode, fc.product, fc.activity, fc.city, fc.hsCode))
-      .map(fc => ({
+    const factoryMatches: SearchResult[] = (factoryResults || [])
+      .filter((fc: any) => match(q, fc.factoryName, fc.factoryNameAr, fc.factoryCode, fc.product, fc.activity, fc.city, fc.hsCode))
+      .map((fc: any) => ({
         id: fc.id,
         type: 'factory' as ResultType,
         title: fc.factoryName,
@@ -173,7 +178,7 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
     ]
 
     return groups.filter(g => g.items.length > 0)
-  }, [query, currentCompany?.id, t])
+  }, [query, currentCompany?.id, t, allWorkItems, customers, materials, factoryResults, documents])
 
   // Flat list for keyboard navigation
   const flatItems = useMemo(() => results.flatMap(g => g.items), [results])

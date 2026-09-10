@@ -6,6 +6,7 @@
 
 import { getSupabase, type Database } from '../supabase'
 import { type RequestContext, requirePermission, hasPermission } from '../api'
+import { ilikeSearch } from '../search'
 import { NotFoundError, handleSupabaseError } from '../errors'
 import { appLogger } from '../logger'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -85,6 +86,7 @@ export interface CreateWorkItemInput {
 }
 
 export interface UpdateWorkItemInput {
+  type?: WorkItemType
   name?: string
   customer_id?: string
   status?: WorkItemStatus
@@ -170,7 +172,7 @@ export class WorkItemService {
     }
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%`)
+      query = query.or(`name.ilike.${ilikeSearch(search)}`)
     }
 
     query = query.range(from, to).order('pinned', { ascending: false }).order('updated_at', { ascending: false })
@@ -205,6 +207,7 @@ export class WorkItemService {
       .from('work_items')
       .select('*, customers!inner(name)')
       .eq('id', id)
+      .eq('company_id', context.companyId)
       .eq('active', true)
       .is('deleted_at', null)
       .single()
@@ -293,6 +296,10 @@ export class WorkItemService {
    */
   async updateWorkItem(id: string, input: UpdateWorkItemInput, context: RequestContext): Promise<WorkItem> {
     const existing = await this.getWorkItemById(id, context)
+    // If type is changing, use convertTaskToProject which handles permissions
+    if (input.type && input.type !== existing.type) {
+      return this.convertTaskToProject(id, context)
+    }
     const permKey = existing.type === 'project' ? 'projects.edit' : 'tasks.edit'
     requirePermission(context, permKey)
 

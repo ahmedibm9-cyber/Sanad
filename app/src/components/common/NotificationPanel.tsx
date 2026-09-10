@@ -5,7 +5,8 @@ import {
   Clock, Shield, Database, ChevronRight, CheckCheck,
 } from 'lucide-react'
 import { useLanguage } from '../../contexts/LanguageContext'
-import { notifications as mockNotifications } from '../../data/mockData'
+import { useApp } from '../../contexts/AppContext'
+import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../../hooks/useData'
 import type { Notification } from '../../types'
 
 interface NotificationPanelProps {
@@ -58,14 +59,27 @@ export default function NotificationPanel({ open, onClose, onStateChange }: Noti
   const { t } = useLanguage()
   const navigate = useNavigate()
   const panelRef = useRef<HTMLDivElement>(null)
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications)
+  const { currentUser } = useApp()
+  const { data: hookNotifications, refetch } = useNotifications(currentUser?.id)
+  const { markRead: markReadDb } = useMarkNotificationRead()
+  const { markAllRead: markAllReadDb } = useMarkAllNotificationsRead()
+  const [notifications, setNotifications] = useState<Notification[]>([])
 
-  // Sync with external data when panel opens
+  // Sync with hook data when panel opens
   useEffect(() => {
-    if (open) {
-      setNotifications([...mockNotifications])
+    if (open && hookNotifications) {
+      setNotifications(hookNotifications.map((n: any) => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        message: n.body || n.message || '',
+        read: n.read_at != null || n.read === true,
+        createdAt: n.created_at || n.createdAt || '',
+        entityId: n.entity_id || n.entityId,
+        entityType: n.entity_type || n.entityType,
+      })))
     }
-  }, [open])
+  }, [open, hookNotifications])
 
   // Escape to close
   useEffect(() => {
@@ -81,13 +95,19 @@ export default function NotificationPanel({ open, onClose, onStateChange }: Noti
     setNotifications(prev =>
       prev.map(n => n.id === id ? { ...n, read: true } : n)
     )
+    if (currentUser?.id) {
+      markReadDb(id, currentUser.id).then(() => refetch())
+    }
     onStateChange?.()
-  }, [onStateChange])
+  }, [onStateChange, markReadDb, currentUser?.id, refetch])
 
   const markAllRead = useCallback(() => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+    if (currentUser?.id) {
+      markAllReadDb(currentUser.id).then(() => refetch())
+    }
     onStateChange?.()
-  }, [onStateChange])
+  }, [onStateChange, markAllReadDb, currentUser?.id, refetch])
 
   if (!open) return null
 

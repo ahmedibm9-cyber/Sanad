@@ -13,13 +13,18 @@ import {
   X,
   UserCheck,
   Building2,
+  Loader2,
 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { useApp } from '../contexts/AppContext'
+import { useAuth } from '../contexts/AuthContext'
 import { useCompanyMemberships, useCompanies } from '../hooks/useData'
 import type { User, Permission, CompanyId } from '../types'
 import UserFormModal from '../components/users/UserFormModal'
+import { getPermissionService } from '../lib/services/permission'
+import { getAuditService } from '../lib/services/audit'
+import { appLogger } from '../lib/logger'
 
 // ─── Permission Group Definitions ────────────────────────────
 interface PermissionGroup {
@@ -221,6 +226,7 @@ export default function UsersPage() {
   const { t } = useLanguage()
   const { currentCompany } = useCompany()
   const { currentUser } = useApp()
+  const { user } = useAuth()
 
   // ─── Data from hooks ────────────────────────────────────
   const { data: memberships } = useCompanyMemberships(currentCompany?.id)
@@ -363,10 +369,48 @@ export default function UsersPage() {
     })
   }
 
-  // Save (mock)
-  const handleSavePermissions = () => {
-    setEditingPermissions(null)
-  }
+  // Save permissions to Supabase
+  const [savingPermissions, setSavingPermissions] = useState(false)
+  const handleSavePermissions = useCallback(async () => {
+    if (!editingPermissions || !selectedUserId || !currentCompany?.id || !user) return
+    setSavingPermissions(true)
+    try {
+      const ctx = {
+        userId: user.id,
+        companyId: currentCompany.id,
+        permissions: {},
+        isSystemAdmin: user.isSystemAdmin || false,
+      }
+
+      // Find the membership for the selected user in this company
+      const membership = memberships?.find(
+        (m) => m.user_id === selectedUserId && m.company_id === currentCompany.id
+      )
+      if (!membership) return
+
+      const permissionService = getPermissionService()
+      await permissionService.updatePermissions(membership.id, editingPermissions, ctx)
+
+      // Log audit event
+      try {
+        const auditService = getAuditService()
+        await auditService.logEvent({
+          action: 'PERMISSION_CHANGE',
+          entityType: 'membership',
+          entityId: membership.id,
+          after: { permissions: editingPermissions },
+        }, ctx)
+      } catch {
+        // Audit logging is non-critical
+      }
+
+      setEditingPermissions(null)
+    } catch (err) {
+      appLogger.error('Failed to save permissions', err)
+    } finally {
+      setSavingPermissions(false)
+    }
+  }, [editingPermissions, selectedUserId, currentCompany?.id, user, memberships])
 
   // ─── Toggle group expansion ─────────────────────────────
   const toggleExpand = (groupKey: string) => {
@@ -449,7 +493,7 @@ export default function UsersPage() {
         <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm font-medium animate-in fade-in">
           <Check className="w-4 h-4 text-green-600" />
           {successMessage}
-          <button onClick={() => setSuccessMessage(null)} className="ms-auto text-green-500 hover:text-green-700">
+          <button onClick={() => setSuccessMessage(null)} className="ms-auto text-green-500 hover:text-green-700" aria-label={t('Dismiss', 'إغلاق')}>
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -468,7 +512,7 @@ export default function UsersPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="absolute end-3 top-1/2 -translate-y-1/2">
+              <button onClick={() => setSearchQuery('')} className="absolute end-3 top-1/2 -translate-y-1/2" aria-label={t('Clear search', 'مسح البحث')}>
                 <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
               </button>
             )}
@@ -608,9 +652,9 @@ export default function UsersPage() {
                         <button onClick={() => setEditingPermissions(null)} className="btn-ghost text-xs">
                           {t('Cancel', 'إلغاء')}
                         </button>
-                        <button onClick={handleSavePermissions} className="btn-primary gap-1.5 text-xs">
-                          <Check className="w-3.5 h-3.5" />
-                          {t('Save', 'حفظ')}
+                        <button onClick={handleSavePermissions} disabled={savingPermissions} className="btn-primary gap-1.5 text-xs disabled:opacity-50 disabled:cursor-not-allowed">
+                          {savingPermissions ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                          {savingPermissions ? t('Saving...', 'جاري الحفظ...') : t('Save', 'حفظ')}
                         </button>
                       </>
                     )}

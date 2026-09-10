@@ -7,6 +7,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { env } from './env'
+import { appLogger } from './logger'
 
 // Database schema type definitions
 export interface Database {
@@ -234,7 +235,7 @@ export async function getCurrentSession() {
   const supabase = getSupabase()
   const { data: { session }, error } = await supabase.auth.getSession()
   if (error) {
-    console.error('Error getting session:', error.message)
+    appLogger.error('Error getting session', error.message)
     return null
   }
   return session
@@ -255,7 +256,7 @@ export async function getCurrentUserProfile() {
     .single()
 
   if (error) {
-    console.error('Error fetching user profile:', error.message)
+    appLogger.error('Error fetching user profile', error.message)
     return null
   }
 
@@ -278,7 +279,7 @@ export async function getUserMemberships(userId: string) {
     .eq('active', true)
 
   if (error) {
-    console.error('Error fetching memberships:', error.message)
+    appLogger.error('Error fetching memberships', error.message)
     return []
   }
 
@@ -297,7 +298,7 @@ export async function getMembershipPermissions(membershipId: string) {
     .eq('membership_id', membershipId)
 
   if (error) {
-    console.error('Error fetching permissions:', error.message)
+    appLogger.error('Error fetching permissions', error.message)
     return []
   }
 

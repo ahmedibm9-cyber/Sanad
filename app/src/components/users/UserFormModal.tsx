@@ -8,11 +8,18 @@ import {
   Building2,
   ToggleLeft,
   ToggleRight,
+  Loader2,
 } from 'lucide-react'
 import Modal from '../common/Modal'
 import { useLanguage } from '../../contexts/LanguageContext'
-import { companies } from '../../data/mockData'
+import { useCompanies } from '../../hooks/useData'
+import { getAuthService } from '../../lib/auth'
+import { getMembershipService } from '../../lib/services/membership'
+import { getAuditService } from '../../lib/services/audit'
+import { useAuth } from '../../contexts/AuthContext'
+import { useCompany } from '../../contexts/CompanyContext'
 import type { User, Permission, CompanyId, CompanyMembership } from '../../types'
+import { appLogger } from '../../lib/logger'
 
 // ─── Permission Group Definitions (same as UsersPage) ─────
 interface PermissionGroup {
@@ -196,6 +203,7 @@ function emptyPermMap(): Record<Permission, boolean> {
 // ─── Component ────────────────────────────────────────────
 export default function UserFormModal({ open, onClose, onSave, user }: UserFormModalProps) {
   const { t } = useLanguage()
+  const { data: companies } = useCompanies()
   const isEdit = !!user
 
   // ─── User info state ────────────────────────────────────
@@ -207,19 +215,19 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
   // ─── Company access / roles / permissions ────────────────
   const [companyAccess, setCompanyAccess] = useState<CompanyAccessState>(() => {
     const init: CompanyAccessState = {}
-    companies.forEach((c) => { init[c.id] = false })
+    ;(companies || []).forEach((c) => { init[c.id] = false })
     return init
   })
 
   const [companyRoles, setCompanyRoles] = useState<CompanyRoleState>(() => {
     const init: CompanyRoleState = {}
-    companies.forEach((c) => { init[c.id] = 'user' })
+    ;(companies || []).forEach((c) => { init[c.id] = 'user' })
     return init
   })
 
   const [companyPerms, setCompanyPerms] = useState<CompanyPermState>(() => {
     const init: CompanyPermState = {}
-    companies.forEach((c) => { init[c.id] = emptyPermMap() })
+    ;(companies || []).forEach((c) => { init[c.id] = emptyPermMap() })
     return init
   })
 
@@ -237,7 +245,7 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
       const access: CompanyAccessState = {}
       const roles: CompanyRoleState = {}
       const perms: CompanyPermState = {}
-      companies.forEach((c) => {
+      ;(companies || []).forEach((c) => {
         const m = user.memberships.find((mem) => mem.companyId === c.id)
         access[c.id] = !!m
         roles[c.id] = m ? (m.role === 'admin' ? 'user' : m.role) : 'user'
@@ -259,7 +267,7 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
       const access: CompanyAccessState = {}
       const roles: CompanyRoleState = {}
       const perms: CompanyPermState = {}
-      companies.forEach((c) => {
+      ;(companies || []).forEach((c) => {
         access[c.id] = false
         roles[c.id] = 'user'
         perms[c.id] = emptyPermMap()
@@ -269,7 +277,7 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
       setCompanyPerms(perms)
     }
     setExpandedGroups(new Set(PERMISSION_GROUPS.map((g) => g.key)))
-  }, [open, user])
+  }, [open, user, companies])
 
   // ─── Company access toggle ───────────────────────────────
   const toggleCompanyAccess = (companyId: CompanyId) => {
@@ -330,31 +338,97 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
 
   // ─── Validate & Save ────────────────────────────────────
   const canSave = useMemo(() => {
-    return name.trim() !== '' && email.trim() !== '' && companies.some((c) => companyAccess[c.id])
-  }, [name, email, companyAccess])
+    return name.trim() !== '' && email.trim() !== '' && (companies || []).some((c) => companyAccess[c.id])
+  }, [name, email, companyAccess, companies])
 
-  const handleSave = () => {
+  const [saving, setSaving] = useState(false)
+  const { user: authUser } = useAuth()
+  const { currentCompany } = useCompany()
+
+  const handleSave = async () => {
     if (!canSave) return
+    setSaving(true)
+    try {
+      const memberships: CompanyMembership[] = (companies || [])
+        .filter((c) => companyAccess[c.id])
+        .map((c) => ({
+          companyId: c.id,
+          role: companyRoles[c.id],
+          permissions: ALL_PERMISSION_KEYS.filter((k) => companyPerms[c.id][k]),
+        }))
 
-    const memberships: CompanyMembership[] = companies
-      .filter((c) => companyAccess[c.id])
-      .map((c) => ({
-        companyId: c.id,
-        role: companyRoles[c.id],
-        permissions: ALL_PERMISSION_KEYS.filter((k) => companyPerms[c.id][k]),
-      }))
+      if (isEdit && user) {
+        // Update existing user - just call onSave with updated data
+        const savedUser: User = {
+          id: user.id,
+          name: name.trim(),
+          nameAr: nameAr.trim() || undefined,
+          email: email.trim(),
+          role,
+          memberships,
+        }
+        onSave(savedUser)
+      } else {
+        // Create new user via Supabase Auth
+        const authService = getAuthService()
+        const defaultPassword = 'Sanad123!' // Default password - user should change on first login
+        const session = await authService.signUp({
+          email: email.trim(),
+          password: defaultPassword,
+          displayName: name.trim(),
+        })
 
-    const savedUser: User = {
-      id: user?.id || `user-${Date.now()}`,
-      name: name.trim(),
-      nameAr: nameAr.trim() || undefined,
-      email: email.trim(),
-      role,
-      memberships,
+        // Create memberships for the new user
+        const membershipService = getMembershipService()
+        const ctx = {
+          userId: authUser?.id || '',
+          companyId: currentCompany?.id || '',
+          permissions: {},
+          isSystemAdmin: authUser?.isSystemAdmin || false,
+        }
+
+        for (const membership of memberships) {
+          try {
+            await membershipService.createMembership({
+              company_id: membership.companyId,
+              user_id: session.user.id,
+              base_role: membership.role as 'admin' | 'user' | 'viewer',
+            }, ctx)
+          } catch (err) {
+            appLogger.error('Failed to create membership', err)
+          }
+        }
+
+        // Audit logging
+        try {
+          const auditService = getAuditService()
+          await auditService.logEvent({
+            action: 'CREATE',
+            entityType: 'user',
+            entityId: session.user.id,
+            entityReference: email.trim(),
+            after: { email: email.trim(), name: name.trim(), memberships },
+          }, ctx)
+        } catch {
+          // Audit logging is non-critical
+        }
+
+        const savedUser: User = {
+          id: session.user.id,
+          name: name.trim(),
+          nameAr: nameAr.trim() || undefined,
+          email: email.trim(),
+          role,
+          memberships,
+        }
+        onSave(savedUser)
+      }
+      onClose()
+    } catch (err) {
+      appLogger.error('Failed to save user', err)
+    } finally {
+      setSaving(false)
     }
-
-    onSave(savedUser)
-    onClose()
   }
 
   // ─── Render ──────────────────────────────────────────────
@@ -372,10 +446,17 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
           </button>
           <button
             onClick={handleSave}
-            disabled={!canSave}
+            disabled={!canSave || saving}
             className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isEdit ? t('Update User', 'تحديث المستخدم') : t('Create User', 'إنشاء المستخدم')}
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                {t('Saving...', 'جاري الحفظ...')}
+              </>
+            ) : (
+              isEdit ? t('Update User', 'تحديث المستخدم') : t('Create User', 'إنشاء المستخدم')
+            )}
           </button>
         </div>
       }
@@ -441,7 +522,7 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
             {t('Company Access', 'وصول الشركات')}
           </h3>
           <div className="space-y-2">
-            {companies.map((company) => {
+            {(companies || []).map((company) => {
               const isEnabled = companyAccess[company.id]
               return (
                 <div key={company.id} className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
@@ -452,8 +533,8 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
                       <Building2 className={`w-4 h-4 ${isEnabled ? 'text-brand-600' : 'text-gray-400'}`} />
                     </div>
                     <div>
-                      <p className={`text-sm font-medium ${isEnabled ? 'text-brand-900' : 'text-gray-600'}`}>{company.nameEn}</p>
-                      <p className="text-xs text-gray-400">{company.code}</p>
+                      <p className={`text-sm font-medium ${isEnabled ? 'text-brand-900' : 'text-gray-600'}`}>{(company as any).nameEn || (company as any).name_en}</p>
+                      <p className="text-xs text-gray-400">{(company as any).code || (company as any).company_code}</p>
                     </div>
                   </div>
                   <button
@@ -477,14 +558,14 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
         </div>
 
         {/* ═══ Section 3: Per-company Permissions ════════════ */}
-        {companies.some((c) => companyAccess[c.id]) && (
+        {(companies || []).some((c) => companyAccess[c.id]) && (
           <div>
             <h3 className="text-sm font-semibold text-brand-900 mb-3 flex items-center gap-2">
               <div className="w-5 h-5 rounded-full bg-brand-100 flex items-center justify-center text-[10px] font-bold text-brand-600">3</div>
               {t('Permissions', 'الصلاحيات')}
             </h3>
             <div className="space-y-4">
-              {companies
+              {(companies || [])
                 .filter((c) => companyAccess[c.id])
                 .map((company) => (
                   <CompanyPermissionPanel
@@ -513,7 +594,7 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
 
 // ─── Sub-component: per-company permission panel ──────────
 interface CompanyPermissionPanelProps {
-  company: { id: CompanyId; nameEn: string; code: string }
+  company: { id: CompanyId; nameEn?: string; name?: string; code?: string }
   companyRole: 'user' | 'viewer'
   onRoleChange: (r: 'user' | 'viewer') => void
   permissions: Record<Permission, boolean>
@@ -550,8 +631,8 @@ function CompanyPermissionPanel({
             <Building2 className="w-3.5 h-3.5 text-brand-600" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-brand-900">{company.nameEn}</p>
-            <p className="text-[10px] text-gray-400">{company.code}</p>
+            <p className="text-sm font-semibold text-brand-900">{(company as any).nameEn || (company as any).name_en}</p>
+            <p className="text-[10px] text-gray-400">{(company as any).code || (company as any).company_code || ''}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

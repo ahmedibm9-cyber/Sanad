@@ -81,11 +81,9 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
 
   const handleSave = () => {
     setSaving(true)
-    setTimeout(() => {
-      onSave({ ...form, id: customer?.id, companyId: customer?.companyId })
-      setSaving(false)
-      onClose()
-    }, 500)
+    onSave({ ...form, id: customer?.id, companyId: customer?.companyId })
+    setSaving(false)
+    onClose()
   }
 
   const field = (label: string, fieldKey: string, opts?: { type?: string; placeholder?: string; required?: boolean; half?: boolean }) => (

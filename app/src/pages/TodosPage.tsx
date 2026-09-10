@@ -1,21 +1,31 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useApp } from '../contexts/AppContext'
 import { useTodos, useCreateTodo, useUpdateTodo, useDeleteTodo } from '../hooks/useData'
-import type { ToDo } from '../lib/data'
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import {
   CheckSquare, Mic, Plus, Calendar, Clock, AlertTriangle,
   ChevronDown, ChevronUp, Trash2, Filter,
 } from 'lucide-react'
 
 export default function TodosPage() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const { currentUser } = useApp()
 
   const { data: todosData, loading, refetch } = useTodos(currentUser.id)
   const { create: createTodo, loading: creating } = useCreateTodo()
   const { update: updateTodo } = useUpdateTodo()
   const { remove: deleteTodo, loading: deleting } = useDeleteTodo()
+
+  const {
+    isSupported: speechSupported,
+    isListening,
+    transcript: speechTranscript,
+    error: speechError,
+    startListening,
+    stopListening,
+    resetTranscript,
+  } = useSpeechRecognition()
 
   const todos = todosData || []
 
@@ -31,15 +41,8 @@ export default function TodosPage() {
   const [formTime, setFormTime] = useState('')
   const [formPriority, setFormPriority] = useState<'low' | 'medium' | 'high'>('medium')
 
-  // Voice input state
-  const [voiceState, setVoiceState] = useState<'idle' | 'listening' | 'processing' | 'transcript'>('idle')
-  const [voiceTranscript, setVoiceTranscript] = useState('')
-  const voiceTimers = useRef<ReturnType<typeof setTimeout>[]>([])
-
-  // Cleanup voice timers on unmount
-  useEffect(() => {
-    return () => { voiceTimers.current.forEach(clearTimeout) }
-  }, [])
+  // Track which field is focused for voice input target
+  const activeFieldRef = useRef<'title' | 'description'>('title')
 
   const filteredTodos = useMemo(() => {
     return todos.filter((td) => {
@@ -99,40 +102,34 @@ export default function TodosPage() {
     refetch()
   }
 
+  // Derive voice button state from hook
+  const voiceState = isListening ? 'listening' : speechTranscript ? 'transcript' : 'idle'
+
+  // Apply speech transcript to the active field
+  useEffect(() => {
+    if (speechTranscript) {
+      if (activeFieldRef.current === 'title') {
+        setFormTitle(speechTranscript)
+      } else {
+        setFormDescription(speechTranscript)
+      }
+    }
+  }, [speechTranscript])
+
   function handleVoiceInput() {
-    // Clear any existing timers
-    voiceTimers.current.forEach(clearTimeout)
-    voiceTimers.current = []
+    if (isListening) {
+      stopListening()
+      return
+    }
 
-    // Start listening
-    setVoiceState('listening')
-    setVoiceTranscript('')
-
-    // After 1s, show processing state
-    const t1 = setTimeout(() => {
-      setVoiceState('processing')
-    }, 1000)
-    voiceTimers.current.push(t1)
-
-    // After 3s total, show transcript and set form title
-    const t2 = setTimeout(() => {
-      const mockText = t(
-        'Review the quarterly shipping schedule for Al-Baraka',
-        'مراجعة جدول الشحن الفصلي لشركة البركة'
-      )
-      setVoiceTranscript(mockText)
-      setFormTitle(mockText)
-      setVoiceState('transcript')
-    }, 3000)
-    voiceTimers.current.push(t2)
-
-    // After 5s total, reset to idle
-    const t3 = setTimeout(() => {
-      setVoiceState('idle')
-      setVoiceTranscript('')
-    }, 5000)
-    voiceTimers.current.push(t3)
+    const lang = language === 'ar' ? 'ar-SA' : 'en-US'
+    startListening(lang)
   }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => stopListening()
+  }, [stopListening])
 
   function formatDate(dateStr?: string | null) {
     if (!dateStr) return null
@@ -203,6 +200,7 @@ export default function TodosPage() {
                 className="input-field"
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
+                onFocus={() => { activeFieldRef.current = 'title' }}
                 placeholder={t('Enter todo title...', 'أدخل عنوان المهمة...')}
                 required
               />
@@ -213,6 +211,7 @@ export default function TodosPage() {
                 className="input-field min-h-[80px] resize-y"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
+                onFocus={() => { activeFieldRef.current = 'description' }}
                 placeholder={t('Optional description...', 'وصف اختياري...')}
                 rows={3}
               />
@@ -273,22 +272,24 @@ export default function TodosPage() {
               <button
                 type="button"
                 className={`btn-ghost ${
-                  voiceState === 'listening' || voiceState === 'processing'
+                  isListening
                     ? 'bg-red-50 text-red-600 animate-pulse'
                     : voiceState === 'transcript'
                     ? 'bg-green-50 text-green-600'
                     : ''
                 }`}
                 onClick={handleVoiceInput}
-                title={t('Voice Input', 'إدخال صوتي')}
-                disabled={voiceState === 'listening' || voiceState === 'processing'}
+                title={
+                  !speechSupported
+                    ? t('Voice input not supported in this browser', 'الإدخال الصوتي غير مدعوم في هذا المتصفح')
+                    : speechError || t('Voice Input', 'إدخال صوتي')
+                }
+                disabled={!speechSupported || isListening}
               >
                 <Mic size={18} />
                 <span className="ms-1.5 hidden sm:inline">
-                  {voiceState === 'listening'
+                  {isListening
                     ? t('Listening...', 'جاري الاستماع...')
-                    : voiceState === 'processing'
-                    ? t('Processing...', 'جاري المعالجة...')
                     : voiceState === 'transcript'
                     ? t('Done!', 'تم!')
                     : t('Voice', 'صوتي')}
@@ -434,14 +435,19 @@ export default function TodosPage() {
                   <button
                     onClick={handleVoiceInput}
                     className={`btn-ghost p-1.5 ${
-                      voiceState === 'listening' || voiceState === 'processing'
+                      isListening
                         ? 'text-red-500 animate-pulse'
                         : voiceState === 'transcript'
                         ? 'text-green-500'
                         : ''
                     }`}
-                    title={t('Voice Input', 'إدخال صوتي')}
-                    disabled={voiceState === 'listening' || voiceState === 'processing'}
+                    title={
+                      !speechSupported
+                        ? t('Voice input not supported in this browser', 'الإدخال الصوتي غير مدعوم في هذا المتصفح')
+                        : speechError || t('Voice Input', 'إدخال صوتي')
+                    }
+                    disabled={!speechSupported || isListening}
+                    aria-label={t('Voice input', 'إدخال صوتي')}
                   >
                     <Mic size={14} />
                   </button>
@@ -450,6 +456,7 @@ export default function TodosPage() {
                     className="btn-ghost p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50"
                     title={t('Delete', 'حذف')}
                     disabled={deleting}
+                    aria-label={t('Delete to-do', 'حذف المهمة')}
                   >
                     <Trash2 size={14} />
                   </button>

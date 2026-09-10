@@ -44,7 +44,7 @@ export default function AttachmentUploadModal({ open, onClose, onSave }: Attachm
             <div className="flex items-center gap-2 px-3 py-3 bg-green-50 border border-green-200 rounded-lg">
               <FileText size={18} className="text-green-600" />
               <span className="text-sm text-green-700 flex-1">{fileName}</span>
-              <button onClick={() => setFileName('')} className="p-1 hover:bg-green-100 rounded"><X size={14} /></button>
+              <button onClick={() => setFileName('')} className="p-1 hover:bg-green-100 rounded" aria-label={t('Remove file', 'إزالة الملف')}><X size={14} /></button>
             </div>
           ) : (
             <label className="flex flex-col items-center gap-2 px-6 py-8 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">

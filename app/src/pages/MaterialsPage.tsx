@@ -3,7 +3,7 @@ import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { useMaterials, useCreateMaterial, useUpdateMaterial, useDeleteMaterial } from '../hooks/useData'
 import type { Material } from '../types'
-import { type Material as DbMaterial } from '../lib/data'
+import { type Material as DbMaterial } from '../hooks/useData'
 import MaterialFormModal from '../components/materials/MaterialFormModal'
 import ConfirmModal from '../components/common/ConfirmModal'
 import Pagination from '../components/common/Pagination'
@@ -168,8 +168,8 @@ export default function MaterialsPage() {
                         </td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => { setEditingMaterial(m); setShowForm(true) }} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600" title={t('Edit', 'تعديل')}><Pencil size={15} /></button>
-                            <button onClick={() => setDeletingMaterial(m)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-red-600" title={t('Delete', 'حذف')}><Trash2 size={15} /></button>
+                            <button onClick={() => { setEditingMaterial(m); setShowForm(true) }} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600" title={t('Edit', 'تعديل')} aria-label={t('Edit material', 'تعديل المادة')}><Pencil size={15} /></button>
+                            <button onClick={() => setDeletingMaterial(m)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-red-600" title={t('Delete', 'حذف')} aria-label={t('Delete material', 'حذف المادة')}><Trash2 size={15} /></button>
                           </div>
                         </td>
                       </tr>

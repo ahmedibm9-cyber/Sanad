@@ -10,6 +10,9 @@ import { useWorkItems, useAuditEvents, useCompanyUsers } from '../hooks/useData'
 import type { WorkItem } from '../types'
 import type { WorkItem as ServiceWorkItem } from '../hooks/useData'
 import type { AuditEvent } from '../hooks/useData'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import { exportToExcel } from '../lib/excelExport'
 
 // ─── Type Mapping Helpers ──────────────────────────────
 function mapWorkItem(item: ServiceWorkItem, materials?: any[]): WorkItem {
@@ -175,13 +178,59 @@ function ReportFilterBar({ filters, onChange }: { filters: ReportFiltersState; o
 }
 
 // ─── Export Actions ────────────────────────────────────
-function ReportActions() {
+function ReportActions({
+  headers,
+  rows,
+  sheetName,
+  filename,
+  pdfHeaders,
+  pdfRows,
+  pdfTitle,
+}: {
+  headers: string[]
+  rows: (string | number)[][]
+  sheetName: string
+  filename: string
+  pdfHeaders?: string[]
+  pdfRows?: (string | number)[][]
+  pdfTitle?: string
+}) {
   const { t } = useLanguage()
   const [exported, setExported] = useState<string | null>(null)
-  const handleExport = (type: string) => {
-    setExported(type)
+
+  const handleExportPdf = () => {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(14)
+    doc.text(pdfTitle || sheetName, 15, 20)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(120, 120, 120)
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 15, 26)
+
+    autoTable(doc, {
+      startY: 30,
+      head: [pdfHeaders || headers],
+      body: (pdfRows || rows) as any[][],
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255] },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+      margin: { left: 15, right: 15 },
+    })
+
+    doc.save(`${filename}.pdf`)
+    setExported('PDF')
     setTimeout(() => setExported(null), 2000)
   }
+
+  const handleExportExcel = () => {
+    exportToExcel(headers, rows, sheetName, filename)
+    setExported('Excel')
+    setTimeout(() => setExported(null), 2000)
+  }
+
   return (
     <div className="flex items-center gap-2 mb-4">
       {exported ? (
@@ -191,11 +240,11 @@ function ReportActions() {
         </div>
       ) : (
         <>
-          <button onClick={() => handleExport('PDF')} className="btn-secondary">
+          <button onClick={handleExportPdf} className="btn-secondary">
             <FileDown className="w-4 h-4 ms-2" />
             {t('Export PDF', 'تصدير PDF')}
           </button>
-          <button onClick={() => handleExport('Excel')} className="btn-secondary">
+          <button onClick={handleExportExcel} className="btn-secondary">
             <FileSpreadsheet className="w-4 h-4 ms-2" />
             {t('Export Excel', 'تصدير Excel')}
           </button>
@@ -695,7 +744,7 @@ function AuditReport({ auditEvents }: { auditEvents: AuditEvent[] }) {
 // ─── Main Page ─────────────────────────────────────────
 export default function ReportsPage() {
   const { t } = useLanguage()
-  const { currentCompany } = useCompany()
+  const { currentCompany, companies: allCompanies } = useCompany()
   const [activeReport, setActiveReport] = useState('by-status')
   const [filters, setFilters] = useState<ReportFiltersState>(defaultFilters)
 
@@ -727,6 +776,149 @@ export default function ReportsPage() {
       return true
     }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   }, [rawAuditEvents, filters])
+
+  // Compute export data for the active report
+  const { data: companyUsers = [] } = useCompanyUsers(currentCompany.id)
+  const companyIds = useMemo(() => new Set(filteredProjects.map(p => p.companyId)), [filteredProjects])
+
+  const statusLabels: Record<string, string> = {
+    in_progress: 'In Progress',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+    archived: 'Archived',
+  }
+
+  const exportData = useMemo(() => {
+    const t_ = (en: string, ar: string) => en // Always EN for exports
+    const allCompanies_ = allCompanies
+
+    switch (activeReport) {
+      case 'by-status': {
+        const statusCounts = filteredProjects.reduce((acc, p) => {
+          acc[p.status] = (acc[p.status] || 0) + 1
+          return acc
+        }, {} as Record<string, number>)
+        const total = filteredProjects.length || 1
+        const headers = [t_('Status', ''), t_('Count', ''), t_('Percentage', '')]
+        const rows: (string | number)[][] = Object.entries(statusCounts).map(([status, count]) => [
+          statusLabels[status] || status,
+          count,
+          `${((count / total) * 100).toFixed(1)}%`,
+        ])
+        return { headers, rows, sheetName: 'Projects by Status', filename: 'projects-by-status', pdfTitle: 'Projects by Status' }
+      }
+      case 'by-date': {
+        const byMonth = filteredProjects.reduce((acc, p) => {
+          const month = p.createdAt.substring(0, 7)
+          acc[month] = (acc[month] || 0) + 1
+          return acc
+        }, {} as Record<string, number>)
+        const headers = [t_('Month', ''), t_('Projects Created', '')]
+        const rows: (string | number)[][] = Object.entries(byMonth).sort().map(([month, count]) => [month, count])
+        return { headers, rows, sheetName: 'Projects by Date', filename: 'projects-by-date', pdfTitle: 'Projects by Date' }
+      }
+      case 'by-company': {
+        const byCompany = filteredProjects.reduce((acc, p) => {
+          const comp = allCompanies_.find(c => c.id === p.companyId)
+          const name = comp?.name_en || comp?.nameEn || p.companyId
+          acc[name] = (acc[name] || 0) + 1
+          return acc
+        }, {} as Record<string, number>)
+        const headers = [t_('Company', ''), t_('Projects', '')]
+        const rows: (string | number)[][] = Object.entries(byCompany).map(([name, count]) => [name, count])
+        return { headers, rows, sheetName: 'Projects by Company', filename: 'projects-by-company', pdfTitle: 'Projects by Company' }
+      }
+      case 'by-customer': {
+        const byCustomer = filteredProjects.reduce((acc, p) => {
+          const name = p.customerName || 'Unknown'
+          acc[name] = (acc[name] || 0) + 1
+          return acc
+        }, {} as Record<string, number>)
+        const headers = [t_('Customer', ''), t_('Projects', '')]
+        const rows: (string | number)[][] = Object.entries(byCustomer).sort((a, b) => b[1] - a[1]).map(([name, count]) => [name, count])
+        return { headers, rows, sheetName: 'Projects by Customer', filename: 'projects-by-customer', pdfTitle: 'Projects by Customer' }
+      }
+      case 'documents-register': {
+        const allDocs = filteredProjects.flatMap(p => p.documents.map(d => ({ ...d, projectName: p.name })))
+        const headers = [t_('Doc Number', ''), t_('Type', ''), t_('Project', ''), t_('Date', ''), t_('Status', '')]
+        const rows: (string | number)[][] = allDocs.map(d => [d.number, d.type, d.projectName, d.date, d.status === 'final' ? 'Final' : 'Draft'])
+        return { headers, rows, sheetName: 'Documents Register', filename: 'documents-register', pdfTitle: 'Documents Register' }
+      }
+      case 'tasks': {
+        const headers = [t_('Task', ''), t_('Customer', ''), t_('Status', ''), t_('Created By', ''), t_('Created', '')]
+        const rows: (string | number)[][] = filteredTasks.map(task => [
+          task.name,
+          task.customerName || '-',
+          statusLabels[task.status] || task.status,
+          task.createdBy || '-',
+          task.createdAt,
+        ])
+        return { headers, rows, sheetName: 'Tasks', filename: 'tasks-report', pdfTitle: 'Tasks Report' }
+      }
+      case 'overdue-tasks': {
+        const headers = [t_('Task', ''), t_('Customer', ''), t_('Created', ''), t_('Days Overdue', '')]
+        const rows: (string | number)[][] = filteredOverdueTasks.map(task => {
+          const days = Math.floor((Date.now() - new Date(task.createdAt).getTime()) / 86400000)
+          return [task.name, task.customerName || '-', task.createdAt, days]
+        })
+        return { headers, rows, sheetName: 'Overdue Tasks', filename: 'overdue-tasks', pdfTitle: 'Overdue Tasks' }
+      }
+      case 'user-activity': {
+        const userActivity = (companyUsers || []).map((u: any) => {
+          const count = (rawAuditEvents || []).filter(a =>
+            a.actor_user_id === u.id &&
+            companyIds.has(a.company_id || '')
+          ).length
+          return { ...u, actionCount: count, role: u.base_role || u.role || 'user' }
+        })
+        const headers = [t_('User', ''), t_('Email', ''), t_('Role', ''), t_('Actions Logged', '')]
+        const rows: (string | number)[][] = userActivity.map((u: any) => [u.name, u.email, u.role, u.actionCount])
+        return { headers, rows, sheetName: 'User Activity', filename: 'user-activity', pdfTitle: 'User Activity' }
+      }
+      case 'customer-export-history': {
+        const exportProjects = filteredProjects.filter(p => p.status === 'completed' || p.status === 'archived')
+        const headers = [t_('Customer', ''), t_('Project', ''), t_('Destination', ''), t_('Status', ''), t_('Date', '')]
+        const rows: (string | number)[][] = exportProjects.map(p => [
+          p.customerName || '-',
+          p.name,
+          `${p.destinationCity}${p.destinationCountry ? `, ${p.destinationCountry}` : ''}`,
+          p.status === 'completed' ? 'Completed' : 'Archived',
+          p.updatedAt,
+        ])
+        return { headers, rows, sheetName: 'Customer Export History', filename: 'customer-export-history', pdfTitle: 'Customer Export History' }
+      }
+      case 'material-export-history': {
+        const completedProjects = filteredProjects.filter(p => p.status === 'completed' || p.status === 'archived')
+        const materialExports = completedProjects.flatMap(p => p.materials.map(m => ({
+          materialName: m.materialName,
+          grade: m.grade || '-',
+          quantity: m.quantity,
+          unit: m.weightUnit,
+          customer: p.customerName || '-',
+        })))
+        const headers = [t_('Material', ''), t_('Grade', ''), t_('Quantity', ''), t_('Customer', '')]
+        const rows: (string | number)[][] = materialExports.map(m => [m.materialName, m.grade, `${m.quantity} ${m.unit}`, m.customer])
+        return { headers, rows, sheetName: 'Material Export History', filename: 'material-export-history', pdfTitle: 'Material Export History' }
+      }
+      case 'audit': {
+        const getUserName = (userId: string) => {
+          const user = (companyUsers || []).find((u: any) => u.id === userId)
+          return user?.name || userId
+        }
+        const headers = [t_('Timestamp', ''), t_('User', ''), t_('Action', ''), t_('Entity', ''), t_('Reference', '')]
+        const rows: (string | number)[][] = filteredAuditEvents.map(event => [
+          new Date(event.created_at).toLocaleString(),
+          getUserName(event.actor_user_id),
+          event.action,
+          event.entity_type,
+          event.entity_reference || event.entity_id,
+        ])
+        return { headers, rows, sheetName: 'Audit Report', filename: 'audit-report', pdfTitle: 'Audit Report' }
+      }
+      default:
+        return { headers: [] as string[], rows: [] as (string | number)[][], sheetName: '', filename: '', pdfTitle: '' }
+    }
+  }, [activeReport, filteredProjects, filteredTasks, filteredOverdueTasks, filteredAuditEvents, companyUsers, rawAuditEvents, companyIds])
 
   const reportTitle = reports.find(r => r.id === activeReport)
 
@@ -774,7 +966,13 @@ export default function ReportsPage() {
 
         {/* Filters + Actions rendered once */}
         <ReportFilterBar filters={filters} onChange={setFilters} />
-        <ReportActions />
+        <ReportActions
+          headers={exportData.headers}
+          rows={exportData.rows}
+          sheetName={exportData.sheetName}
+          filename={exportData.filename}
+          pdfTitle={exportData.pdfTitle}
+        />
 
         {/* Active report */}
         {activeReport === 'by-status' && <ProjectsByStatusReport filtered={filteredProjects} />}

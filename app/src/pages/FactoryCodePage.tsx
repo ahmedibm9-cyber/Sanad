@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Search, Download, Upload, FileSpreadsheet, Database, CheckCircle, AlertCircle, Info, X } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
-import { useFactoryCodeSearch } from '../hooks/useData'
+import { useAuth } from '../contexts/AuthContext'
+import { useFactoryCodeSearch, useFactoryCodeAll } from '../hooks/useData'
+import { exportFactoryCodeFiltered, exportFactoryCodeFull } from '../lib/excelExport'
+import { FactoryCodeService, type ImportSummary, type ImportPreviewRow } from '../lib/services/factoryCode'
 
 type UploadStep = 'select' | 'validate' | 'preview' | 'summary'
 
@@ -17,25 +20,44 @@ function useDebouncedValue(value: string, delay: number) {
 
 export default function FactoryCodePage() {
   const { t } = useLanguage()
-  const { currentCompany } = useCompany()
+  const { currentCompany, permissions } = useCompany()
+  const { user } = useAuth()
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, 400)
   const { data, loading, error } = useFactoryCodeSearch(debouncedSearch)
   const results = data ?? []
+  const { data: allDataRaw } = useFactoryCodeAll()
+  const allData = allDataRaw ?? []
 
   const [uploadOpen, setUploadOpen] = useState(false)
   const [uploadStep, setUploadStep] = useState<UploadStep>('select')
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
+  const [selectedFileObj, setSelectedFileObj] = useState<File | null>(null)
+  const [parsedRows, setParsedRows] = useState<Array<Record<string, unknown>>>([])
+  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
+
+  const requestContext = useMemo(() => {
+    if (!user || !currentCompany?.id) return null
+    return {
+      userId: user.id,
+      companyId: currentCompany.id,
+      permissions: permissions?.permissions || {},
+      isSystemAdmin: user.isSystemAdmin || false,
+    }
+  }, [user, currentCompany, permissions])
 
   const [exportMsg, setExportMsg] = useState<string | null>(null)
 
   const handleExportFiltered = () => {
+    exportFactoryCodeFiltered(results)
     setExportMsg(`Exported ${results.length} filtered records to Excel`)
     setTimeout(() => setExportMsg(null), 2000)
   }
 
   const handleExportFull = () => {
-    setExportMsg('Export full database requires a server-side export job')
+    exportFactoryCodeFull(allData)
+    setExportMsg(`Exported ${allData.length} records to Excel`)
     setTimeout(() => setExportMsg(null), 2000)
   }
 
@@ -43,26 +65,60 @@ export default function FactoryCodePage() {
     setUploadOpen(true)
     setUploadStep('select')
     setSelectedFile(null)
+    setSelectedFileObj(null)
+    setParsedRows([])
+    setImportSummary(null)
+    setImportError(null)
   }
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      setSelectedFile(file.name)
-      setUploadStep('validate')
-      // Auto-advance after mock validation
-      setTimeout(() => setUploadStep('preview'), 1200)
+    if (!file) return
+    setSelectedFile(file.name)
+    setSelectedFileObj(file)
+    setUploadStep('validate')
+    setImportError(null)
+
+    try {
+      const buffer = await file.arrayBuffer()
+      const rows = FactoryCodeService.parseExcelFile(buffer)
+      if (rows.length === 0) {
+        setImportError('The file contains no data rows.')
+        setUploadStep('select')
+        return
+      }
+      setParsedRows(rows)
+      setUploadStep('preview')
+    } catch {
+      setImportError('Failed to parse the Excel file. Please check the format.')
+      setUploadStep('select')
     }
   }
 
-  const handleApplyUpdate = () => {
-    setUploadStep('summary')
+  const handleApplyUpdate = async () => {
+    if (!requestContext || parsedRows.length === 0) return
+    setUploadStep('validate')
+    setImportError(null)
+
+    try {
+      const service = new FactoryCodeService()
+      const summary = await service.smartMerge(parsedRows, requestContext, selectedFile || 'uploaded-file.xlsx')
+      setImportSummary(summary)
+      setUploadStep('summary')
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Import failed. Please try again.')
+      setUploadStep('preview')
+    }
   }
 
   const handleCloseUpload = () => {
     setUploadOpen(false)
     setUploadStep('select')
     setSelectedFile(null)
+    setSelectedFileObj(null)
+    setParsedRows([])
+    setImportSummary(null)
+    setImportError(null)
   }
 
   return (
@@ -196,7 +252,7 @@ export default function FactoryCodePage() {
               <h2 className="text-lg font-bold text-brand-900">
                 {t('Upload Updated Factory Code Excel', 'رفع ملف أكواد المصانع المحدّث')}
               </h2>
-              <button onClick={handleCloseUpload} className="btn-ghost p-1.5">
+              <button onClick={handleCloseUpload} className="btn-ghost p-1.5" aria-label={t('Close', 'إغلاق')}>
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -257,7 +313,9 @@ export default function FactoryCodePage() {
                 <div className="flex flex-col items-center py-8">
                   <div className="w-12 h-12 border-4 border-brand-200 border-t-brand-700 rounded-full animate-spin mb-4" />
                   <p className="text-sm font-medium text-gray-700">
-                    {t('Validating file format and structure...', 'التحقق من صيغة الملف وبنيته...')}
+                    {selectedFileObj
+                      ? t('Parsing Excel file...', 'جارٍ تحليل ملف Excel...')
+                      : t('Applying smart merge...', 'جارٍ تطبيق الدمج الذكي...')}
                   </p>
                   <p className="text-xs text-gray-400 mt-2">{selectedFile}</p>
                 </div>
@@ -266,55 +324,56 @@ export default function FactoryCodePage() {
               {/* Step: Preview */}
               {uploadStep === 'preview' && (
                 <div>
+                  {importError && (
+                    <div className="flex items-center gap-2 mb-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                      <p className="text-sm text-red-800">{importError}</p>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 mb-3 p-3 bg-green-50 rounded-lg border border-green-200">
                     <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
                     <p className="text-sm text-green-800">
-                      {t('File validated successfully. Preview the changes below.', 'تم التحقق من الملف بنجاح. شاهد التغييرات أدناه.')}
+                      {t('File parsed successfully. Review the preview below.', 'تم تحليل الملف بنجاح. راجع المعاينة أدناه.')}
                     </p>
                   </div>
                   <div className="text-sm text-gray-700 mb-3">
                     <p className="font-medium mb-1">{selectedFile}</p>
                     <p className="text-gray-500">
-                      {t('15,500 records detected across 7 columns', 'تم اكتشاف 15,500 سجل عبر 7 أعمدة')}
+                      {t(`${parsedRows.length} records detected`, `تم اكتشاف ${parsedRows.length} سجل`)}
                     </p>
                   </div>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="border border-gray-200 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
                     <table className="w-full text-xs">
-                      <thead>
+                      <thead className="sticky top-0">
                         <tr className="bg-gray-50 border-b border-gray-200">
                           <th className="text-start px-3 py-2 font-semibold text-gray-600">{t('Factory Code', 'كود المصنع')}</th>
                           <th className="text-start px-3 py-2 font-semibold text-gray-600">{t('Factory Name', 'اسم المصنع')}</th>
                           <th className="text-start px-3 py-2 font-semibold text-gray-600">{t('City', 'المدينة')}</th>
-                          <th className="text-start px-3 py-2 font-semibold text-gray-600">{t('Activity', 'النشاط')}</th>
+                          <th className="text-start px-3 py-2 font-semibold text-gray-600">{t('Product', 'المنتج')}</th>
                         </tr>
                       </thead>
                       <tbody>
-                        <tr className="border-b border-gray-100">
-                          <td className="px-3 py-2 font-mono">100001</td>
-                          <td className="px-3 py-2">Saudi Basic Industries Corp (SABIC)</td>
-                          <td className="px-3 py-2">Riyadh</td>
-                          <td className="px-3 py-2">Petrochemicals</td>
-                        </tr>
-                        <tr className="border-b border-gray-100">
-                          <td className="px-3 py-2 font-mono">100035</td>
-                          <td className="px-3 py-2 text-green-700">New Factory Inc. (+)</td>
-                          <td className="px-3 py-2">Riyadh</td>
-                          <td className="px-3 py-2">Manufacturing</td>
-                        </tr>
-                        <tr>
-                          <td className="px-3 py-2 font-mono">100002</td>
-                          <td className="px-3 py-2">SABIC - Jubail Petrochemicals</td>
-                          <td className="px-3 py-2">Jubail</td>
-                          <td className="px-3 py-2">Petrochemicals</td>
-                        </tr>
+                        {parsedRows.slice(0, 20).map((row, i) => (
+                          <tr key={i} className="border-b border-gray-100">
+                            <td className="px-3 py-2 font-mono">{String(row['Factory Code'] ?? row['factory_code'] ?? '')}</td>
+                            <td className="px-3 py-2">{String(row['Factory Name'] ?? row['factory_name'] ?? '')}</td>
+                            <td className="px-3 py-2">{String(row['City'] ?? row['city'] ?? '')}</td>
+                            <td className="px-3 py-2">{String(row['Product'] ?? row['product'] ?? '')}</td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
+                  {parsedRows.length > 20 && (
+                    <p className="text-xs text-gray-400 mt-2 text-center">
+                      {t(`Showing 20 of ${parsedRows.length} rows`, `عرض 20 من أصل ${parsedRows.length} صف`)}
+                    </p>
+                  )}
                 </div>
               )}
 
               {/* Step: Summary */}
-              {uploadStep === 'summary' && (
+              {uploadStep === 'summary' && importSummary && (
                 <div>
                   <div className="flex items-center gap-2 mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
                     <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
@@ -330,29 +389,74 @@ export default function FactoryCodePage() {
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-4 rounded-lg bg-green-50 border border-green-200">
-                      <div className="text-2xl font-bold text-green-700">3,000</div>
+                      <div className="text-2xl font-bold text-green-700">{importSummary.inserted.toLocaleString()}</div>
                       <div className="text-sm text-green-600">{t('New Records Added', 'سجل جديد مضاف')}</div>
                     </div>
                     <div className="p-4 rounded-lg bg-amber-50 border border-amber-200">
-                      <div className="text-2xl font-bold text-amber-700">500</div>
+                      <div className="text-2xl font-bold text-amber-700">{importSummary.updated.toLocaleString()}</div>
                       <div className="text-sm text-amber-600">{t('Updated Records', 'سجل محدّث')}</div>
                     </div>
                     <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                      <div className="text-2xl font-bold text-blue-700">12,500</div>
+                      <div className="text-2xl font-bold text-blue-700">{importSummary.unchanged.toLocaleString()}</div>
                       <div className="text-sm text-blue-600">{t('Unchanged Records', 'سجل不变')}</div>
                     </div>
                     <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
-                      <div className="text-2xl font-bold text-gray-700">1,000</div>
+                      <div className="text-2xl font-bold text-gray-700">{importSummary.retained.toLocaleString()}</div>
                       <div className="text-sm text-gray-600">{t('Retained (Not in File)', 'محفوظ (غير موجود بالملف)')}</div>
                     </div>
                   </div>
+                  {importSummary.errors > 0 && (
+                    <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                        <p className="text-sm text-red-700">
+                          {t(`${importSummary.errors} rows had errors and were skipped`, `تم تخطي ${importSummary.errors} صف بسبب أخطاء`)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {importSummary.preview.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs font-medium text-gray-500 mb-2">{t('Sample changes:', 'عينة من التغييرات:')}</p>
+                      <div className="border border-gray-200 rounded-lg overflow-hidden max-h-40 overflow-y-auto">
+                        <table className="w-full text-xs">
+                          <thead className="sticky top-0">
+                            <tr className="bg-gray-50 border-b border-gray-200">
+                              <th className="text-start px-3 py-1.5 font-semibold text-gray-600">{t('Code', 'الكود')}</th>
+                              <th className="text-start px-3 py-1.5 font-semibold text-gray-600">{t('Name', 'الاسم')}</th>
+                              <th className="text-start px-3 py-1.5 font-semibold text-gray-600">{t('Action', 'الإجراء')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {importSummary.preview.slice(0, 10).map((row, i) => (
+                              <tr key={i} className="border-b border-gray-100">
+                                <td className="px-3 py-1.5 font-mono">{row.factory_code}</td>
+                                <td className="px-3 py-1.5">{row.factory_name}</td>
+                                <td className="px-3 py-1.5">
+                                  <span className={`status-badge ${
+                                    row.action === 'add' ? 'bg-green-50 text-green-700' :
+                                    row.action === 'update' ? 'bg-amber-50 text-amber-700' :
+                                    'bg-gray-100 text-gray-600'
+                                  }`}>
+                                    {row.action === 'add' ? t('New', 'جديد') :
+                                     row.action === 'update' ? t('Updated', 'محدّث') :
+                                     t('Unchanged', '不变')}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                   <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-start gap-2">
                       <Info className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                       <p className="text-xs text-gray-500">
                         {t(
-                          'Total database: 17,000 records. The update was applied at ' + new Date().toLocaleString(),
-                          'الإجمالي: 17,000 سجل. تم التطبيق في ' + new Date().toLocaleString()
+                          'Total database: ' + (importSummary.inserted + importSummary.updated + importSummary.unchanged + importSummary.retained).toLocaleString() + ' records. Applied at ' + new Date().toLocaleString(),
+                          'الإجمالي: ' + (importSummary.inserted + importSummary.updated + importSummary.unchanged + importSummary.retained).toLocaleString() + ' سجل. تم التطبيق في ' + new Date().toLocaleString()
                         )}
                       </p>
                     </div>
@@ -373,7 +477,7 @@ export default function FactoryCodePage() {
                   <button onClick={handleCloseUpload} className="btn-ghost">
                     {t('Cancel', 'إلغاء')}
                   </button>
-                  <button onClick={handleApplyUpdate} className="btn-primary">
+                  <button onClick={handleApplyUpdate} className="btn-primary" disabled={!requestContext}>
                     <CheckCircle className="w-4 h-4 me-2" />
                     {t('Apply Smart Update', 'تطبيق التحديث الذكي')}
                   </button>

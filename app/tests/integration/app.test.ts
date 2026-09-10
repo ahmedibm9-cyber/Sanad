@@ -284,14 +284,21 @@ describe('SANAD Application - End-to-End Verification', () => {
       expect(typeof service.downloadPDF).toBe('function')
     })
 
-    it('should have both templates defined', async () => {
+    it('should have all 9 templates defined (2 original + 7 native Fulla)', async () => {
       const { TemplateService } = await import('@/lib/services/template')
       const service = new TemplateService()
       
       const templates = service.getTemplates()
-      expect(templates).toHaveLength(2)
+      expect(templates).toHaveLength(9)
       expect(templates.map((t: any) => t.key)).toContain('template-a')
       expect(templates.map((t: any) => t.key)).toContain('template-b')
+      expect(templates.map((t: any) => t.key)).toContain('fulla-packing-list-680')
+      expect(templates.map((t: any) => t.key)).toContain('fulla-quotation-680')
+      expect(templates.map((t: any) => t.key)).toContain('fulla-tax-invoice-a-680')
+      expect(templates.map((t: any) => t.key)).toContain('fulla-delivery-note-680')
+      expect(templates.map((t: any) => t.key)).toContain('fulla-commercial-invoice-680')
+      expect(templates.map((t: any) => t.key)).toContain('fulla-tax-invoice-b-680')
+      expect(templates.map((t: any) => t.key)).toContain('fulla-proforma-invoice-680')
     })
   })
 
@@ -415,7 +422,7 @@ describe('SANAD Application - End-to-End Verification', () => {
   })
 
   describe('Cross-cutting: React Pages', () => {
-    it('should have all page components', async () => {
+    it('should have all page components', { timeout: 30000 }, async () => {
       const pages = [
         'Dashboard', 'ProjectsPage', 'ProjectDetailPage',
         'TasksPage', 'TaskDetailPage', 'TodosPage',

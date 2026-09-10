@@ -6,6 +6,7 @@
 
 import { getSupabase, type Database } from '../supabase'
 import { type RequestContext } from '../api'
+import { ilikeSearch } from '../search'
 import { handleSupabaseError } from '../errors'
 import { appLogger } from '../logger'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -118,7 +119,7 @@ export class AuditService {
       query = query.eq('entity_id', filters.entityId)
     }
     if (filters.entityReference) {
-      query = query.ilike('entity_reference', `%${filters.entityReference}%`)
+      query = query.ilike('entity_reference', ilikeSearch(filters.entityReference))
     }
     if (filters.dateFrom) {
       query = query.gte('created_at', filters.dateFrom)

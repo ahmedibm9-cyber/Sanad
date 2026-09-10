@@ -24,6 +24,8 @@ import {
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { useApp } from '../contexts/AppContext'
+import { downloadWorkItemPdf } from '../lib/pdfExport'
+import { downloadAttachment } from '../lib/r2Client'
 import {
   useWorkItemById,
   useWorkItemMaterials,
@@ -40,7 +42,7 @@ import type {
   Note,
   ReportIssue,
   Attachment,
-} from '../lib/data'
+} from '../hooks/useData'
 import type { WorkItemStatus } from '../types'
 import AttachmentUploadModal from '../components/common/AttachmentUploadModal'
 import ConfirmModal from '../components/common/ConfirmModal'
@@ -228,6 +230,7 @@ export default function ProjectDetailPage() {
           <button
             onClick={() => navigate('/projects')}
             className="mt-1 p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500"
+            aria-label={t('Back to projects', 'العودة إلى المشاريع')}
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -260,10 +263,10 @@ export default function ProjectDetailPage() {
             <Edit3 className="w-4 h-4 me-1.5" />
             {t('Edit', 'تعديل')}
           </button>
-          <button className="btn-ghost" onClick={() => window.print()}>
+          <button className="btn-ghost" onClick={() => window.print()} aria-label={t('Print', 'طباعة')}>
             <Printer className="w-4 h-4" />
           </button>
-          <button className="btn-ghost" onClick={() => alert(t('PDF download will be available in production.', 'سيتوفر تحميل PDF في الإنتاج.'))}>
+          <button className="btn-ghost" onClick={() => workItem && downloadWorkItemPdf(workItem)} aria-label={t('Download', 'تحميل')}>
             <Download className="w-4 h-4" />
           </button>
         </div>
@@ -588,10 +591,10 @@ export default function ProjectDetailPage() {
                             <button className="btn-ghost p-1.5" title={t('Print', 'طباعة')} onClick={() => window.print()}>
                               <Printer className="w-4 h-4" />
                             </button>
-                            <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => alert(t('Download will be available in production.', 'سيتوفر التحميل في الإنتاج.'))}>
+                            <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => downloadAttachment((doc as any).r2_object_key || '', doc.document_number, currentCompany.id)} aria-label={t('Download document', 'تحميل المستند')}>
                               <Download className="w-4 h-4" />
                             </button>
-                            <button className="btn-ghost p-1.5" title={t('Edit', 'تعديل')} onClick={() => navigate(`/documents/${doc.id}/form?projectId=${workItem.id}`)}>
+                            <button className="btn-ghost p-1.5" title={t('Edit', 'تعديل')} onClick={() => navigate(`/documents/${doc.id}/form?projectId=${workItem.id}`)} aria-label={t('Edit document', 'تعديل المستند')}>
                               <Edit3 className="w-4 h-4" />
                             </button>
                           </div>
@@ -668,10 +671,10 @@ export default function ProjectDetailPage() {
                       </td>
                       <td className="px-5 py-3.5 text-end">
                         <div className="flex items-center justify-end gap-1">
-                          <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => alert(t('Download will be available in production.', 'سيتوفر التحميل في الإنتاج.'))}>
+                          <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => downloadAttachment(att.r2_object_key, att.original_name, currentCompany.id)} aria-label={t('Download attachment', 'تحميل المرفق')}>
                             <Download className="w-4 h-4" />
                           </button>
-                          <button className="btn-ghost p-1.5" title={t('Delete', 'حذف')} onClick={() => setDeleteAttachmentId(att.id)}>
+                          <button className="btn-ghost p-1.5" title={t('Delete', 'حذف')} onClick={() => setDeleteAttachmentId(att.id)} aria-label={t('Delete attachment', 'حذف المرفق')}>
                             <Trash2 className="w-4 h-4 text-red-400" />
                           </button>
                         </div>
@@ -847,6 +850,7 @@ export default function ProjectDetailPage() {
                           onClick={() => startEditNote(note.id, note.body)}
                           className="ms-auto text-gray-400 hover:text-brand-600 transition-colors"
                           title={t('Edit', 'تعديل')}
+                          aria-label={t('Edit note', 'تعديل الملاحظة')}
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
@@ -860,7 +864,7 @@ export default function ProjectDetailPage() {
         </div>
       )}
     </div>
-    <AttachmentUploadModal open={showAttachmentModal} onClose={() => setShowAttachmentModal(false)} onSave={(att) => { setAttachments(prev => [{ id: `att-${Date.now()}`, company_id: workItem.company_id, work_item_id: workItem.id, category: 'general', r2_object_key: '', original_name: att.name, mime_type: 'application/pdf', size: 245000, uploaded_by: currentUser.name, active: true, created_at: new Date().toISOString() }, ...prev]); setShowAttachmentModal(false) }} />
+    <AttachmentUploadModal open={showAttachmentModal} onClose={() => setShowAttachmentModal(false)} onSave={(att) => { setAttachments(prev => [{ id: `att-${Date.now()}`, company_id: workItem.company_id, work_item_id: workItem.id, category: 'general', r2_object_key: '', original_name: att.name, mime_type: 'application/pdf', size: 245000, uploaded_by: currentUser.name, active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, ...prev]); setShowAttachmentModal(false) }} />
     <ConfirmModal open={!!deleteAttachmentId} onClose={() => setDeleteAttachmentId(null)} onConfirm={() => { setAttachments(prev => prev.filter(a => a.id !== deleteAttachmentId)); setDeleteAttachmentId(null) }} title={t('Delete Attachment', 'حذف المرفق')} message={t('Are you sure you want to delete this attachment?', 'هل أنت متأكد من حذف هذا المرفق؟')} confirmLabel={t('Delete', 'حذف')} cancelLabel={t('Cancel', 'إلغاء')} variant="danger" />
     <ProjectFormModal open={showEditForm} onClose={() => setShowEditForm(false)} onSave={(data) => { Object.assign(workItemForModal, data); setShowEditForm(false) }} item={workItemForModal as any} mode="project" />
     </>

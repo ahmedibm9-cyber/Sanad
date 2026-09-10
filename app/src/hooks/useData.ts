@@ -148,6 +148,19 @@ export function useCreateCustomer() {
     setLoading(true)
     try {
       const result = await service.createCustomer(customer as any, ctx)
+      // Audit logging
+      try {
+        const auditService = getAuditService()
+        await auditService.logEvent({
+          action: 'CREATE',
+          entityType: 'customer',
+          entityId: result.id,
+          entityReference: result.name,
+          after: result as unknown as Record<string, unknown>,
+        }, ctx)
+      } catch {
+        // Audit logging is non-critical
+      }
       return result
     } catch (err) {
       appLogger.error('Failed to create customer', err)
@@ -170,6 +183,19 @@ export function useUpdateCustomer() {
     setLoading(true)
     try {
       const result = await service.updateCustomer(id, updates as any, ctx)
+      // Audit logging
+      try {
+        const auditService = getAuditService()
+        await auditService.logEvent({
+          action: 'EDIT',
+          entityType: 'customer',
+          entityId: id,
+          entityReference: result.name,
+          after: result as unknown as Record<string, unknown>,
+        }, ctx)
+      } catch {
+        // Audit logging is non-critical
+      }
       return result
     } catch (err) {
       appLogger.error('Failed to update customer', err)
@@ -192,6 +218,17 @@ export function useDeleteCustomer() {
     setLoading(true)
     try {
       await service.deleteCustomer(id, ctx)
+      // Audit logging
+      try {
+        const auditService = getAuditService()
+        await auditService.logEvent({
+          action: 'MOVE_TO_TRASH',
+          entityType: 'customer',
+          entityId: id,
+        }, ctx)
+      } catch {
+        // Audit logging is non-critical
+      }
       return true
     } catch (err) {
       appLogger.error('Failed to delete customer', err)
@@ -243,6 +280,19 @@ export function useCreateMaterial() {
     setLoading(true)
     try {
       const result = await service.createMaterial(material as any, ctx)
+      // Audit logging
+      try {
+        const auditService = getAuditService()
+        await auditService.logEvent({
+          action: 'CREATE',
+          entityType: 'material',
+          entityId: result.id,
+          entityReference: result.name,
+          after: result as unknown as Record<string, unknown>,
+        }, ctx)
+      } catch {
+        // Audit logging is non-critical
+      }
       return result
     } catch (err) {
       appLogger.error('Failed to create material', err)
@@ -265,6 +315,19 @@ export function useUpdateMaterial() {
     setLoading(true)
     try {
       const result = await service.updateMaterial(id, updates as any, ctx)
+      // Audit logging
+      try {
+        const auditService = getAuditService()
+        await auditService.logEvent({
+          action: 'EDIT',
+          entityType: 'material',
+          entityId: id,
+          entityReference: result.name,
+          after: result as unknown as Record<string, unknown>,
+        }, ctx)
+      } catch {
+        // Audit logging is non-critical
+      }
       return result
     } catch (err) {
       appLogger.error('Failed to update material', err)
@@ -287,6 +350,17 @@ export function useDeleteMaterial() {
     setLoading(true)
     try {
       await service.deleteMaterial(id, ctx)
+      // Audit logging
+      try {
+        const auditService = getAuditService()
+        await auditService.logEvent({
+          action: 'MOVE_TO_TRASH',
+          entityType: 'material',
+          entityId: id,
+        }, ctx)
+      } catch {
+        // Audit logging is non-critical
+      }
       return true
     } catch (err) {
       appLogger.error('Failed to delete material', err)
@@ -351,6 +425,35 @@ export function useCreateWorkItem() {
     setLoading(true)
     try {
       const result = await service.createWorkItem(item as any, { ...ctx, companyId })
+      // Audit logging
+      try {
+        const auditService = getAuditService()
+        await auditService.logEvent({
+          action: 'CREATE',
+          entityType: result.type === 'project' ? 'project' : 'task',
+          entityId: result.id,
+          entityReference: result.name,
+          after: result as unknown as Record<string, unknown>,
+        }, ctx)
+      } catch {
+        // Audit logging is non-critical
+      }
+      // Notification creation
+      try {
+        const notificationService = getNotificationService()
+        const isProject = result.type === 'project'
+        await notificationService.createNotification({
+          userId: ctx.userId,
+          companyId: ctx.companyId,
+          type: isProject ? 'project_status_changed' : 'task_assigned',
+          title: isProject ? `Project "${result.name}" created` : `Task "${result.name}" created`,
+          body: isProject ? 'A new project has been created.' : 'A new task has been created.',
+          entityType: isProject ? 'project' : 'task',
+          entityId: result.id,
+        })
+      } catch {
+        // Notification creation is non-critical
+      }
       return result
     } catch (err) {
       appLogger.error('Failed to create work item', err)
@@ -373,6 +476,19 @@ export function useUpdateWorkItem() {
     setLoading(true)
     try {
       const result = await service.updateWorkItem(id, updates as any, ctx)
+      // Audit logging
+      try {
+        const auditService = getAuditService()
+        await auditService.logEvent({
+          action: 'EDIT',
+          entityType: result.type === 'project' ? 'project' : 'task',
+          entityId: id,
+          entityReference: result.name,
+          after: result as unknown as Record<string, unknown>,
+        }, ctx)
+      } catch {
+        // Audit logging is non-critical
+      }
       return result
     } catch (err) {
       appLogger.error('Failed to update work item', err)
@@ -385,6 +501,41 @@ export function useUpdateWorkItem() {
   return { update, loading }
 }
 
+export function useConvertTaskToProject() {
+  const service = getWorkItemService()
+  const ctx = useRequestContext()
+  const [loading, setLoading] = useState(false)
+
+  const convert = useCallback(async (id: string) => {
+    if (!ctx) return null
+    setLoading(true)
+    try {
+      const result = await service.convertTaskToProject(id, ctx)
+      // Audit logging
+      try {
+        const auditService = getAuditService()
+        await auditService.logEvent({
+          action: 'TASK_TO_PROJECT',
+          entityType: 'work_item',
+          entityId: id,
+          entityReference: result.name,
+          after: result as unknown as Record<string, unknown>,
+        }, ctx)
+      } catch {
+        // Audit logging is non-critical
+      }
+      return result
+    } catch (err) {
+      appLogger.error('Failed to convert task to project', err)
+      return null
+    } finally {
+      setLoading(false)
+    }
+  }, [ctx])
+
+  return { convert, loading }
+}
+
 export function useDeleteWorkItem() {
   const service = getWorkItemService()
   const ctx = useRequestContext()
@@ -395,6 +546,17 @@ export function useDeleteWorkItem() {
     setLoading(true)
     try {
       await service.deleteWorkItem(id, ctx)
+      // Audit logging
+      try {
+        const auditService = getAuditService()
+        await auditService.logEvent({
+          action: 'MOVE_TO_TRASH',
+          entityType: 'work_item',
+          entityId: id,
+        }, ctx)
+      } catch {
+        // Audit logging is non-critical
+      }
       return true
     } catch (err) {
       appLogger.error('Failed to delete work item', err)
@@ -435,6 +597,111 @@ export function useCompanyDocuments(companyId: string | undefined) {
       return []
     }
   }, [companyId, ctx?.userId])
+}
+
+export function useCreateDocument() {
+  const service = getDocumentService()
+  const ctx = useRequestContext()
+  const [loading, setLoading] = useState(false)
+
+  const create = useCallback(async (input: { work_item_id: string; document_type: string; document_number: string; language?: string; template_key?: string; prepared_by?: string; show_signature?: boolean; show_stamp?: boolean; status?: string; document_data?: Record<string, unknown> }) => {
+    if (!ctx) return null
+    setLoading(true)
+    try {
+      const result = await service.createDocument(input as any, ctx)
+      // Audit logging
+      try {
+        const auditService = getAuditService()
+        await auditService.logEvent({
+          action: 'CREATE',
+          entityType: 'document',
+          entityId: result.id,
+          entityReference: result.document_number,
+          after: result as unknown as Record<string, unknown>,
+        }, ctx)
+      } catch {
+        // Audit logging is non-critical
+      }
+      // Notification creation
+      try {
+        const notificationService = getNotificationService()
+        await notificationService.createNotification({
+          userId: ctx.userId,
+          companyId: ctx.companyId,
+          type: 'document_created',
+          title: `Document ${result.document_number} created`,
+          body: `A new ${result.document_type} document has been created.`,
+          entityType: 'document',
+          entityId: result.id,
+        })
+      } catch {
+        // Notification creation is non-critical
+      }
+      return result
+    } catch (err) {
+      appLogger.error('Failed to create document', err)
+      return null
+    } finally {
+      setLoading(false)
+    }
+  }, [ctx])
+
+  return { create, loading }
+}
+
+export function useUpdateDocument() {
+  const service = getDocumentService()
+  const ctx = useRequestContext()
+  const [loading, setLoading] = useState(false)
+
+  const update = useCallback(async (id: string, updates: Record<string, unknown>) => {
+    if (!ctx) return null
+    setLoading(true)
+    try {
+      const result = await service.updateDocument(id, updates as any, ctx)
+      // Audit logging
+      try {
+        const auditService = getAuditService()
+        await auditService.logEvent({
+          action: 'EDIT',
+          entityType: 'document',
+          entityId: id,
+          entityReference: result.document_number,
+          after: result as unknown as Record<string, unknown>,
+        }, ctx)
+      } catch {
+        // Audit logging is non-critical
+      }
+      return result
+    } catch (err) {
+      appLogger.error('Failed to update document', err)
+      return null
+    } finally {
+      setLoading(false)
+    }
+  }, [ctx])
+
+  return { update, loading }
+}
+
+export function useUpdateMaterialLastPrice() {
+  const service = getMaterialService()
+  const ctx = useRequestContext()
+  const [loading, setLoading] = useState(false)
+
+  const updateLastPrice = useCallback(async (materialId: string, price: number, currency: string, unit: string, workItemId?: string) => {
+    if (!ctx) return
+    setLoading(true)
+    try {
+      await service.updateLastSellingPrice(materialId, price, currency, unit, ctx, workItemId)
+    } catch (err) {
+      appLogger.error('Failed to update material last price', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [ctx])
+
+  return { updateLastPrice, loading }
 }
 
 // ─── Todos ────────────────────────────────────────────
@@ -532,6 +799,46 @@ export function useNotifications(userId: string | undefined) {
       return []
     }
   }, [userId])
+}
+
+export function useMarkNotificationRead() {
+  const service = getNotificationService()
+  const [loading, setLoading] = useState(false)
+
+  const markRead = useCallback(async (notificationId: string, userId: string) => {
+    setLoading(true)
+    try {
+      await service.markAsRead(notificationId, userId)
+      return true
+    } catch (err) {
+      appLogger.error('Failed to mark notification as read', err)
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  return { markRead, loading }
+}
+
+export function useMarkAllNotificationsRead() {
+  const service = getNotificationService()
+  const [loading, setLoading] = useState(false)
+
+  const markAllRead = useCallback(async (userId: string) => {
+    setLoading(true)
+    try {
+      await service.markAllAsRead(userId)
+      return true
+    } catch (err) {
+      appLogger.error('Failed to mark all notifications as read', err)
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  return { markAllRead, loading }
 }
 
 // ─── Notes ────────────────────────────────────────────
@@ -635,6 +942,24 @@ export function useFactoryCodeSearch(query: string) {
       return []
     }
   }, [query, ctx?.userId])
+}
+
+/**
+ * Fetch all factory code records (for full database export).
+ * Uses a large page size to retrieve all records at once.
+ */
+export function useFactoryCodeAll() {
+  const service = getFactoryCodeService()
+  const ctx = useRequestContext()
+  return useFetch(async () => {
+    if (!ctx) return []
+    try {
+      const result = await service.search('', ctx, { pageSize: 50000 })
+      return result.data
+    } catch {
+      return []
+    }
+  }, [ctx?.userId])
 }
 
 // ─── Trash Entries ────────────────────────────────────

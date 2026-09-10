@@ -6,6 +6,7 @@
 
 import { getSupabase, type Database } from '../supabase'
 import { type RequestContext, requirePermission, hasPermission } from '../api'
+import { ilikeSearch } from '../search'
 import { NotFoundError, handleSupabaseError } from '../errors'
 import { appLogger } from '../logger'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -110,7 +111,8 @@ export class MaterialService {
       .is('deleted_at', null)
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,grade.ilike.%${search}%,manufacturer.ilike.%${search}%,hs_code.ilike.%${search}%,origin.ilike.%${search}%`)
+      const sPattern = ilikeSearch(search)
+      query = query.or(`name.ilike.${sPattern},grade.ilike.${sPattern},manufacturer.ilike.${sPattern},hs_code.ilike.${sPattern},origin.ilike.${sPattern}`)
     }
 
     query = query.range(from, to).order('name')
@@ -140,6 +142,7 @@ export class MaterialService {
       .from('materials')
       .select('*')
       .eq('id', id)
+      .eq('company_id', context.companyId)
       .eq('active', true)
       .is('deleted_at', null)
       .single()
@@ -205,6 +208,7 @@ export class MaterialService {
       .from('materials')
       .update(updateData)
       .eq('id', id)
+      .eq('company_id', context.companyId)
       .eq('active', true)
       .is('deleted_at', null)
       .select()

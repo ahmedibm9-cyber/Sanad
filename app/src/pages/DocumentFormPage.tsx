@@ -3,13 +3,17 @@ import { useSearchParams, useParams, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { useApp } from '../contexts/AppContext'
-import { useWorkItems, useCustomers } from '../hooks/useData'
+import { useWorkItems, useCustomers, useMaterials, useUpdateMaterialLastPrice } from '../hooks/useData'
+import { getDocumentService, type CreateDocumentInput, type UpdateDocumentInput } from '../lib/services/document'
+import { useAuth } from '../contexts/AuthContext'
+import { getSharedDataService } from '../lib/services/sharedData'
 import FormSection from '../components/common/FormSection'
 import type { DocumentType, ProjectMaterial } from '../types'
 import {
   Save, Printer, ArrowLeft, Plus, Trash2, AlertTriangle, X,
   FileText, CheckCircle, RefreshCw, Info,
 } from 'lucide-react'
+import { appLogger } from '../lib/logger'
 
 /* ── helpers ──────────────────────────────────────────── */
 const today = () => new Date().toISOString().split('T')[0]
@@ -31,21 +35,6 @@ function defaultDocNumber(type: DocumentType): string {
   return `${prefix}-${year}-${seq}`
 }
 
-const itemTemplate: ProjectMaterial = {
-  id: '',
-  materialId: '',
-  materialName: 'HDPE 952',
-  grade: 'Blow Molding',
-  quantity: 50,
-  weightUnit: 'MT',
-  unitPrice: 1050,
-  currency: 'SAR',
-  packing: '25 KG Bags',
-  packingUnit: 'Bags',
-  origin: 'Saudi Arabia',
-  hsCode: '3901.20',
-}
-
 /* ── conflict demo affected docs ──────────────────────── */
 const affectedDocs = [
   { number: 'PINV-2024-001', type: 'Proforma Invoice', checked: true },
@@ -56,8 +45,9 @@ const affectedDocs = [
 /* ════════════════════════════════════════════════════════ */
 export default function DocumentFormPage() {
   const { t, language } = useLanguage()
-  const { currentCompany } = useCompany()
+  const { currentCompany, permissions } = useCompany()
   const { currentUser } = useApp()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
@@ -67,6 +57,16 @@ export default function DocumentFormPage() {
 
   const { data: workItemsRaw } = useWorkItems(currentCompany.id)
   const { data: customersRaw } = useCustomers(currentCompany.id)
+  const { data: materialsRaw } = useMaterials(currentCompany.id)
+  const { updateLastPrice } = useUpdateMaterialLastPrice()
+
+  const documentService = getDocumentService()
+  const requestContext = {
+    userId: user?.id || currentUser.id,
+    companyId: currentCompany.id,
+    permissions: permissions?.permissions || {},
+    isSystemAdmin: user?.isSystemAdmin || false,
+  }
 
   const workItems = workItemsRaw || []
   const customersList = customersRaw || []
@@ -81,8 +81,8 @@ export default function DocumentFormPage() {
   const [docLanguage, setDocLanguage] = useState<'en' | 'ar'>(
     (searchParams.get('lang') as 'en' | 'ar') || language || 'en'
   )
-  const [template, setTemplate] = useState<'template-a' | 'template-b'>(
-    (currentCompany.defaultTemplate as 'template-a' | 'template-b') || 'template-a'
+  const [template, setTemplate] = useState<string>(
+    currentCompany.defaultTemplate || 'fulla-commercial-invoice-680'
   )
   const [preparedBy, setPreparedBy] = useState(currentUser.name)
   const [showSignature, setShowSignature] = useState(currentCompany.showSignature ?? true)
@@ -93,29 +93,42 @@ export default function DocumentFormPage() {
   const [subtotal, setSubtotal] = useState(52500)
   const [vatRate, setVatRate] = useState<number>(0)
   const [origin, setOrigin] = useState('Saudi Arabia')
-  const [packing, setPacking] = useState('25 KG Bags')
+  const [packing, setPacking] = useState('')
   const [deliveryTime, setDeliveryTime] = useState('15 business days')
-  const [incoterm, setIncoterm] = useState('FOB')
+  const [incoterm, setIncoterm] = useState(currentCompany.defaultIncoterm || '')
   const [deliveryTerms, setDeliveryTerms] = useState(currentCompany.defaultDeliveryTerms || 'Within 15 business days')
   const [paymentTerms, setPaymentTerms] = useState(currentCompany.defaultPaymentTerms || 'Net 30 days')
   const [notes, setNotes] = useState('')
-  const [terms, setTerms] = useState('All prices are in SAR. Payment terms as stated. Goods remain property of seller until full payment received.')
+  const [terms, setTerms] = useState('')
+
+  // Item template with company defaults
+  const itemTemplate: ProjectMaterial = {
+    id: '',
+    materialId: '',
+    materialName: '',
+    grade: '',
+    quantity: 0,
+    weightUnit: currentCompany.defaultWeightUnit || 'MT',
+    unitPrice: 0,
+    currency: currentCompany.defaultCurrency || 'SAR',
+    packing: '',
+    packingUnit: '',
+    origin: '',
+    hsCode: '',
+  }
 
   // Items
-  const [items, setItems] = useState<ProjectMaterial[]>([
-    { ...itemTemplate, id: 'item-1', materialName: 'HDPE 952', grade: 'Blow Molding', quantity: 50, unitPrice: 1050 },
-    { ...itemTemplate, id: 'item-2', materialName: 'HDPE FG 952', grade: 'Film Grade', quantity: 25, unitPrice: 1100 },
-  ])
+  const [items, setItems] = useState<ProjectMaterial[]>([])
 
   // Shipping
-  const [vesselName, setVesselName] = useState(project.vessel_name || 'MV Pacific Star')
-  const [voyageNumber, setVoyageNumber] = useState(project.voyage_number || 'PS-2024-0412')
-  const [portOfLoading, setPortOfLoading] = useState(project.port_of_loading || 'Jubail Port')
-  const [portOfDischarge, setPortOfDischarge] = useState(project.port_of_discharge || 'Jebel Ali Port')
-  const [containerNumber, setContainerNumber] = useState(project.container_number || 'MSKU 7283456')
-  const [sealNumber, setSealNumber] = useState('SH-2024-8891')
-  const [marksAndNumbers, setMarksAndNumbers] = useState('N/M')
-  const [freightTerms, setFreightTerms] = useState('Freight Collect')
+  const [vesselName, setVesselName] = useState(project.vessel_name || '')
+  const [voyageNumber, setVoyageNumber] = useState(project.voyage_number || '')
+  const [portOfLoading, setPortOfLoading] = useState(project.port_of_loading || '')
+  const [portOfDischarge, setPortOfDischarge] = useState(project.port_of_discharge || '')
+  const [containerNumber, setContainerNumber] = useState(project.container_number || '')
+  const [sealNumber, setSealNumber] = useState('')
+  const [marksAndNumbers, setMarksAndNumbers] = useState('')
+  const [freightTerms, setFreightTerms] = useState('')
 
   // Bank
   const [bankName, setBankName] = useState(currentCompany.bankName || '')
@@ -128,31 +141,31 @@ export default function DocumentFormPage() {
   const [sender, setSender] = useState(currentCompany.nameEn)
   const [receiver, setReceiver] = useState(customer.name)
   const [deliveryAddress, setDeliveryAddress] = useState(customer.address || '')
-  const [relatedInvoice, setRelatedInvoice] = useState('PINV-2024-001')
+  const [relatedInvoice, setRelatedInvoice] = useState('')
 
   // Bill of Lading
   const [shipper, setShipper] = useState(currentCompany.legalNameEn || currentCompany.nameEn)
   const [consignee, setConsignee] = useState(customer.name)
   const [notifyParty, setNotifyParty] = useState(customer.name)
-  const [placeOfReceipt, setPlaceOfReceipt] = useState('Jubail Industrial City')
+  const [placeOfReceipt, setPlaceOfReceipt] = useState('')
   const [descriptionOfGoods, setDescriptionOfGoods] = useState('HIGH DENSITY POLYETHYLENE (HDPE)')
-  const [grossWeight, setGrossWeight] = useState('52.5 MT')
-  const [netWeight, setNetWeight] = useState('50.0 MT')
-  const [packages, setPackages] = useState('2,000 Bags')
+  const [grossWeight, setGrossWeight] = useState('')
+  const [netWeight, setNetWeight] = useState('')
+  const [packages, setPackages] = useState('')
 
   // Packing List specific
-  const [containerNo, setContainerNo] = useState('MSKU 7283456')
-  const [sealNo, setSealNo] = useState('SH-2024-8891')
-  const [cbm, setCbm] = useState('67.5')
-  const [netWeightItem, setNetWeightItem] = useState('50.0')
-  const [grossWeightItem, setGrossWeightItem] = useState('52.5')
+  const [containerNo, setContainerNo] = useState(project.container_number || '')
+  const [sealNo, setSealNo] = useState('')
+  const [cbm, setCbm] = useState('')
+  const [netWeightItem, setNetWeightItem] = useState('')
+  const [grossWeightItem, setGrossWeightItem] = useState('')
 
   // Tax Invoice
   const [sellerVat, setSellerVat] = useState(currentCompany.vatNumber || '')
-  const [buyerVat, setBuyerVat] = useState('100200300400003')
+  const [buyerVat, setBuyerVat] = useState(customer?.vat_number || '')
 
   // Commercial Invoice
-  const [hsCode, setHsCode] = useState('3901.20')
+  const [hsCode, setHsCode] = useState('')
 
   /* ── conflict modal state ───────────────────────────── */
   const [conflictOpen, setConflictOpen] = useState(false)
@@ -170,13 +183,7 @@ export default function DocumentFormPage() {
   const updateItem = useCallback((idx: number, field: keyof ProjectMaterial, value: string | number) => {
     setItems(prev => prev.map((item, i) => {
       if (i !== idx) return item
-      const updated = { ...item, [field]: value }
-      if (field === 'quantity' || field === 'unitPrice') {
-        if (idx === 0 && field === 'quantity' && value === 48) {
-          setTimeout(() => setConflictOpen(true), 300)
-        }
-      }
-      return updated
+      return { ...item, [field]: value }
     }))
   }, [])
 
@@ -200,11 +207,140 @@ export default function DocumentFormPage() {
     setItems(prev => prev.filter((_, i) => i !== idx))
   }
 
+  const handleDocMaterialSelect = (idx: number, materialId: string) => {
+    const mat = (materialsRaw || []).find((m: any) => m.id === materialId)
+    if (mat) {
+      setItems(prev => prev.map((item, i) => i === idx ? {
+        ...item,
+        materialId: mat.id,
+        materialName: mat.name,
+        grade: mat.grade || item.grade || '',
+        unitPrice: mat.last_selling_price || item.unitPrice,
+        currency: mat.last_selling_currency || item.currency || 'SAR',
+        origin: mat.origin || item.origin || '',
+        hsCode: mat.hs_code || item.hsCode || '',
+        packing: mat.default_packing || item.packing || '',
+      } : item))
+    }
+  }
+
   /* ── handlers ───────────────────────────────────────── */
   const [saveSuccess, setSaveSuccess] = useState(false)
-  const handleSave = () => {
-    setSaveSuccess(true)
-    setTimeout(() => setSaveSuccess(false), 3000)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const handleSave = async () => {
+    if (saving) return
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const isEdit = id && id !== 'new'
+
+      const documentData = {
+        items,
+        subtotal,
+        vatRate,
+        vatAmount,
+        total,
+        validUntil,
+        origin,
+        packing,
+        deliveryTime,
+        incoterm,
+        deliveryTerms,
+        paymentTerms,
+        notes,
+        terms,
+        vesselName,
+        voyageNumber,
+        portOfLoading,
+        portOfDischarge,
+        containerNumber,
+        sealNumber,
+        marksAndNumbers,
+        freightTerms,
+        bankName,
+        accountName,
+        accountNumber,
+        iban,
+        swift,
+        sender,
+        receiver,
+        deliveryAddress,
+        relatedInvoice,
+        shipper,
+        consignee,
+        notifyParty,
+        placeOfReceipt,
+        descriptionOfGoods,
+        grossWeight,
+        netWeight,
+        packages,
+        containerNo,
+        sealNo,
+        cbm,
+        netWeightItem,
+        grossWeightItem,
+        sellerVat,
+        buyerVat,
+        hsCode,
+      }
+
+      if (isEdit) {
+        const input: UpdateDocumentInput = {
+          document_number: docNumber,
+          language: docLanguage,
+          template_key: template,
+          prepared_by: preparedBy,
+          show_signature: showSignature,
+          show_stamp: showStamp,
+          status: 'draft',
+          document_data: documentData,
+        }
+
+        await documentService.updateDocument(id!, input, requestContext)
+      } else {
+        const input: CreateDocumentInput = {
+          work_item_id: projectId,
+          document_type: docType,
+          document_number: docNumber,
+          language: docLanguage,
+          template_key: template,
+          prepared_by: preparedBy,
+          show_signature: showSignature,
+          show_stamp: showStamp,
+          status: 'draft',
+          document_data: documentData,
+        }
+
+        await documentService.createDocument(input, requestContext)
+
+        // Update material last selling prices for items with materialId and price > 0
+        for (const item of items) {
+          if (item.materialId && item.unitPrice > 0) {
+            updateLastPrice(
+              item.materialId,
+              item.unitPrice,
+              item.currency || 'SAR',
+              item.weightUnit || 'MT',
+              projectId
+            )
+          }
+        }
+      }
+
+      setSaveSuccess(true)
+      setTimeout(() => {
+        setSaveSuccess(false)
+        if (!isEdit) {
+          navigate(-1)
+        }
+      }, 1500)
+    } catch (err: any) {
+      appLogger.error('Save failed', err)
+      setSaveError(err?.message || t('An unexpected error occurred.', 'حدث خطأ غير متوقع.'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handlePreview = () => {
@@ -212,13 +348,26 @@ export default function DocumentFormPage() {
     navigate(`/documents/${docId}/preview?type=${docType}&projectId=${projectId}`)
   }
 
-  const handleSyncDocs = () => {
+  const handleSyncDocs = async () => {
     setSyncModalOpen(false)
     setConflictOpen(false)
-    alert(t(
-      'Shared data updated. Affected documents have been synchronized.',
-      'تم تحديث البيانات المشتركة. تم مزامنة المستندات المتأثرة.'
-    ))
+    try {
+      const service = getSharedDataService()
+      const selectedIds = syncChecklist.filter(d => d.checked).map(d => d.number)
+      if (project?.id) {
+        const result = await service.synchronizeData(project.id, [], selectedIds as any, {
+          userId: currentUser?.id || '',
+          companyId: currentCompany?.id || '',
+          permissions: {},
+          isSystemAdmin: false,
+        })
+        if (result.updatedDocuments < selectedIds.length) {
+          appLogger.warn(`Sync partial: ${result.updatedDocuments}/${selectedIds.length} documents updated`)
+        }
+      }
+    } catch (err) {
+      appLogger.error('Sync failed', err)
+    }
   }
 
   /* ══════════════════════════════════════════════════════
@@ -291,10 +440,15 @@ export default function DocumentFormPage() {
           <select
             className="select-field"
             value={template}
-            onChange={e => setTemplate(e.target.value as 'template-a' | 'template-b')}
+            onChange={e => setTemplate(e.target.value)}
           >
-            <option value="template-a">{t('Template A — Classic Minimal', 'القالب أ — كلاسيكي مختصر')}</option>
-            <option value="template-b">{t('Template B — Modern Minimal', 'القالب ب — عصري مختصر')}</option>
+            <option value="fulla-packing-list-680">{t('Packing List — Fulla Original', 'قائمة التعبئة — فولا الأصلي')}</option>
+            <option value="fulla-quotation-680">{t('Quotation — Fulla Original', 'عرض أسعار — فولا الأصلي')}</option>
+            <option value="fulla-tax-invoice-a-680">{t('Tax Invoice — Fulla Layout A', 'فاتورة ضريبية — تخطيط فولا أ')}</option>
+            <option value="fulla-delivery-note-680">{t('Delivery Note — Fulla Original', 'إشعار التسليم — فولا الأصلي')}</option>
+            <option value="fulla-commercial-invoice-680">{t('Commercial Invoice — Fulla Original', 'فاتورة تجارية — فولا الأصلي')}</option>
+            <option value="fulla-tax-invoice-b-680">{t('Tax Invoice — Fulla Layout B', 'فاتورة ضريبية — تخطيط فولا ب')}</option>
+            <option value="fulla-proforma-invoice-680">{t('Proforma Invoice — Fulla Original', 'فاتورة مبدئية — فولا الأصلي')}</option>
           </select>
         </div>
         {/* Prepared By */}
@@ -492,7 +646,17 @@ export default function DocumentFormPage() {
                   ) : docType === 'DN' ? (
                     <>
                       <td className="py-2 px-1">
-                        <input className="input-field text-xs py-1.5" value={item.materialName} onChange={e => updateItem(idx, 'materialName', e.target.value)} />
+                        <select className="select-field text-xs py-1.5" value={item.materialId || ''} onChange={e => {
+                          if (e.target.value) {
+                            handleDocMaterialSelect(idx, e.target.value)
+                          } else {
+                            updateItem(idx, 'materialName', '')
+                          }
+                        }}>
+                          <option value="">{t('Type or select...', 'اكتب أو اختر...')}</option>
+                          {(materialsRaw || []).map((m: any) => <option key={m.id} value={m.id}>{m.name}{m.grade ? ` (${m.grade})` : ''}</option>)}
+                        </select>
+                        <input className="input-field text-xs py-1.5 mt-1" value={item.materialName} onChange={e => updateItem(idx, 'materialName', e.target.value)} placeholder={t('Material name', 'اسم المادة')} />
                       </td>
                       <td className="py-2 px-1">
                         <input className="input-field text-xs py-1.5" type="number" value={item.quantity} onChange={e => updateItem(idx, 'quantity', Number(e.target.value))} />
@@ -507,10 +671,20 @@ export default function DocumentFormPage() {
                   ) : docType === 'BL' ? (
                     <>
                       <td className="py-2 px-1">
-                        <input className="input-field text-xs py-1.5" value={item.materialName} onChange={e => updateItem(idx, 'materialName', e.target.value)} />
+                        <select className="select-field text-xs py-1.5" value={item.materialId || ''} onChange={e => {
+                          if (e.target.value) {
+                            handleDocMaterialSelect(idx, e.target.value)
+                          } else {
+                            updateItem(idx, 'materialName', '')
+                          }
+                        }}>
+                          <option value="">{t('Type or select...', 'اكتب أو اختر...')}</option>
+                          {(materialsRaw || []).map((m: any) => <option key={m.id} value={m.id}>{m.name}{m.grade ? ` (${m.grade})` : ''}</option>)}
+                        </select>
+                        <input className="input-field text-xs py-1.5 mt-1" value={item.materialName} onChange={e => updateItem(idx, 'materialName', e.target.value)} placeholder={t('Material name', 'اسم المادة')} />
                       </td>
                       <td className="py-2 px-1">
-                        <input className="input-field text-xs py-1.5" value={item.packing || '25 KG Bags'} />
+                        <input className="input-field text-xs py-1.5" value={item.packing || ''} />
                       </td>
                       <td className="py-2 px-1">
                         <input className="input-field text-xs py-1.5" type="number" value={Math.round(item.quantity * 1.05 * 10) / 10} readOnly />
@@ -523,7 +697,17 @@ export default function DocumentFormPage() {
                     <>
                       {/* Material */}
                       <td className="py-2 px-1">
-                        <input className="input-field text-xs py-1.5" value={item.materialName} onChange={e => updateItem(idx, 'materialName', e.target.value)} />
+                        <select className="select-field text-xs py-1.5" value={item.materialId || ''} onChange={e => {
+                          if (e.target.value) {
+                            handleDocMaterialSelect(idx, e.target.value)
+                          } else {
+                            updateItem(idx, 'materialName', '')
+                          }
+                        }}>
+                          <option value="">{t('Type or select...', 'اكتب أو اختر...')}</option>
+                          {(materialsRaw || []).map((m: any) => <option key={m.id} value={m.id}>{m.name}{m.grade ? ` (${m.grade})` : ''}</option>)}
+                        </select>
+                        <input className="input-field text-xs py-1.5 mt-1" value={item.materialName} onChange={e => updateItem(idx, 'materialName', e.target.value)} placeholder={t('Material name', 'اسم المادة')} />
                       </td>
                       {/* Description */}
                       <td className="py-2 px-1">
@@ -586,7 +770,7 @@ export default function DocumentFormPage() {
                   )}
                   {/* Delete */}
                   <td className="py-2 px-1">
-                    <button onClick={() => removeItem(idx)} className="text-gray-400 hover:text-red-500 transition-colors p-1">
+                    <button onClick={() => removeItem(idx)} className="text-gray-400 hover:text-red-500 transition-colors p-1" aria-label={t('Remove item', 'إزالة العنصر')}>
                       <Trash2 size={14} />
                     </button>
                   </td>
@@ -649,7 +833,7 @@ export default function DocumentFormPage() {
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">{t('Subtotal', 'المجموع الفرعي')}</span>
-                    <span className="font-medium">{subtotal.toLocaleString()} SAR</span>
+                    <span className="font-medium">{subtotal.toLocaleString()} {items[0]?.currency || currentCompany.defaultCurrency || 'SAR'}</span>
                   </div>
                   <div className="flex justify-between text-sm items-center">
                     <span className="text-gray-600">{t('VAT Rate', 'نسبة الضريبة')}</span>
@@ -660,11 +844,11 @@ export default function DocumentFormPage() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">{t('VAT Amount', 'مبلغ الضريبة')}</span>
-                    <span className="font-medium">{vatAmount.toLocaleString()} SAR</span>
+                    <span className="font-medium">{vatAmount.toLocaleString()} {items[0]?.currency || currentCompany.defaultCurrency || 'SAR'}</span>
                   </div>
                   <div className="flex justify-between text-base font-bold pt-2 border-t border-gray-200">
                     <span>{t('Total', 'المجموع')}</span>
-                    <span className="text-brand-700">{total.toLocaleString()} SAR</span>
+                    <span className="text-brand-700">{total.toLocaleString()} {items[0]?.currency || currentCompany.defaultCurrency || 'SAR'}</span>
                   </div>
                 </div>
               </div>
@@ -737,15 +921,15 @@ export default function DocumentFormPage() {
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">{t('Subtotal', 'المجموع الفرعي')}</span>
-                    <span className="font-medium">{subtotal.toLocaleString()} SAR</span>
+                    <span className="font-medium">{subtotal.toLocaleString()} {items[0]?.currency || currentCompany.defaultCurrency || 'SAR'}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">{t('VAT', 'الضريبة')} ({vatRate}%)</span>
-                    <span className="font-medium">{vatAmount.toLocaleString()} SAR</span>
+                    <span className="font-medium">{vatAmount.toLocaleString()} {items[0]?.currency || currentCompany.defaultCurrency || 'SAR'}</span>
                   </div>
                   <div className="flex justify-between text-base font-bold pt-2 border-t border-gray-200">
                     <span>{t('Total', 'المجموع')}</span>
-                    <span className="text-brand-700">{total.toLocaleString()} SAR</span>
+                    <span className="text-brand-700">{total.toLocaleString()} {items[0]?.currency || currentCompany.defaultCurrency || 'SAR'}</span>
                   </div>
                 </div>
                 <div>
@@ -829,15 +1013,15 @@ export default function DocumentFormPage() {
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">{t('Subtotal (excl. VAT)', 'المجموع (بدون ضريبة)')}</span>
-                    <span className="font-medium">{subtotal.toLocaleString()} SAR</span>
+                    <span className="font-medium">{subtotal.toLocaleString()} {items[0]?.currency || currentCompany.defaultCurrency || 'SAR'}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">{t('VAT', 'الضريبة')} ({vatRate}%)</span>
-                    <span className="font-medium">{vatAmount.toLocaleString()} SAR</span>
+                    <span className="font-medium">{vatAmount.toLocaleString()} {items[0]?.currency || currentCompany.defaultCurrency || 'SAR'}</span>
                   </div>
                   <div className="flex justify-between text-base font-bold pt-2 border-t border-gray-200">
                     <span>{t('Total (incl. VAT)', 'المجموع (شامل الضريبة)')}</span>
-                    <span className="text-brand-700">{total.toLocaleString()} SAR</span>
+                    <span className="text-brand-700">{total.toLocaleString()} {items[0]?.currency || currentCompany.defaultCurrency || 'SAR'}</span>
                   </div>
                 </div>
                 {vatRate === 15 && (
@@ -904,15 +1088,15 @@ export default function DocumentFormPage() {
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">{t('Subtotal', 'المجموع الفرعي')}</span>
-                    <span className="font-medium">{subtotal.toLocaleString()} SAR</span>
+                    <span className="font-medium">{subtotal.toLocaleString()} {items[0]?.currency || currentCompany.defaultCurrency || 'SAR'}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">{t('VAT', 'الضريبة')} ({vatRate}%)</span>
-                    <span className="font-medium">{vatAmount.toLocaleString()} SAR</span>
+                    <span className="font-medium">{vatAmount.toLocaleString()} {items[0]?.currency || currentCompany.defaultCurrency || 'SAR'}</span>
                   </div>
                   <div className="flex justify-between text-base font-bold pt-2 border-t border-gray-200">
                     <span>{t('Total', 'المجموع')}</span>
-                    <span className="text-brand-700">{total.toLocaleString()} SAR</span>
+                    <span className="text-brand-700">{total.toLocaleString()} {items[0]?.currency || currentCompany.defaultCurrency || 'SAR'}</span>
                   </div>
                 </div>
                 <div>
@@ -954,7 +1138,7 @@ export default function DocumentFormPage() {
                 </div>
                 <div>
                   <label className="label-field">{t('Invoice Reference', 'مرجع الفاتورة')}</label>
-                  <input type="text" className="input-field" value="PINV-2024-001" readOnly />
+                  <input type="text" className="input-field" value={relatedInvoice} readOnly />
                 </div>
               </div>
               <div className="space-y-4">
@@ -1132,7 +1316,7 @@ export default function DocumentFormPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="btn-ghost p-2">
+          <button onClick={() => navigate(-1)} className="btn-ghost p-2" aria-label={t('Go back', 'رجوع')}>
             <ArrowLeft size={20} />
           </button>
           <div>
@@ -1152,12 +1336,15 @@ export default function DocumentFormPage() {
             <Printer size={16} className="ms-1.5" />
             {t('Print / Preview', 'طباعة / معاينة')}
           </button>
-          <button onClick={handleSave} className="btn-primary">
+          <button onClick={handleSave} className="btn-primary" disabled={saving}>
             <Save size={16} className="ms-1.5" />
-            {t('Save Draft', 'حفظ مسودة')}
+            {saving ? t('Saving...', 'جاري الحفظ...') : t('Save Draft', 'حفظ مسودة')}
           </button>
           {saveSuccess && (
             <span className="text-sm text-green-600 font-medium">{t('Saved!', 'تم الحفظ!')}</span>
+          )}
+          {saveError && (
+            <span className="text-sm text-red-600 font-medium">{saveError}</span>
           )}
         </div>
       </div>
@@ -1181,9 +1368,9 @@ export default function DocumentFormPage() {
             <Printer size={16} className="ms-1.5" />
             {t('Print / Preview', 'طباعة / معاينة')}
           </button>
-          <button onClick={handleSave} className="btn-primary">
+          <button onClick={handleSave} className="btn-primary" disabled={saving}>
             <Save size={16} className="ms-1.5" />
-            {t('Save Draft', 'حفظ مسودة')}
+            {saving ? t('Saving...', 'جاري الحفظ...') : t('Save Draft', 'حفظ مسودة')}
           </button>
         </div>
       </div>
@@ -1195,7 +1382,7 @@ export default function DocumentFormPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setConflictOpen(false)} />
           <div className="relative bg-white rounded-lg border border-gray-200 shadow-xl w-full max-w-lg mx-4 p-6">
-            <button onClick={() => setConflictOpen(false)} className="absolute top-4 end-4 text-gray-400 hover:text-gray-600">
+            <button onClick={() => setConflictOpen(false)} className="absolute top-4 end-4 text-gray-400 hover:text-gray-600" aria-label={t('Close', 'إغلاق')}>
               <X size={20} />
             </button>
             <div className="flex items-center gap-3 mb-4">
@@ -1240,7 +1427,6 @@ export default function DocumentFormPage() {
               <button
                 onClick={() => {
                   setConflictOpen(false)
-                  alert(t('Updated document only.', 'تم تحديث المستند فقط.'))
                 }}
                 className="btn-secondary"
               >
@@ -1265,7 +1451,7 @@ export default function DocumentFormPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setSyncModalOpen(false)} />
           <div className="relative bg-white rounded-lg border border-gray-200 shadow-xl w-full max-w-lg mx-4 p-6">
-            <button onClick={() => setSyncModalOpen(false)} className="absolute top-4 end-4 text-gray-400 hover:text-gray-600">
+            <button onClick={() => setSyncModalOpen(false)} className="absolute top-4 end-4 text-gray-400 hover:text-gray-600" aria-label={t('Close', 'إغلاق')}>
               <X size={20} />
             </button>
             <div className="flex items-center gap-3 mb-4">

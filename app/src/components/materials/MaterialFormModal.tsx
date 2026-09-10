@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLanguage } from '../../contexts/LanguageContext'
 import Modal from '../common/Modal'
 import FormSection from '../common/FormSection'
 import type { Material } from '../../types'
 import { Upload, FileText, X } from 'lucide-react'
+import { generateMaterialKey, uploadToR2 } from '../../lib/r2Client'
+import { useCompany } from '../../contexts/CompanyContext'
+import { appLogger } from '../../lib/logger'
 
 interface MaterialFormModalProps {
   open: boolean
@@ -23,6 +26,12 @@ export default function MaterialFormModal({ open, onClose, onSave, material }: M
   const isEdit = !!material
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const { currentCompany } = useCompany()
+  
+  // Store actual File objects for upload
+  const tdsFileRef = useRef<File | null>(null)
+  const msdsFileRef = useRef<File | null>(null)
+  const coaFileRef = useRef<File | null>(null)
 
   useEffect(() => {
     if (material) {
@@ -32,49 +41,85 @@ export default function MaterialFormModal({ open, onClose, onSave, material }: M
         hsCode: material.hsCode || '', defaultPacking: material.defaultPacking || '',
         lastSellingPrice: material.lastSellingPrice?.toString() || '',
         currency: material.currency || 'SAR', weightUnit: 'MT',
-        tdsFileName: material.tdsFile ? 'TDS Document.pdf' : '',
-        msdsFileName: material.msdsFile ? 'MSDS Document.pdf' : '',
-        coaFileName: material.coaFile ? 'COA Certificate.pdf' : '',
+        tdsFileName: material.tdsFile || '',
+        msdsFileName: material.msdsFile || '',
+        coaFileName: material.coaFile || '',
       })
     } else {
       setForm(EMPTY_FORM)
     }
+    // Clear file refs when modal opens/closes
+    tdsFileRef.current = null
+    msdsFileRef.current = null
+    coaFileRef.current = null
   }, [material, open])
 
   const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }))
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true)
-    setTimeout(() => {
+    try {
+      const companyId = currentCompany?.id || ''
+      const materialId = material?.id || `temp-${Date.now()}`
+      
+      // Upload files to R2 if they exist
+      let tdsKey = form.tdsFileName || undefined
+      let msdsKey = form.msdsFileName || undefined
+      let coaKey = form.coaFileName || undefined
+
+      if (tdsFileRef.current) {
+        const key = generateMaterialKey(companyId, materialId, 'tds', tdsFileRef.current.name)
+        const arrayBuffer = await tdsFileRef.current.arrayBuffer()
+        await uploadToR2(key, new Uint8Array(arrayBuffer), tdsFileRef.current.type, companyId)
+        tdsKey = key
+      }
+
+      if (msdsFileRef.current) {
+        const key = generateMaterialKey(companyId, materialId, 'msds', msdsFileRef.current.name)
+        const arrayBuffer = await msdsFileRef.current.arrayBuffer()
+        await uploadToR2(key, new Uint8Array(arrayBuffer), msdsFileRef.current.type, companyId)
+        msdsKey = key
+      }
+
+      if (coaFileRef.current) {
+        const key = generateMaterialKey(companyId, materialId, 'coa', coaFileRef.current.name)
+        const arrayBuffer = await coaFileRef.current.arrayBuffer()
+        await uploadToR2(key, new Uint8Array(arrayBuffer), coaFileRef.current.type, companyId)
+        coaKey = key
+      }
+
       onSave({
         ...material,
         name: form.name, grade: form.grade, manufacturer: form.manufacturer,
         origin: form.origin, hsCode: form.hsCode, defaultPacking: form.defaultPacking,
         lastSellingPrice: form.lastSellingPrice ? Number(form.lastSellingPrice) : undefined,
         currency: form.currency,
-        tdsFile: form.tdsFileName ? 'mock-tds.pdf' : undefined,
-        msdsFile: form.msdsFileName ? 'mock-msds.pdf' : undefined,
-        coaFile: form.coaFileName ? 'mock-coa.pdf' : undefined,
+        tdsFile: tdsKey,
+        msdsFile: msdsKey,
+        coaFile: coaKey,
       })
+    } catch (err) {
+      appLogger.error('Failed to upload files', err)
+    } finally {
       setSaving(false)
       onClose()
-    }, 500)
+    }
   }
 
-  const fileUpload = (label: string, fieldKey: string, fileName: string) => (
+  const fileUpload = (label: string, fieldKey: string, fileName: string, fileRef: React.MutableRefObject<File | null>) => (
     <div>
       <label className="label-field">{label}</label>
       {fileName ? (
         <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
           <FileText size={16} className="text-green-600" />
           <span className="text-sm text-green-700 flex-1">{fileName}</span>
-          <button type="button" onClick={() => update(fieldKey, '')} className="p-1 hover:bg-green-100 rounded"><X size={14} className="text-green-500" /></button>
+          <button type="button" onClick={() => { update(fieldKey, ''); fileRef.current = null }} className="p-1 hover:bg-green-100 rounded" aria-label={t('Remove file', 'إزالة الملف')}><X size={14} className="text-green-500" /></button>
         </div>
       ) : (
         <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
           <Upload size={16} className="text-gray-400" />
           <span className="text-sm text-gray-500">{t('Upload file', 'رفع ملف')}</span>
-          <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) update(fieldKey, f.name) }} accept=".pdf,.doc,.docx" />
+          <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { update(fieldKey, f.name); fileRef.current = f } }} accept=".pdf,.doc,.docx" />
         </label>
       )}
     </div>
@@ -155,9 +200,9 @@ export default function MaterialFormModal({ open, onClose, onSave, material }: M
 
         <FormSection title="Reference Files" titleAr="الملفات المرجعية" defaultOpen={false}>
           <div className="grid grid-cols-3 gap-4">
-            {fileUpload('TDS (Technical Data Sheet)', 'tdsFileName', form.tdsFileName)}
-            {fileUpload('MSDS (Safety Data Sheet)', 'msdsFileName', form.msdsFileName)}
-            {fileUpload('COA (Certificate of Analysis)', 'coaFileName', form.coaFileName)}
+            {fileUpload('TDS (Technical Data Sheet)', 'tdsFileName', form.tdsFileName, tdsFileRef)}
+            {fileUpload('MSDS (Safety Data Sheet)', 'msdsFileName', form.msdsFileName, msdsFileRef)}
+            {fileUpload('COA (Certificate of Analysis)', 'coaFileName', form.coaFileName, coaFileRef)}
           </div>
         </FormSection>
       </div>

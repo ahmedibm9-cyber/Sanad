@@ -2,16 +2,38 @@
  * Document Template service for SANAD application.
  * 
  * Handles template selection, rendering, and print/PDF generation.
- * Supports Template A (Classic Minimal) and Template B (Modern Minimal).
+ * Supports 7 Fulla native templates.
  */
 
 import type { DocumentType } from './document'
 
 // ===========================================
+// Helpers
+// ===========================================
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+// ===========================================
 // Types
 // ===========================================
 
-export type TemplateKey = 'template-a' | 'template-b'
+export type TemplateKey =
+  | 'template-a'
+  | 'template-b'
+  | 'fulla-packing-list-680'
+  | 'fulla-quotation-680'
+  | 'fulla-tax-invoice-a-680'
+  | 'fulla-delivery-note-680'
+  | 'fulla-commercial-invoice-680'
+  | 'fulla-tax-invoice-b-680'
+  | 'fulla-proforma-invoice-680'
 
 export interface TemplateDefinition {
   key: TemplateKey
@@ -123,18 +145,74 @@ export const TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
   'template-a': {
     key: 'template-a',
     name: 'Classic Minimal',
-    nameAr: 'كلاسيكي مبسط',
-    description: 'Strong typographic hierarchy, thin rules, compact header, traditional business-table structure.',
-    descriptionAr: '티포그래피 واضح، خطوط رفيعة، رأس مختصر، هيكل جداول تقليدي',
-    features: ['Traditional table structure', 'Thin rules', 'Compact header', 'Professional typography'],
+    nameAr: 'كلاسيكي بسيط',
+    description: 'Classic minimal template with clean layout for all document types.',
+    descriptionAr: 'قالب كلاسيكي بسيط مع تخطيط نظيف لجميع أنواع المستندات',
+    features: ['Clean layout', 'All document types', 'Bilingual support'],
   },
   'template-b': {
     key: 'template-b',
     name: 'Modern Minimal',
-    nameAr: 'عصري مبسط',
-    description: 'More whitespace, structured information cards/blocks, restrained lines.',
-    descriptionAr: 'مساحة بيضاء أكثر، كتل معلومات منظمة، خطوط متحكّم بها',
-    features: ['Structured info blocks', 'More whitespace', 'Modern layout', 'Clean design'],
+    nameAr: 'عصري بسيط',
+    description: 'Modern minimal template with card-based layout.',
+    descriptionAr: 'قالب عصري بسيط مع تخطيط مبني على البطاقات',
+    features: ['Card layout', 'All document types', 'Bilingual support'],
+  },
+  'fulla-packing-list-680': {
+    key: 'fulla-packing-list-680',
+    name: 'Packing List — Fulla Original',
+    nameAr: 'قائمة التعبئة — فولا الأصلي',
+    description: 'Fulla Trading Company packing list with consignee block, material table, weight columns, and signature area.',
+    descriptionAr: 'قائمة تعبئة شركة فولا مع بلوك المستلم وجدول المواد وأعمدة الوزن والتوقيع',
+    features: ['Company header', 'Consignee block', 'Marks & numbers', 'Weight columns', 'Signature area'],
+  },
+  'fulla-quotation-680': {
+    key: 'fulla-quotation-680',
+    name: 'Quotation — Fulla Original',
+    nameAr: 'عرض أسعار — فولا الأصلي',
+    description: 'Fulla Trading Company quotation with centered branding, commercial terms, totals, and bank details.',
+    descriptionAr: 'عرض أسعار شركة فولا مع شعار مركزي وشروط تجارية وإجماليات وتفاصيل بنكية',
+    features: ['Centered branding', 'Customer block', 'Commercial terms', 'Bank details', 'Signature/stamp'],
+  },
+  'fulla-tax-invoice-a-680': {
+    key: 'fulla-tax-invoice-a-680',
+    name: 'Tax Invoice — Fulla Layout A',
+    nameAr: 'فاتورة ضريبية — تخطيط فولا أ',
+    description: 'Fulla Trading Company tax invoice layout A with ZATCA QR support and bank details.',
+    descriptionAr: 'فاتورة ضريبية شركة فولا تخطيط أ مع دعم QR وتفاصيل بنكية',
+    features: ['Tax invoice layout', 'ZATCA QR support', 'VAT handling', 'Bank details', 'Signature/stamp'],
+  },
+  'fulla-delivery-note-680': {
+    key: 'fulla-delivery-note-680',
+    name: 'Delivery Note — Fulla Original',
+    nameAr: 'إشعار التسليم — فولا الأصلي',
+    description: 'Fulla Trading Company delivery note with green header, summary grid, and approval section.',
+    descriptionAr: 'إشعار تسليم شركة فولا مع رأس أخضر وشبكة ملخص وقسم موافقة',
+    features: ['Dark green header', 'Summary grid', 'Delivery details', 'Approval section'],
+  },
+  'fulla-commercial-invoice-680': {
+    key: 'fulla-commercial-invoice-680',
+    name: 'Commercial Invoice — Fulla Original',
+    nameAr: 'فاتورة تجارية — فولا الأصلي',
+    description: 'Fulla Trading Company commercial invoice with HS codes, origin, and bank details.',
+    descriptionAr: 'فاتورة تجارية شركة فولا مع أكواد النظام المنسق والمصدر وتفاصيل بنكية',
+    features: ['HS code column', 'Origin column', 'Commercial terms', 'Bank details', 'ZATCA QR support'],
+  },
+  'fulla-tax-invoice-b-680': {
+    key: 'fulla-tax-invoice-b-680',
+    name: 'Tax Invoice — Fulla Layout B',
+    nameAr: 'فاتورة ضريبية — تخطيط فولا ب',
+    description: 'Fulla Trading Company tax invoice layout B — independent variant with its own visual design.',
+    descriptionAr: 'فاتورة ضريبية شركة فولا تخطيط ب — نسخة مستقلة بتصميمها الخاص',
+    features: ['Independent layout', 'Tax invoice variant', 'VAT handling', 'Bank details', 'Signature/stamp'],
+  },
+  'fulla-proforma-invoice-680': {
+    key: 'fulla-proforma-invoice-680',
+    name: 'Proforma Invoice — Fulla Original',
+    nameAr: 'فاتورة مبدئية — فولا الأصلي',
+    description: 'Fulla Trading Company proforma invoice with commercial terms, bank details, and validity.',
+    descriptionAr: 'فاتورة مبدئية شركة فولا مع شروط تجارية وتفاصيل بنكية وصلاحية',
+    features: ['Proforma layout', 'Expiration/validity', 'Commercial terms', 'Bank details', 'Signature/stamp'],
   },
 }
 
@@ -177,12 +255,18 @@ export class TemplateService {
    * Render a document to HTML string.
    */
   renderDocument(data: DocumentRenderData): string {
+    const key = data.templateKey as TemplateKey
     const isArabic = data.language === 'ar'
-    const template = data.templateKey
 
-    if (template === 'template-b') {
+    if (key === 'template-a') {
+      return this.renderTemplateA(data, isArabic)
+    }
+    if (key === 'template-b') {
       return this.renderTemplateB(data, isArabic)
     }
+
+    // Fulla native templates are rendered via pdfmake at export time;
+    // for in-app preview we fall back to Template A layout.
     return this.renderTemplateA(data, isArabic)
   }
 
@@ -197,12 +281,12 @@ export class TemplateService {
 
     const items = data.items.map(item => `
       <tr>
-        <td style="padding:6px 8px;border:1px solid #333;font-size:9pt;">${item.material}</td>
-        <td style="padding:6px 8px;border:1px solid #333;font-size:9pt;">${item.description || item.grade || '-'}</td>
+        <td style="padding:6px 8px;border:1px solid #333;font-size:9pt;">${escapeHtml(item.material)}</td>
+        <td style="padding:6px 8px;border:1px solid #333;font-size:9pt;">${escapeHtml(item.description || item.grade || '-')}</td>
         <td style="padding:6px 8px;border:1px solid #333;font-size:9pt;text-align:center;">${item.quantity}</td>
-        <td style="padding:6px 8px;border:1px solid #333;font-size:9pt;">${item.unit}</td>
-        ${item.unitPrice != null ? `<td style="padding:6px 8px;border:1px solid #333;font-size:9pt;text-align:right;">${item.unitPrice.toLocaleString()} ${item.currency || data.currency || 'SAR'}</td>` : ''}
-        ${item.total != null ? `<td style="padding:6px 8px;border:1px solid #333;font-size:9pt;text-align:right;">${item.total.toLocaleString()} ${item.currency || data.currency || 'SAR'}</td>` : ''}
+        <td style="padding:6px 8px;border:1px solid #333;font-size:9pt;">${escapeHtml(item.unit)}</td>
+        ${item.unitPrice != null ? `<td style="padding:6px 8px;border:1px solid #333;font-size:9pt;text-align:right;">${item.unitPrice.toLocaleString()} ${escapeHtml(item.currency || data.currency || 'SAR')}</td>` : ''}
+        ${item.total != null ? `<td style="padding:6px 8px;border:1px solid #333;font-size:9pt;text-align:right;">${item.total.toLocaleString()} ${escapeHtml(item.currency || data.currency || 'SAR')}</td>` : ''}
       </tr>
     `).join('')
 
@@ -241,16 +325,16 @@ export class TemplateService {
   <div class="info-grid">
     <div>
       <div class="info-label">${isArabic ? 'البائع / المصدر' : 'Seller / Exporter'}</div>
-      <div class="info-value"><strong>${company}</strong></div>
-      ${data.company.address ? `<div class="info-value">${data.company.address}</div>` : ''}
-      ${data.company.phone ? `<div class="info-value">${data.company.phone}</div>` : ''}
-      ${data.company.vatNumber ? `<div class="info-value">VAT: ${data.company.vatNumber}</div>` : ''}
+      <div class="info-value"><strong>${escapeHtml(company)}</strong></div>
+      ${data.company.address ? `<div class="info-value">${escapeHtml(data.company.address)}</div>` : ''}
+      ${data.company.phone ? `<div class="info-value">${escapeHtml(data.company.phone)}</div>` : ''}
+      ${data.company.vatNumber ? `<div class="info-value">VAT: ${escapeHtml(data.company.vatNumber)}</div>` : ''}
     </div>
     <div>
       <div class="info-label">${isArabic ? 'المشتري / العميل' : 'Buyer / Customer'}</div>
-      <div class="info-value"><strong>${customer}</strong></div>
-      ${data.customer.address ? `<div class="info-value">${data.customer.address}</div>` : ''}
-      ${data.customer.phone ? `<div class="info-value">${data.customer.phone}</div>` : ''}
+      <div class="info-value"><strong>${escapeHtml(customer)}</strong></div>
+      ${data.customer.address ? `<div class="info-value">${escapeHtml(data.customer.address)}</div>` : ''}
+      ${data.customer.phone ? `<div class="info-value">${escapeHtml(data.customer.phone)}</div>` : ''}
     </div>
   </div>
 
@@ -287,10 +371,10 @@ export class TemplateService {
   </table>
   ` : ''}
 
-  ${data.notes ? `<div class="footer"><strong>${isArabic ? 'ملاحظات' : 'Notes'}:</strong> ${data.notes}</div>` : ''}
+  ${data.notes ? `<div class="footer"><strong>${isArabic ? 'ملاحظات' : 'Notes'}:</strong> ${escapeHtml(data.notes)}</div>` : ''}
 
   <div class="prepared-by">
-    <strong>${isArabic ? 'أعده' : 'Prepared By'}:</strong> ${data.preparedBy || '________________'}
+    <strong>${isArabic ? 'أعده' : 'Prepared By'}:</strong> ${escapeHtml(data.preparedBy || '________________')}
   </div>
 
   <div class="stamp-area">
@@ -317,11 +401,11 @@ export class TemplateService {
 
     const items = data.items.map(item => `
       <tr>
-        <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:9pt;">${item.material}</td>
-        <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:9pt;color:#666;">${item.description || item.grade || '-'}</td>
-        <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:9pt;text-align:center;">${item.quantity} ${item.unit}</td>
-        ${item.unitPrice != null ? `<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:9pt;text-align:right;">${item.unitPrice.toLocaleString()} ${item.currency || data.currency || 'SAR'}</td>` : ''}
-        ${item.total != null ? `<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:9pt;text-align:right;font-weight:600;">${item.total.toLocaleString()} ${item.currency || data.currency || 'SAR'}</td>` : ''}
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:9pt;">${escapeHtml(item.material)}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:9pt;color:#666;">${escapeHtml(item.description || item.grade || '-')}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:9pt;text-align:center;">${item.quantity} ${escapeHtml(item.unit)}</td>
+        ${item.unitPrice != null ? `<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:9pt;text-align:right;">${item.unitPrice.toLocaleString()} ${escapeHtml(item.currency || data.currency || 'SAR')}</td>` : ''}
+        ${item.total != null ? `<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:9pt;text-align:right;font-weight:600;">${item.total.toLocaleString()} ${escapeHtml(item.currency || data.currency || 'SAR')}</td>` : ''}
       </tr>
     `).join('')
 
@@ -359,28 +443,28 @@ export class TemplateService {
 <body>
   <div class="header">
     <div class="company-block">
-      <div class="company-name">${company}</div>
-      ${data.company.address ? `<div class="company-detail">${data.company.address}</div>` : ''}
-      ${data.company.vatNumber ? `<div class="company-detail">VAT: ${data.company.vatNumber}</div>` : ''}
+      <div class="company-name">${escapeHtml(company)}</div>
+      ${data.company.address ? `<div class="company-detail">${escapeHtml(data.company.address)}</div>` : ''}
+      ${data.company.vatNumber ? `<div class="company-detail">VAT: ${escapeHtml(data.company.vatNumber)}</div>` : ''}
     </div>
     <div class="doc-block">
       <div class="doc-title">${this.getDocumentTypeLabel(data.documentType, data.language)}</div>
-      <div class="doc-meta">${data.documentNumber}</div>
-      <div class="doc-meta">${data.createdDate}</div>
+      <div class="doc-meta">${escapeHtml(data.documentNumber)}</div>
+      <div class="doc-meta">${escapeHtml(data.createdDate)}</div>
     </div>
   </div>
 
   <div class="parties">
     <div class="party-card">
       <div class="party-label">${isArabic ? 'المشتري' : 'Buyer'}</div>
-      <div class="party-name">${customer}</div>
-      ${data.customer.address ? `<div class="party-detail">${data.customer.address}</div>` : ''}
-      ${data.customer.phone ? `<div class="party-detail">${data.customer.phone}</div>` : ''}
+      <div class="party-name">${escapeHtml(customer)}</div>
+      ${data.customer.address ? `<div class="party-detail">${escapeHtml(data.customer.address)}</div>` : ''}
+      ${data.customer.phone ? `<div class="party-detail">${escapeHtml(data.customer.phone)}</div>` : ''}
     </div>
     <div class="party-card">
       <div class="party-label">${isArabic ? 'البائع' : 'Seller'}</div>
-      <div class="party-name">${company}</div>
-      ${data.company.phone ? `<div class="party-detail">${data.company.phone}</div>` : ''}
+      <div class="party-name">${escapeHtml(company)}</div>
+      ${data.company.phone ? `<div class="party-detail">${escapeHtml(data.company.phone)}</div>` : ''}
     </div>
   </div>
 
@@ -418,10 +502,10 @@ export class TemplateService {
   </div>
   ` : ''}
 
-  ${data.notes ? `<div class="footer"><strong>${isArabic ? 'ملاحظات' : 'Notes'}:</strong> ${data.notes}</div>` : ''}
+  ${data.notes ? `<div class="footer"><strong>${isArabic ? 'ملاحظات' : 'Notes'}:</strong> ${escapeHtml(data.notes)}</div>` : ''}
 
   <div class="prepared-by">
-    <span><strong>${isArabic ? 'أعده' : 'Prepared By'}:</strong> ${data.preparedBy || '________________'}</span>
+    <span><strong>${isArabic ? 'أعده' : 'Prepared By'}:</strong> ${escapeHtml(data.preparedBy || '________________')}</span>
     <span>${data.company.stampUrl ? `<img src="${data.company.stampUrl}" style="height:40px;" />` : ''}</span>
   </div>
 </body>

@@ -21,13 +21,13 @@ import {
 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
-import { useWorkItems, useCustomers } from '../hooks/useData'
-import { getDataAccess } from '../lib/data'
-import type { WorkItem } from '../lib/data'
+import { useWorkItems, useCustomers, useUpdateWorkItem, useDeleteWorkItem, useCreateWorkItem } from '../hooks/useData'
+import type { WorkItem } from '../hooks/useData'
 import ProjectFormModal from '../components/projects/ProjectFormModal'
 import Pagination from '../components/common/Pagination'
 import ConfirmModal from '../components/common/ConfirmModal'
 import type { WorkItemStatus } from '../types'
+import { appLogger } from '../lib/logger'
 
 const STATUS_OPTIONS: { value: WorkItemStatus; label: string; colorClass: string }[] = [
   { value: 'in_progress', label: 'In Progress', colorClass: 'bg-blue-50 text-blue-700' },
@@ -66,6 +66,9 @@ export default function ProjectsPage() {
   // ── Real data from Supabase ──
   const { data: projectsData, loading, refetch } = useWorkItems(currentCompany.id, 'project')
   const { data: customersData } = useCustomers(currentCompany.id)
+  const { update: updateWorkItem } = useUpdateWorkItem()
+  const { remove: deleteWorkItem } = useDeleteWorkItem()
+  const { create: createWorkItem } = useCreateWorkItem()
   const rawProjects = projectsData ?? []
   const rawCustomers = customersData ?? []
 
@@ -146,11 +149,10 @@ export default function ProjectsPage() {
   // ── Row actions (Supabase mutations) ──
   const handleArchive = async (id: string) => {
     try {
-      const da = getDataAccess()
-      await da.updateWorkItem(id, { status: 'archived', archived_at: new Date().toISOString() })
+      await updateWorkItem(id, { status: 'archived' } as any)
       refetch()
     } catch (err) {
-      console.error('Failed to archive project:', err)
+      appLogger.error('Failed to archive project', err)
     }
     setArchiveConfirmId(null)
     setOpenMenuId(null)
@@ -158,11 +160,10 @@ export default function ProjectsPage() {
 
   const handleTrash = async (id: string) => {
     try {
-      const da = getDataAccess()
-      await da.deleteWorkItem(id)
+      await deleteWorkItem(id)
       refetch()
     } catch (err) {
-      console.error('Failed to trash project:', err)
+      appLogger.error('Failed to trash project', err)
     }
     setTrashConfirmId(null)
     setOpenMenuId(null)
@@ -170,48 +171,44 @@ export default function ProjectsPage() {
 
   const handleTogglePin = async (id: string, currentlyPinned: boolean) => {
     try {
-      const da = getDataAccess()
-      await da.updateWorkItem(id, { pinned: !currentlyPinned })
+      await updateWorkItem(id, { pinned: !currentlyPinned } as any)
       refetch()
     } catch (err) {
-      console.error('Failed to toggle pin:', err)
+      appLogger.error('Failed to toggle pin', err)
     }
   }
 
   const handleReopen = async (id: string) => {
     try {
-      const da = getDataAccess()
-      await da.updateWorkItem(id, { status: 'in_progress', archived_at: null })
+      await updateWorkItem(id, { status: 'in_progress' } as any)
       refetch()
     } catch (err) {
-      console.error('Failed to reopen project:', err)
+      appLogger.error('Failed to reopen project', err)
     }
   }
 
   const handleCreateProject = async (data: Record<string, unknown>) => {
     try {
-      const da = getDataAccess()
-      await da.createWorkItem({
+      await createWorkItem({
         type: 'project',
         name: (data.name as string) || 'New Project',
-        customer_id: (data.customerId as string) || null,
+        customerId: (data.customerId as string) || null,
         status: 'in_progress',
-        pinned: false,
-        destination_country: (data.destinationCountry as string) || null,
-        destination_city: (data.destinationCity as string) || null,
+        destinationCountry: (data.destinationCountry as string) || null,
+        destinationCity: (data.destinationCity as string) || null,
         currency: (data.currency as string) || null,
         incoterm: (data.incoterm as string) || null,
-        payment_terms: (data.paymentTerms as string) || null,
-        delivery_terms: (data.deliveryTerms as string) || null,
-        port_of_loading: (data.portOfLoading as string) || null,
-        port_of_discharge: (data.portOfDischarge as string) || null,
-        vessel_name: (data.vesselName as string) || null,
-        voyage_number: (data.voyageNumber as string) || null,
-        container_number: (data.containerNumber as string) || null,
-      }, currentCompany.id)
+        paymentTerms: (data.paymentTerms as string) || null,
+        deliveryTerms: (data.deliveryTerms as string) || null,
+        portOfLoading: (data.portOfLoading as string) || null,
+        portOfDischarge: (data.portOfDischarge as string) || null,
+        vesselName: (data.vesselName as string) || null,
+        voyageNumber: (data.voyageNumber as string) || null,
+        containerNumber: (data.containerNumber as string) || null,
+      } as any, currentCompany.id)
       refetch()
     } catch (err) {
-      console.error('Failed to create project:', err)
+      appLogger.error('Failed to create project', err)
     }
     setShowProjectForm(false)
   }
@@ -464,7 +461,7 @@ export default function ProjectsPage() {
                         </td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => handleTogglePin(project.id, project.pinned)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-amber-500" title={project.pinned ? t('Unpin', 'إلغاء التثبيت') : t('Pin', 'تثبيت')}>
+                            <button onClick={() => handleTogglePin(project.id, project.pinned)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-amber-500" title={project.pinned ? t('Unpin', 'إلغاء التثبيت') : t('Pin', 'تثبيت')} aria-label={project.pinned ? t('Unpin project', 'إلغاء تثبيت المشروع') : t('Pin project', 'تثبيت المشروع')}>
                               <Pin className={`w-4 h-4 ${project.pinned ? 'fill-amber-400 text-amber-500' : ''}`} />
                             </button>
                             <Link to={`/projects/${project.id}`} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-brand-600 transition-colors" title={t('View', 'عرض')}>
@@ -593,7 +590,7 @@ export default function ProjectsPage() {
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => handleReopen(project.id)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-green-600" title={t('Reopen', 'إعادة فتح')}>
+                          <button onClick={() => handleReopen(project.id)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-green-600" title={t('Reopen', 'إعادة فتح')} aria-label={t('Reopen project', 'إعادة فتح المشروع')}>
                             <RotateCcw className="w-4 h-4" />
                           </button>
                           <Link to={`/projects/${project.id}`} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-brand-600 transition-colors">

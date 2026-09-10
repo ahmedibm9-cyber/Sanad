@@ -333,7 +333,7 @@ export default function TasksPage() {
                         </td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => handleTogglePin(task)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-amber-500" title={task.pinned ? t('Unpin', 'إلغاء التثبيت') : t('Pin', 'تثبيت')}>
+                            <button onClick={() => handleTogglePin(task)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-amber-500" title={task.pinned ? t('Unpin', 'إلغاء التثبيت') : t('Pin', 'تثبيت')} aria-label={task.pinned ? t('Unpin task', 'إلغاء تثبيت المهمة') : t('Pin task', 'تثبيت المهمة')}>
                               <Pin className={`w-4 h-4 ${task.pinned ? 'fill-amber-400 text-amber-500' : ''}`} />
                             </button>
                             <Link to={`/tasks/${task.id}`} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-brand-600 transition-colors">

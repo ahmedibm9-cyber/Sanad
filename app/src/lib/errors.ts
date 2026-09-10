@@ -196,17 +196,13 @@ export function formatErrorResponse(error: unknown): {
   }
 }
 
+import { appLogger } from './logger'
+
 /**
  * Log error for debugging (server-side only).
  */
 export function logError(error: unknown, context?: string): void {
-  if (process.env.NODE_ENV === 'production') {
-    // In production, use a proper logging service
-    console.error(`[SANAD Error] ${context || 'Unknown'}:`, error)
-  } else {
-    // In development, log full details
-    console.error(`[SANAD Error] ${context || 'Unknown'}:`, error)
-  }
+  appLogger.error(context || 'Unknown error', error)
 }
 
 /**

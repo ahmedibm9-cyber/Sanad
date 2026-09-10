@@ -4,7 +4,7 @@ import { useApp } from '../../contexts/AppContext'
 import { useNavigate } from 'react-router-dom'
 import { Search, Bell, Globe, ChevronDown } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { notifications as mockNotifications } from '../../data/mockData'
+import { useNotifications } from '../../hooks/useData'
 import GlobalSearch from '../common/GlobalSearch'
 import NotificationPanel from '../common/NotificationPanel'
 
@@ -17,7 +17,8 @@ export default function TopBar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [langOpen, setLangOpen] = useState(false)
   const [notifPanelOpen, setNotifPanelOpen] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(mockNotifications.filter(n => !n.read).length)
+  const { data: hookNotifications } = useNotifications(currentUser?.id)
+  const [unreadCount, setUnreadCount] = useState(0)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const langRef = useRef<HTMLDivElement>(null)
 
@@ -42,6 +43,13 @@ export default function TopBar() {
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [])
+
+  // Sync unread count from hook data
+  useEffect(() => {
+    if (hookNotifications) {
+      setUnreadCount(hookNotifications.filter((n: any) => !n.read).length)
+    }
+  }, [hookNotifications])
 
   const users = [
     { id: 'user-1', name: 'Mohamed Al-Hassan', email: 'mohamed@sanad-app.com', role: 'admin' },
@@ -180,7 +188,11 @@ export default function TopBar() {
       <NotificationPanel
         open={notifPanelOpen}
         onClose={() => setNotifPanelOpen(false)}
-        onStateChange={() => setUnreadCount(mockNotifications.filter(n => !n.read).length)}
+        onStateChange={() => {
+          if (hookNotifications) {
+            setUnreadCount(hookNotifications.filter((n: any) => !n.read).length)
+          }
+        }}
       />
     </header>
   )

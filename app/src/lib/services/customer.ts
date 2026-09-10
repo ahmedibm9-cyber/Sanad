@@ -6,6 +6,7 @@
 
 import { getSupabase, type Database } from '../supabase'
 import { type RequestContext, requirePermission, hasPermission } from '../api'
+import { ilikeSearch } from '../search'
 import { NotFoundError, handleSupabaseError } from '../errors'
 import { appLogger } from '../logger'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -143,7 +144,8 @@ export class CustomerService {
 
     // Search
     if (search) {
-      query = query.or(`name.ilike.%${search}%,contact_person.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,country.ilike.%${search}%`)
+      const sPattern = ilikeSearch(search)
+      query = query.or(`name.ilike.${sPattern},contact_person.ilike.${sPattern},phone.ilike.${sPattern},email.ilike.${sPattern},country.ilike.${sPattern}`)
     }
 
     // Pagination
@@ -174,6 +176,7 @@ export class CustomerService {
       .from('customers')
       .select('*')
       .eq('id', id)
+      .eq('company_id', context.companyId)
       .eq('active', true)
       .is('deleted_at', null)
       .single()
@@ -279,6 +282,7 @@ export class CustomerService {
       .from('customers')
       .update(updateData)
       .eq('id', id)
+      .eq('company_id', context.companyId)
       .eq('active', true)
       .is('deleted_at', null)
       .select()

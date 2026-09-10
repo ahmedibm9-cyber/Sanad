@@ -3,7 +3,7 @@ import { Search, ChevronDown, ChevronRight, Clock, User, FileText, Edit3, Trash2
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { useAuditEvents } from '../hooks/useData'
-import type { AuditEvent } from '../lib/data'
+import type { AuditEvent } from '../hooks/useData'
 
 const actionIcons: Record<string, React.ReactNode> = {
   CREATE: <FileText className="w-4 h-4 text-green-600" />,
@@ -258,7 +258,7 @@ export default function ActivityPage() {
                     >
                       <td className="px-4 py-3">
                         {hasBeforeAfter && (
-                          <button className="p-0.5">
+                          <button className="p-0.5" aria-label={isExpanded ? t('Collapse details', 'طي التفاصيل') : t('Expand details', 'توسيع التفاصيل')}>
                             {isExpanded
                               ? <ChevronDown className="w-4 h-4 text-gray-400" />
                               : <ChevronRight className="w-4 h-4 text-gray-400" />

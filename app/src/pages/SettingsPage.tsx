@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   Building2,
   Scale,
@@ -20,12 +20,19 @@ import {
   Plus,
   X,
   Trash2,
+  Loader2,
 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { useApp } from '../contexts/AppContext'
+import { useAuth } from '../contexts/AuthContext'
 import ConfirmModal from '../components/common/ConfirmModal'
 import Modal from '../components/common/Modal'
+import { getSettingsService } from '../lib/services/settings'
+import { getCompanyService } from '../lib/services/company'
+import { getBackupService } from '../lib/services/backup'
+import { getAuditService } from '../lib/services/audit'
+import { appLogger } from '../lib/logger'
 
 type SettingsTab = 'identity' | 'legal' | 'contact' | 'banking' | 'documents' | 'notifications' | 'backup' | 'licensing'
 
@@ -78,6 +85,7 @@ export default function SettingsPage() {
   const { t } = useLanguage()
   const { currentCompany } = useCompany()
   const { currentUser } = useApp()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<SettingsTab>('identity')
   const [saved, setSaved] = useState(false)
 
@@ -104,6 +112,50 @@ export default function SettingsPage() {
   const [showAddDeliveryTerm, setShowAddDeliveryTerm] = useState(false)
   const [defaultWeightUnit, setDefaultWeightUnit] = useState('MT')
   const [defaultPackingUnit, setDefaultPackingUnit] = useState('Bags')
+
+  // ─── Load config lists from DB on mount ────────────────────
+  useEffect(() => {
+    if (!currentCompany?.id || !user) return
+    const ctx = {
+      userId: user.id,
+      companyId: currentCompany.id,
+      permissions: {},
+      isSystemAdmin: user.isSystemAdmin || false,
+    }
+    const settingsService = getSettingsService()
+    const listNameMap: Record<string, (vals: string[]) => void> = {
+      currencies: setCurrencies,
+      vat_rates: (vals) => setVatRates(vals.map(Number)),
+      weight_units: setWeightUnits,
+      packing_units: setPackingUnits,
+      payment_terms: setPaymentTermsList,
+      delivery_terms: setDeliveryTermsList,
+    }
+    Object.entries(listNameMap).forEach(([listName, setter]) => {
+      settingsService.getConfigList(currentCompany.id, listName, ctx)
+        .then((items) => {
+          if (items.length > 0) setter(items.map((i) => i.item_value))
+        })
+        .catch(() => { /* keep hardcoded defaults */ })
+    })
+  }, [currentCompany?.id, user])
+
+  // ─── Config list DB persistence helpers ────────────────────
+  const persistConfigAdd = useCallback(async (listName: string, itemValue: string) => {
+    if (!currentCompany?.id || !user) return
+    const ctx = { userId: user.id, companyId: currentCompany.id, permissions: {}, isSystemAdmin: user.isSystemAdmin || false }
+    try {
+      await getSettingsService().addConfigListItem(currentCompany.id, listName, itemValue, false, ctx)
+    } catch { /* non-critical */ }
+  }, [currentCompany?.id, user])
+
+  const persistConfigRemove = useCallback(async (listName: string, itemValue: string) => {
+    if (!currentCompany?.id || !user) return
+    const ctx = { userId: user.id, companyId: currentCompany.id, permissions: {}, isSystemAdmin: user.isSystemAdmin || false }
+    try {
+      await getSettingsService().removeConfigListItem(currentCompany.id, listName, itemValue, ctx)
+    } catch { /* non-critical */ }
+  }, [currentCompany?.id, user])
 
   // ─── Banking: Multiple accounts state ──────────────────────
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([
@@ -165,7 +217,7 @@ export default function SettingsPage() {
     bankCurrency: currentCompany.bankCurrency || 'SAR',
     // Document defaults
     defaultLanguage: currentCompany.defaultLanguage || 'en',
-    defaultTemplate: currentCompany.defaultTemplate || 'template-a',
+    defaultTemplate: currentCompany.defaultTemplate || 'fulla-commercial-invoice-680',
     defaultVatRate: currentCompany.defaultVatRate ?? 15,
     defaultCurrency: currentCompany.defaultCurrency || 'SAR',
     defaultIncoterm: currentCompany.defaultIncoterm || 'FOB',
@@ -194,10 +246,82 @@ export default function SettingsPage() {
     }))
   }
 
-  const handleSave = () => {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
-  }
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = useCallback(async () => {
+    if (!currentCompany?.id || !user) return
+    setSaving(true)
+    try {
+      const ctx = {
+        userId: user.id,
+        companyId: currentCompany.id,
+        permissions: {},
+        isSystemAdmin: user.isSystemAdmin || false,
+      }
+
+      // Update basic company fields
+      const companyService = getCompanyService()
+      await companyService.updateCompany(currentCompany.id, {
+        name_en: form.nameEn,
+        name_ar: form.nameAr,
+        legal_name_en: form.legalNameEn || undefined,
+        legal_name_ar: form.legalNameAr || undefined,
+        short_name: form.shortName,
+        company_code: form.code,
+      }, ctx)
+
+      // Update settings (contact, legal, banking, document defaults, notifications)
+      const settingsService = getSettingsService()
+      await settingsService.updateCompanySettings(currentCompany.id, {
+        phone: form.phone,
+        email: form.email,
+        website: form.website,
+        country: form.country,
+        city: form.city,
+        address: form.address,
+        postal_code: form.postalCode,
+        vat_number: form.vatNumber,
+        cr_number: form.crNumber,
+        bank_name: form.bankName,
+        account_name: form.accountName,
+        account_number: form.accountNumber,
+        iban: form.iban,
+        swift: form.swift,
+        bank_currency: form.bankCurrency,
+        default_language: form.defaultLanguage,
+        default_template: form.defaultTemplate,
+        default_vat_rate: form.defaultVatRate,
+        default_currency: form.defaultCurrency,
+        default_incoterm: form.defaultIncoterm,
+        default_payment_terms: form.defaultPaymentTerms,
+        default_delivery_terms: form.defaultDeliveryTerms,
+        default_prepared_by: form.defaultPreparedBy,
+        show_signature: form.showSignature,
+        show_stamp: form.showStamp,
+        notifications: form.notifications,
+      }, ctx)
+
+      // Log audit event
+      try {
+        const auditService = getAuditService()
+        await auditService.logEvent({
+          action: 'SETTINGS_CHANGE',
+          entityType: 'company',
+          entityId: currentCompany.id,
+          after: form,
+        }, ctx)
+      } catch {
+        // Audit logging is non-critical
+      }
+
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) {
+      appLogger.error('Failed to save settings', err)
+    } finally {
+      setSaving(false)
+    }
+  }, [currentCompany?.id, user, form])
 
   // ─── Toggle Switch Component ──────────────────────────────
   const Toggle = ({ checked, onChange, disabled = false }: { checked: boolean; onChange: () => void; disabled?: boolean }) => (
@@ -290,6 +414,7 @@ export default function SettingsPage() {
               onClick={() => onRemove(item)}
               className="p-0.5 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
               title={t('Remove', 'إزالة')}
+              aria-label={t('Remove', 'إزالة')}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -313,6 +438,7 @@ export default function SettingsPage() {
               type="button"
               onClick={onAdd}
               className="btn-ghost !py-1.5 !px-2 text-sm text-brand-600 hover:text-brand-700"
+              aria-label={t('Confirm add', 'تأكيد الإضافة')}
             >
               <CheckCircle2 className="w-4 h-4" />
             </button>
@@ -320,6 +446,7 @@ export default function SettingsPage() {
               type="button"
               onClick={() => { setShowAdd(false); setNewItem('') }}
               className="btn-ghost !py-1.5 !px-2 text-sm text-gray-400 hover:text-gray-600"
+              aria-label={t('Cancel', 'إلغاء')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -366,9 +493,10 @@ export default function SettingsPage() {
             </button>
             <button
               type="button"
-              onClick={() => setVatRates((prev) => prev.filter((r) => r !== rate))}
+              onClick={() => { setVatRates((prev) => prev.filter((r) => r !== rate)); persistConfigRemove('vat_rates', String(rate)) }}
               className="p-0.5 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
               title={t('Remove', 'إزالة')}
+              aria-label={t('Remove VAT rate', 'إزالة معدل الضريبة')}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -393,6 +521,7 @@ export default function SettingsPage() {
                     setVatRates((prev) => [...prev, val].sort((a, b) => a - b))
                     setNewVatRate('')
                     setShowAddVatRate(false)
+                    persistConfigAdd('vat_rates', String(val))
                   }
                 }
                 if (e.key === 'Escape') { setShowAddVatRate(false); setNewVatRate('') }
@@ -407,9 +536,11 @@ export default function SettingsPage() {
                   setVatRates((prev) => [...prev, val].sort((a, b) => a - b))
                   setNewVatRate('')
                   setShowAddVatRate(false)
+                  persistConfigAdd('vat_rates', String(val))
                 }
               }}
               className="btn-ghost !py-1.5 !px-2 text-sm text-brand-600 hover:text-brand-700"
+              aria-label={t('Confirm add', 'تأكيد الإضافة')}
             >
               <CheckCircle2 className="w-4 h-4" />
             </button>
@@ -417,6 +548,7 @@ export default function SettingsPage() {
               type="button"
               onClick={() => { setShowAddVatRate(false); setNewVatRate('') }}
               className="btn-ghost !py-1.5 !px-2 text-sm text-gray-400 hover:text-gray-600"
+              aria-label={t('Cancel', 'إلغاء')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -484,9 +616,9 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
-              <button onClick={handleSave} className="btn-primary gap-2">
-                <Save className="w-4 h-4" />
-                {t('Save Changes', 'حفظ التغييرات')}
+              <button onClick={handleSave} disabled={saving} className="btn-primary gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? t('Saving...', 'جاري الحفظ...') : t('Save Changes', 'حفظ التغييرات')}
               </button>
             </div>
           </div>
@@ -534,9 +666,9 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
-              <button onClick={handleSave} className="btn-primary gap-2">
-                <Save className="w-4 h-4" />
-                {t('Save Changes', 'حفظ التغييرات')}
+              <button onClick={handleSave} disabled={saving} className="btn-primary gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? t('Saving...', 'جاري الحفظ...') : t('Save Changes', 'حفظ التغييرات')}
               </button>
             </div>
           </div>
@@ -571,9 +703,9 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
-              <button onClick={handleSave} className="btn-primary gap-2">
-                <Save className="w-4 h-4" />
-                {t('Save Changes', 'حفظ التغييرات')}
+              <button onClick={handleSave} disabled={saving} className="btn-primary gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? t('Saving...', 'جاري الحفظ...') : t('Save Changes', 'حفظ التغييرات')}
               </button>
             </div>
           </div>
@@ -766,9 +898,9 @@ export default function SettingsPage() {
             </Modal>
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
-              <button onClick={handleSave} className="btn-primary gap-2">
-                <Save className="w-4 h-4" />
-                {t('Save Changes', 'حفظ التغييرات')}
+              <button onClick={handleSave} disabled={saving} className="btn-primary gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? t('Saving...', 'جاري الحفظ...') : t('Save Changes', 'حفظ التغييرات')}
               </button>
             </div>
           </div>
@@ -794,8 +926,13 @@ export default function SettingsPage() {
               <div>
                 <FieldLabel>{t('Default Template', 'القالب الافتراضي')}</FieldLabel>
                 <select className="select-field" value={form.defaultTemplate} onChange={(e) => handleChange('defaultTemplate', e.target.value)}>
-                  <option value="template-a">{t('Template A', 'القالب أ')}</option>
-                  <option value="template-b">{t('Template B', 'القالب ب')}</option>
+                  <option value="fulla-packing-list-680">{t('Packing List — Fulla', 'قائمة التعبئة — فولا')}</option>
+                  <option value="fulla-quotation-680">{t('Quotation — Fulla', 'عرض أسعار — فولا')}</option>
+                  <option value="fulla-tax-invoice-a-680">{t('Tax Invoice A — Fulla', 'فاتورة ضريبية أ — فولا')}</option>
+                  <option value="fulla-delivery-note-680">{t('Delivery Note — Fulla', 'إشعار التسليم — فولا')}</option>
+                  <option value="fulla-commercial-invoice-680">{t('Commercial Invoice — Fulla', 'فاتورة تجارية — فولا')}</option>
+                  <option value="fulla-tax-invoice-b-680">{t('Tax Invoice B — Fulla', 'فاتورة ضريبية ب — فولا')}</option>
+                  <option value="fulla-proforma-invoice-680">{t('Proforma Invoice — Fulla', 'فاتورة مبدئية — فولا')}</option>
                 </select>
               </div>
               <div>
@@ -849,9 +986,10 @@ export default function SettingsPage() {
                   setCurrencies((prev) => [...prev, val])
                   setNewCurrency('')
                   setShowAddCurrency(false)
+                  persistConfigAdd('currencies', val)
                 }
               }}
-              onRemove={(item) => setCurrencies((prev) => prev.filter((c) => c !== item))}
+              onRemove={(item) => { setCurrencies((prev) => prev.filter((c) => c !== item)); persistConfigRemove('currencies', item) }}
               newItem={newCurrency}
               setNewItem={setNewCurrency}
               showAdd={showAddCurrency}
@@ -870,9 +1008,10 @@ export default function SettingsPage() {
                   setWeightUnits((prev) => [...prev, val])
                   setNewWeightUnit('')
                   setShowAddWeightUnit(false)
+                  persistConfigAdd('weight_units', val)
                 }
               }}
-              onRemove={(item) => setWeightUnits((prev) => prev.filter((u) => u !== item))}
+              onRemove={(item) => { setWeightUnits((prev) => prev.filter((u) => u !== item)); persistConfigRemove('weight_units', item) }}
               newItem={newWeightUnit}
               setNewItem={setNewWeightUnit}
               showAdd={showAddWeightUnit}
@@ -891,9 +1030,10 @@ export default function SettingsPage() {
                   setPackingUnits((prev) => [...prev, val])
                   setNewPackingUnit('')
                   setShowAddPackingUnit(false)
+                  persistConfigAdd('packing_units', val)
                 }
               }}
-              onRemove={(item) => setPackingUnits((prev) => prev.filter((u) => u !== item))}
+              onRemove={(item) => { setPackingUnits((prev) => prev.filter((u) => u !== item)); persistConfigRemove('packing_units', item) }}
               newItem={newPackingUnit}
               setNewItem={setNewPackingUnit}
               showAdd={showAddPackingUnit}
@@ -912,9 +1052,10 @@ export default function SettingsPage() {
                   setPaymentTermsList((prev) => [...prev, val])
                   setNewPaymentTerm('')
                   setShowAddPaymentTerm(false)
+                  persistConfigAdd('payment_terms', val)
                 }
               }}
-              onRemove={(item) => setPaymentTermsList((prev) => prev.filter((p) => p !== item))}
+              onRemove={(item) => { setPaymentTermsList((prev) => prev.filter((p) => p !== item)); persistConfigRemove('payment_terms', item) }}
               newItem={newPaymentTerm}
               setNewItem={setNewPaymentTerm}
               showAdd={showAddPaymentTerm}
@@ -933,9 +1074,10 @@ export default function SettingsPage() {
                   setDeliveryTermsList((prev) => [...prev, val])
                   setNewDeliveryTerm('')
                   setShowAddDeliveryTerm(false)
+                  persistConfigAdd('delivery_terms', val)
                 }
               }}
-              onRemove={(item) => setDeliveryTermsList((prev) => prev.filter((d) => d !== item))}
+              onRemove={(item) => { setDeliveryTermsList((prev) => prev.filter((d) => d !== item)); persistConfigRemove('delivery_terms', item) }}
               newItem={newDeliveryTerm}
               setNewItem={setNewDeliveryTerm}
               showAdd={showAddDeliveryTerm}
@@ -965,9 +1107,9 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
-              <button onClick={handleSave} className="btn-primary gap-2">
-                <Save className="w-4 h-4" />
-                {t('Save Changes', 'حفظ التغييرات')}
+              <button onClick={handleSave} disabled={saving} className="btn-primary gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? t('Saving...', 'جاري الحفظ...') : t('Save Changes', 'حفظ التغييرات')}
               </button>
             </div>
           </div>
@@ -1001,9 +1143,9 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
-              <button onClick={handleSave} className="btn-primary gap-2">
-                <Save className="w-4 h-4" />
-                {t('Save Changes', 'حفظ التغييرات')}
+              <button onClick={handleSave} disabled={saving} className="btn-primary gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? t('Saving...', 'جاري الحفظ...') : t('Save Changes', 'حفظ التغييرات')}
               </button>
             </div>
           </div>
@@ -1092,9 +1234,9 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
-              <button onClick={handleSave} className="btn-primary gap-2">
-                <Save className="w-4 h-4" />
-                {t('Save Changes', 'حفظ التغييرات')}
+              <button onClick={handleSave} disabled={saving} className="btn-primary gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? t('Saving...', 'جاري الحفظ...') : t('Save Changes', 'حفظ التغييرات')}
               </button>
             </div>
 
@@ -1102,11 +1244,24 @@ export default function SettingsPage() {
             <ConfirmModal
               open={showBackupConfirm}
               onClose={() => setShowBackupConfirm(false)}
-              onConfirm={() => {
+              onConfirm={async () => {
                 setShowBackupConfirm(false)
-                setBackupSuccess(true)
-                setForm((prev) => ({ ...prev, lastBackup: new Date().toISOString() }))
-                setTimeout(() => setBackupSuccess(false), 5000)
+                if (!currentCompany?.id || !user) return
+                try {
+                  const backupService = getBackupService()
+                  const ctx = {
+                    userId: user.id,
+                    companyId: currentCompany.id,
+                    permissions: {},
+                    isSystemAdmin: user.isSystemAdmin || false,
+                  }
+                  await backupService.createManualBackup(ctx)
+                  setBackupSuccess(true)
+                  setForm((prev) => ({ ...prev, lastBackup: new Date().toISOString() }))
+                  setTimeout(() => setBackupSuccess(false), 5000)
+                } catch (err) {
+                  appLogger.error('Backup failed', err)
+                }
               }}
               title={t('Create Manual Backup?', 'إنشاء نسخة احتياطية يدوية؟')}
               message={t(
@@ -1215,9 +1370,9 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
-              <button onClick={handleSave} className="btn-primary gap-2">
-                <Save className="w-4 h-4" />
-                {t('Save Changes', 'حفظ التغييرات')}
+              <button onClick={handleSave} disabled={saving} className="btn-primary gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? t('Saving...', 'جاري الحفظ...') : t('Save Changes', 'حفظ التغييرات')}
               </button>
             </div>
           </div>

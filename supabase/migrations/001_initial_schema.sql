@@ -149,6 +149,13 @@ ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE company_memberships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE membership_permissions ENABLE ROW LEVEL SECURITY;
 
+-- System admins can read deployments
+CREATE POLICY deployments_admin_read ON deployments
+  FOR SELECT
+  USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.is_system_admin = TRUE)
+  );
+
 -- Users can read their own profile
 CREATE POLICY users_read_own ON users
   FOR SELECT
@@ -336,7 +343,7 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'display_name', NEW.email),
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'preferred_language', 'en'),
-    COALESCE((NEW.raw_user_meta_data->>'is_system_admin')::boolean, FALSE),
+    FALSE,
     TRUE
   );
   RETURN NEW;

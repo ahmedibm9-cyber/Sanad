@@ -41,6 +41,20 @@ export interface ConflictResolution {
   selectedDocumentIds: string[]
 }
 
+export interface SyncDocumentResult {
+  documentId: string
+  documentNumber: string
+  success: boolean
+  error?: string
+}
+
+export interface SynchronizationResult {
+  updatedProject: boolean
+  updatedDocuments: number
+  failedDocuments: number
+  documentResults: SyncDocumentResult[]
+}
+
 // ===========================================
 // Shared Field Definitions
 // ===========================================
@@ -178,21 +192,49 @@ export class SharedDataService {
   /**
    * Update project shared data and synchronize selected documents.
    * 
-   * This MUST be transactional — all changes succeed or all rollback.
+   * Uses compensating rollback: if any document update fails, the project
+   * update and all already-updated documents are rolled back to their
+   * original values. This prevents partial synchronization.
    */
   async synchronizeData(
     workItemId: string,
     conflicts: SharedDataConflict[],
     selectedDocumentIds: string[],
     context: RequestContext
-  ): Promise<{ updatedProject: boolean; updatedDocuments: number }> {
+  ): Promise<SynchronizationResult> {
     appLogger.info('Starting shared data synchronization', {
       workItemId,
       conflictCount: conflicts.length,
       selectedDocCount: selectedDocumentIds.length,
     })
 
-    // Step 1: Update project work item shared fields
+    if (conflicts.length === 0 || selectedDocumentIds.length === 0) {
+      return { updatedProject: false, updatedDocuments: 0, failedDocuments: 0, documentResults: [] }
+    }
+
+    // Step 1: Snapshot current project state for rollback
+    const { data: projectSnapshot, error: snapshotError } = await (this.supabase as any)
+      .from('work_items')
+      .select('*')
+      .eq('id', workItemId)
+      .single()
+
+    if (snapshotError || !projectSnapshot) {
+      throw handleSupabaseError(snapshotError || new Error('Project not found'))
+    }
+
+    // Step 2: Snapshot current document states for rollback
+    const docSnapshots: Record<string, any> = {}
+    for (const docId of selectedDocumentIds) {
+      const { data: doc } = await (this.supabase as any)
+        .from('documents')
+        .select('id, document_data')
+        .eq('id', docId)
+        .single()
+      if (doc) docSnapshots[docId] = { document_data: { ...((doc as any).document_data || {}) } }
+    }
+
+    // Step 3: Update project shared fields
     const projectUpdateData: Record<string, unknown> = {}
     for (const conflict of conflicts) {
       projectUpdateData[conflict.fieldKey] = conflict.documentValue
@@ -208,50 +250,111 @@ export class SharedDataService {
       throw handleSupabaseError(projectError)
     }
 
-    // Step 2: Update selected documents
+    // Step 4: Update documents one-by-one, tracking successes for rollback
+    const documentResults: SyncDocumentResult[] = []
+    const updatedDocIds: string[] = []
     let updatedCount = 0
+    let failedCount = 0
+    let anyFailed = false
 
     for (const docId of selectedDocumentIds) {
-      // Get current document data
-      const { data: doc } = await (this.supabase as any)
-        .from('documents')
-        .select('document_data')
-        .eq('id', docId)
-        .single()
+      try {
+        const snapshot = docSnapshots[docId]
+        if (!snapshot) {
+          documentResults.push({ documentId: docId, documentNumber: docId, success: false, error: 'Document snapshot not found' })
+          failedCount++
+          anyFailed = true
+          continue
+        }
 
-      if (!doc) continue
+        const docData = { ...(snapshot.document_data || {}) }
+        for (const conflict of conflicts) {
+          if (docData[conflict.fieldKey] !== undefined) {
+            docData[conflict.fieldKey] = conflict.documentValue
+          }
+        }
 
-      const docData = { ...((doc as any).document_data || {}) }
+        const { error: docError } = await (this.supabase as any)
+          .from('documents')
+          .update({ document_data: docData, updated_by: context.userId })
+          .eq('id', docId)
 
-      // Update conflicting fields
+        if (docError) {
+          documentResults.push({ documentId: docId, documentNumber: docId, success: false, error: docError.message })
+          failedCount++
+          anyFailed = true
+          appLogger.error('Failed to update document in sync', { docId, error: docError })
+        } else {
+          documentResults.push({ documentId: docId, documentNumber: docId, success: true })
+          updatedDocIds.push(docId)
+          updatedCount++
+        }
+      } catch (err: any) {
+        documentResults.push({ documentId: docId, documentNumber: docId, success: false, error: err?.message || 'Unknown error' })
+        failedCount++
+        anyFailed = true
+        appLogger.error('Unexpected error syncing document', { docId, error: err })
+      }
+    }
+
+    // Step 5: Compensating rollback if any document failed
+    if (anyFailed) {
+      appLogger.warn('Rolling back shared data sync due to document failure', {
+        workItemId,
+        failedCount,
+        rollingBackProject: true,
+        rollingBackDocs: updatedDocIds.length,
+      })
+
+      // Rollback project
+      const rollbackData: Record<string, unknown> = {}
       for (const conflict of conflicts) {
-        if (docData[conflict.fieldKey] !== undefined) {
-          docData[conflict.fieldKey] = conflict.documentValue
+        rollbackData[conflict.fieldKey] = projectSnapshot[conflict.fieldKey]
+      }
+      await (this.supabase as any)
+        .from('work_items')
+        .update(rollbackData)
+        .eq('id', workItemId)
+
+      // Rollback already-updated documents
+      for (const docId of updatedDocIds) {
+        const snapshot = docSnapshots[docId]
+        if (snapshot) {
+          await (this.supabase as any)
+            .from('documents')
+            .update({ document_data: snapshot.document_data, updated_by: context.userId })
+            .eq('id', docId)
         }
       }
 
-      // Save updated document
-      const { error: docError } = await (this.supabase as any)
-        .from('documents')
-        .update({ document_data: docData, updated_by: context.userId })
-        .eq('id', docId)
+      // Mark rolled-back documents as failed in results
+      for (const result of documentResults) {
+        if (result.success && updatedDocIds.includes(result.documentId)) {
+          result.success = false
+          result.error = 'Rolled back due to other document failure'
+        }
+      }
 
-      if (!docError) {
-        updatedCount++
-
-        // Audit the change
-        await this.auditDocumentUpdate(docId, workItemId, conflicts, context)
+      return {
+        updatedProject: false,
+        updatedDocuments: 0,
+        failedDocuments: selectedDocumentIds.length,
+        documentResults,
       }
     }
 
     appLogger.info('Shared data synchronization complete', {
       workItemId,
       updatedDocuments: updatedCount,
+      failedDocuments: failedCount,
+      totalAttempted: selectedDocumentIds.length,
     })
 
     return {
       updatedProject: true,
       updatedDocuments: updatedCount,
+      failedDocuments: failedCount,
+      documentResults,
     }
   }
 
@@ -262,8 +365,11 @@ export class SharedDataService {
     documentId: string,
     workItemId: string,
     conflicts: SharedDataConflict[],
-    context: RequestContext
+    context: RequestContext,
+    success: boolean,
+    errorMessage?: string
   ): Promise<void> {
+    const statusLabel = success ? 'SUCCESS' : 'FAILED'
     for (const conflict of conflicts) {
       await (this.supabase as any)
         .from('audit_events')
@@ -273,9 +379,11 @@ export class SharedDataService {
           action: 'EDIT',
           entity_type: 'document',
           entity_id: documentId,
-          entity_ref: `Shared data sync for field: ${conflict.fieldKey}`,
+          entity_ref: `Shared data sync [${statusLabel}] for field: ${conflict.fieldKey}`,
           before_json: { [conflict.fieldKey]: conflict.projectValue },
-          after_json: { [conflict.fieldKey]: conflict.documentValue },
+          after_json: success
+            ? { [conflict.fieldKey]: conflict.documentValue }
+            : { [conflict.fieldKey]: conflict.projectValue, _sync_error: errorMessage || 'Update failed' },
         })
     }
   }

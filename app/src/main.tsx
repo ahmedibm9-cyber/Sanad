@@ -6,7 +6,10 @@ import { AuthProvider } from './contexts/AuthContext'
 import { LanguageProvider } from './contexts/LanguageContext'
 import { CompanyProvider } from './contexts/CompanyContext'
 import { AppProvider } from './contexts/AppContext'
+import { backupScheduler } from './lib/backupScheduler'
 import './styles/globals.css'
+
+backupScheduler.start()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

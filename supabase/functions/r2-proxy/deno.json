@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "s3": "https://deno.land/std@0.224.0/aws/s3.ts"
+  }
+}

@@ -17,6 +17,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useCompany } from '../contexts/CompanyContext'
 import { useApp } from '../contexts/AppContext'
 import {
   useWorkItemById,
@@ -25,12 +26,15 @@ import {
   useReportIssues,
   useAttachments,
   useWorkItemMaterials,
+  useUpdateWorkItem,
+  useConvertTaskToProject,
 } from '../hooks/useData'
+import { downloadAttachment } from '../lib/r2Client'
 import AttachmentUploadModal from '../components/common/AttachmentUploadModal'
 import ConfirmModal from '../components/common/ConfirmModal'
 import ProjectFormModal from '../components/projects/ProjectFormModal'
 import type { WorkItemStatus, Document, ProjectNote, ReportIssue } from '../types'
-import type { WorkItemMaterial, Document as DbDocument, Note, ReportIssue as DbReportIssue, Attachment as DbAttachment } from '../lib/data'
+import type { WorkItemMaterial, Document as DbDocument, Note, ReportIssue as DbReportIssue, Attachment as DbAttachment } from '../hooks/useData'
 
 const STATUS_OPTIONS: { value: WorkItemStatus; label: string; colorClass: string; labelAr: string }[] = [
   { value: 'in_progress', label: 'In Progress', labelAr: 'قيد التنفيذ', colorClass: 'bg-blue-50 text-blue-700' },
@@ -75,6 +79,7 @@ export default function TaskDetailPage() {
   const navigate = useNavigate()
   const { t } = useLanguage()
   const { currentUser } = useApp()
+  const { currentCompany } = useCompany()
 
   // Fetch work item from Supabase
   const { data: dbTask, loading: taskLoading } = useWorkItemById(id)
@@ -83,6 +88,8 @@ export default function TaskDetailPage() {
   const { data: dbIssues = [] } = useReportIssues(id)
   const { data: dbAttachments = [] } = useAttachments(id)
   const { data: dbMaterials = [] } = useWorkItemMaterials(id)
+  const { update: updateWorkItem } = useUpdateWorkItem()
+  const { convert: convertTaskToProject } = useConvertTaskToProject()
 
   // Map Supabase data to UI types
   const task = useMemo(() => {
@@ -146,7 +153,7 @@ export default function TaskDetailPage() {
       number: d.document_number,
       date: d.created_date,
       language: (d.language || 'en') as 'en' | 'ar',
-      template: (d.template_key || 'template-a') as 'template-a' | 'template-b',
+      template: d.template_key || 'fulla-commercial-invoice-680',
       preparedBy: d.prepared_by ?? undefined,
       status: d.status as 'draft' | 'final',
       materials: [],
@@ -186,6 +193,7 @@ export default function TaskDetailPage() {
       size: a.size ?? 0,
       uploadedBy: a.uploaded_by ?? undefined,
       uploadedAt: a.created_at,
+      r2_object_key: a.r2_object_key,
     }))
   }, [dbAttachments])
 
@@ -252,6 +260,7 @@ export default function TaskDetailPage() {
           <button
             onClick={() => navigate('/tasks')}
             className="mt-1 p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500"
+            aria-label={t('Back to tasks', 'العودة إلى المهام')}
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -576,13 +585,13 @@ export default function TaskDetailPage() {
                         </td>
                         <td className="px-5 py-3.5 text-end">
                           <div className="flex items-center justify-end gap-1">
-                            <button className="btn-ghost p-1.5" title={t('Print', 'طباعة')} onClick={() => window.print()}>
+                            <button className="btn-ghost p-1.5" title={t('Print', 'طباعة')} onClick={() => window.print()} aria-label={t('Print', 'طباعة')}>
                               <Printer className="w-4 h-4" />
                             </button>
-                            <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => alert(t('Download will be available in production.', 'سيتوفر التحميل في الإنتاج.'))}>
+                            <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => downloadAttachment((doc as any).r2_object_key || '', doc.number, currentCompany.id)} aria-label={t('Download document', 'تحميل المستند')}>
                               <Download className="w-4 h-4" />
                             </button>
-                            <button className="btn-ghost p-1.5" title={t('Edit', 'تعديل')} onClick={() => navigate(`/documents/${doc.id}/form?projectId=${task.id}`)}>
+                            <button className="btn-ghost p-1.5" title={t('Edit', 'تعديل')} onClick={() => navigate(`/documents/${doc.id}/form?projectId=${task.id}`)} aria-label={t('Edit document', 'تعديل المستند')}>
                               <Edit3 className="w-4 h-4" />
                             </button>
                           </div>
@@ -659,12 +668,12 @@ export default function TaskDetailPage() {
                       </td>
                       <td className="px-5 py-3.5 text-end">
                         <div className="flex items-center justify-end gap-1">
-                          <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => alert(t('Download will be available in production.', 'سيتوفر التحميل في الإنتاج.'))}>
-                            <Download className="w-4 h-4" />
-                          </button>
-                          <button className="btn-ghost p-1.5" title={t('Delete', 'حذف')} onClick={() => setDeleteAttachmentId(att.id)}>
-                            <Trash2 className="w-4 h-4 text-red-400" />
-                          </button>
+                           <button className="btn-ghost p-1.5" title={t('Download', 'تحميل')} onClick={() => downloadAttachment(att.r2_object_key || '', att.name, currentCompany.id)} aria-label={t('Download attachment', 'تحميل المرفق')}>
+                             <Download className="w-4 h-4" />
+                           </button>
+                           <button className="btn-ghost p-1.5" title={t('Delete', 'حذف')} onClick={() => setDeleteAttachmentId(att.id)} aria-label={t('Delete attachment', 'حذف المرفق')}>
+                             <Trash2 className="w-4 h-4 text-red-400" />
+                           </button>
                         </div>
                       </td>
                     </tr>
@@ -826,6 +835,7 @@ export default function TaskDetailPage() {
           size: 245000,
           uploadedBy: currentUser.name,
           uploadedAt: new Date().toISOString().split('T')[0],
+          r2_object_key: '',
         }, ...prev])
         setShowAttachmentModal(false)
       }}
@@ -836,7 +846,7 @@ export default function TaskDetailPage() {
       open={showConvertModal}
       onClose={() => setShowConvertModal(false)}
       onConfirm={() => {
-        // TODO: Persist type change to Supabase via useUpdateWorkItem
+        if (task) convertTaskToProject(task.id)
         setShowConvertModal(false)
       }}
       title={t('Convert to Project', 'تحويل إلى مشروع')}
@@ -858,7 +868,7 @@ export default function TaskDetailPage() {
       open={showEditForm}
       onClose={() => setShowEditForm(false)}
       onSave={(data) => {
-        // TODO: Persist updates to Supabase via useUpdateWorkItem
+        if (task) updateWorkItem(task.id, data as any)
         setShowEditForm(false)
       }}
       item={task}
