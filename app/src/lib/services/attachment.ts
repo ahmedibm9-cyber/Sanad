@@ -72,11 +72,18 @@ export class AttachmentService {
    * Get an attachment by ID.
    */
   async getAttachmentById(id: string, context: RequestContext): Promise<Attachment> {
-    const { data, error } = await (this.supabase as any)
+    requirePermission(context, 'files.view')
+
+    const query = (this.supabase as any)
       .from('attachments')
       .select('*')
       .eq('id', id)
-      .single()
+
+    if (context.companyId) {
+      query.eq('company_id', context.companyId)
+    }
+
+    const { data, error } = await query.single()
 
     if (error || !data) {
       throw new NotFoundError('Attachment', id)

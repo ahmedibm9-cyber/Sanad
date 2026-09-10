@@ -127,10 +127,21 @@ export class AuthService {
     }
 
     // The user profile is auto-created by the trigger
-    // Wait a moment for the trigger to complete
-    await new Promise(resolve => setTimeout(resolve, 100))
-
-    const profile = await this.getUserProfile(data.user.id)
+    // Poll for profile creation with retry (max 5 attempts, 200ms each)
+    let profile: any = null
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        profile = await this.getUserProfile(data.user.id)
+        break
+      } catch {
+        if (attempt < 4) {
+          await new Promise(resolve => setTimeout(resolve, 200))
+        }
+      }
+    }
+    if (!profile) {
+      throw new AuthError('User profile not created after sign up', 'PROFILE_NOT_CREATED')
+    }
 
     authLogger.info('Sign up successful', { userId: data.user.id })
 

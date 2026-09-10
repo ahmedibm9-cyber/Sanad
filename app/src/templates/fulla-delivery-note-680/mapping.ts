@@ -54,7 +54,7 @@ export function mapDeliveryNoteData(data: DocRenderData): DeliveryNoteMapping {
     header: {
       title: 'DELIVERY NOTE',
       subtitle: 'إشعار التسليم',
-      companyName: data.company.nameEn || 'FULLA TRADING',
+      companyName: data.company.nameEn || '',
     },
     deliveryDetails: {
       deliveryNoteNumber: data.number || '—',

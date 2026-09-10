@@ -120,6 +120,10 @@ CREATE POLICY notes_update ON notes
         AND cm.user_id = auth.uid()
         AND cm.base_role = 'admin'
         AND cm.active = TRUE
+    ) OR
+    EXISTS (
+      SELECT 1 FROM users u
+      WHERE u.id = auth.uid() AND u.is_system_admin = TRUE
     )
   );
 
@@ -132,6 +136,10 @@ CREATE POLICY notes_delete ON notes
         AND cm.user_id = auth.uid()
         AND cm.base_role = 'admin'
         AND cm.active = TRUE
+    ) OR
+    EXISTS (
+      SELECT 1 FROM users u
+      WHERE u.id = auth.uid() AND u.is_system_admin = TRUE
     )
   );
 

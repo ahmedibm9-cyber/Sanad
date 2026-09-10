@@ -296,12 +296,20 @@ export class MaterialService {
    * Get files for a material.
    */
   async getMaterialFiles(materialId: string, context: RequestContext): Promise<MaterialFile[]> {
-    const { data, error } = await (this.supabase as any)
+    requirePermission(context, 'materials.view')
+
+    const query = (this.supabase as any)
       .from('material_files')
       .select('*')
       .eq('material_id', materialId)
       .eq('active', true)
       .order('file_type')
+
+    if (context.companyId) {
+      query.eq('company_id', context.companyId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       appLogger.error('Error fetching material files', error)

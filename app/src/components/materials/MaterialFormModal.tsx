@@ -147,7 +147,7 @@ export default function MaterialFormModal({ open, onClose, onSave, material }: M
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label-field">Material Name *</label>
-              <input className="input-field" value={form.name} onChange={e => update('name', e.target.value)} placeholder="e.g. HDPE 952" />
+              <input className="input-field" value={form.name} onChange={e => update('name', e.target.value)} placeholder={t('e.g. Polyethylene', 'مثال: بولي إيثيلين')} />
             </div>
             <div>
               <label className="label-field">Grade</label>

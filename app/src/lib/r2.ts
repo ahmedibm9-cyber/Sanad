@@ -27,13 +27,13 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { env } from './env'
 import { appLogger } from './logger'
 
-// R2 configuration
+// R2 configuration — only constructed when env vars are present
 const R2_CONFIG = {
-  endpoint: env.r2Endpoint || 'https://placeholder.r2.cloudflarestorage.com',
+  endpoint: env.r2Endpoint || '',
   region: 'auto',
   credentials: {
-    accessKeyId: env.r2AccessKeyId || 'placeholder',
-    secretAccessKey: env.r2SecretAccessKey || 'placeholder',
+    accessKeyId: env.r2AccessKeyId || '',
+    secretAccessKey: env.r2SecretAccessKey || '',
   },
 }
 
@@ -342,10 +342,7 @@ export function isR2Configured(): boolean {
   return !!(
     env.r2Endpoint &&
     env.r2AccessKeyId &&
-    env.r2SecretAccessKey &&
-    env.r2Endpoint !== 'placeholder' &&
-    env.r2AccessKeyId !== 'placeholder' &&
-    env.r2SecretAccessKey !== 'placeholder'
+    env.r2SecretAccessKey
   )
 }
 

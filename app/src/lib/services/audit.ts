@@ -150,13 +150,19 @@ export class AuditService {
     entityId: string,
     context: RequestContext
   ): Promise<AuditEvent[]> {
-    const { data, error } = await (this.supabase as any)
+    const query = (this.supabase as any)
       .from('audit_events')
       .select('*')
       .eq('entity_type', entityType)
       .eq('entity_id', entityId)
       .order('created_at', { ascending: false })
       .limit(50)
+
+    if (context.companyId) {
+      query.eq('company_id', context.companyId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       throw handleSupabaseError(error)

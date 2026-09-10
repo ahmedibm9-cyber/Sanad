@@ -161,10 +161,14 @@ CREATE POLICY users_read_own ON users
   FOR SELECT
   USING (id = auth.uid());
 
--- Users can update their own profile
+-- Users can update their own profile (cannot promote themselves to admin)
 CREATE POLICY users_update_own ON users
   FOR UPDATE
-  USING (id = auth.uid());
+  USING (id = auth.uid())
+  WITH CHECK (
+    id = auth.uid() AND
+    is_system_admin = FALSE
+  );
 
 -- System admins can read all users
 CREATE POLICY users_admin_read ON users

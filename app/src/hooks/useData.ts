@@ -994,12 +994,16 @@ export function useRestoreTrashEntry() {
     try {
       const { getSupabase } = await import('../lib/supabase')
       const sb = getSupabase()
-      // Remove trash entry
-      await (sb as any)
+      // Remove trash entry (scoped to company)
+      const deleteQuery = (sb as any)
         .from('trash_entries')
         .delete()
         .eq('entity_type', entityType)
         .eq('entity_id', entityId)
+      if (ctx.companyId) {
+        deleteQuery.eq('company_id', ctx.companyId)
+      }
+      await deleteQuery
       // Restore entity by clearing deleted_at
       const tableMap: Record<string, string> = {
         project: 'work_items',
@@ -1010,10 +1014,14 @@ export function useRestoreTrashEntry() {
         attachment: 'attachments',
       }
       const table = tableMap[entityType] || entityType + 's'
-      await (sb as any)
+      const updateQuery = (sb as any)
         .from(table)
         .update({ deleted_at: null, updated_at: new Date().toISOString() })
         .eq('id', entityId)
+      if (ctx.companyId) {
+        updateQuery.eq('company_id', ctx.companyId)
+      }
+      await updateQuery
       return true
     } catch (err) {
       appLogger.error('Failed to restore trash entry', err)

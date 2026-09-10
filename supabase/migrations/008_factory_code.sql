@@ -74,7 +74,7 @@ CREATE TABLE factory_code_imports (
 
 -- Indexes
 CREATE INDEX idx_factory_imports_status ON factory_code_imports(status);
-CREATE INDEX idx_factory_imports_uploaded ON factory_code_imports(uploaded_at DESC);
+CREATE INDEX idx_factory_imports_uploaded ON factory_code_imports(started_at DESC);
 
 -- ===========================================
 -- 3. Triggers

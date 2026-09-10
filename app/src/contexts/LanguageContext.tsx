@@ -25,7 +25,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   return (
     <LanguageContext.Provider value={value}>
-      <div dir={dir} className={dir === 'rtl' ? 'font-arabic' : 'font-sans'}>
+      <div dir={dir} className={dir === 'rtl' ? 'font-arabic rtl' : 'font-sans'}>
         {children}
       </div>
     </LanguageContext.Provider>

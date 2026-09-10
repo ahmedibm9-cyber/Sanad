@@ -128,12 +128,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo credentials hint */}
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-500 text-center">
-              Demo: Use any email/password configured in Supabase Auth
-            </p>
-          </div>
         </div>
 
         {/* Footer */}

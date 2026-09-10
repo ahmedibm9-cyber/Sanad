@@ -371,7 +371,7 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
       } else {
         // Create new user via Supabase Auth
         const authService = getAuthService()
-        const defaultPassword = 'Sanad123!' // Default password - user should change on first login
+        const defaultPassword = crypto.randomUUID().slice(0, 12) + '!A1' // Generated password - user should change on first login
         const session = await authService.signUp({
           email: email.trim(),
           password: defaultPassword,

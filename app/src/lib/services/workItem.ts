@@ -7,7 +7,7 @@
 import { getSupabase, type Database } from '../supabase'
 import { type RequestContext, requirePermission, hasPermission } from '../api'
 import { ilikeSearch } from '../search'
-import { NotFoundError, handleSupabaseError } from '../errors'
+import { NotFoundError, ForbiddenError, handleSupabaseError } from '../errors'
 import { appLogger } from '../logger'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -500,6 +500,10 @@ export class WorkItemService {
    * Get materials for a work item.
    */
   async getWorkItemMaterials(workItemId: string, context: RequestContext): Promise<WorkItemMaterial[]> {
+    if (!hasPermission(context, 'projects.view') && !hasPermission(context, 'tasks.view')) {
+      throw new ForbiddenError('Permission denied: projects.view or tasks.view')
+    }
+
     const { data, error } = await (this.supabase as any)
       .from('work_item_materials')
       .select('*')
@@ -559,6 +563,24 @@ export class WorkItemService {
     updates: Partial<CreateWorkItemMaterialInput>,
     context: RequestContext
   ): Promise<WorkItemMaterial> {
+    if (!hasPermission(context, 'projects.edit') && !hasPermission(context, 'tasks.edit')) {
+      throw new ForbiddenError('Permission denied: projects.edit or tasks.edit')
+    }
+
+    const { data: existing, error: fetchError } = await (this.supabase as any)
+      .from('work_item_materials')
+      .select('company_id, work_item_id')
+      .eq('id', materialEntryId)
+      .single()
+
+    if (fetchError || !existing) {
+      throw new NotFoundError('Work item material', materialEntryId)
+    }
+
+    if (context.companyId && existing.company_id !== context.companyId) {
+      throw new Error('Permission denied: company mismatch')
+    }
+
     const updateData: Record<string, unknown> = {}
     Object.entries(updates).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -584,6 +606,24 @@ export class WorkItemService {
    * Remove a material from a work item.
    */
   async removeMaterial(materialEntryId: string, context: RequestContext): Promise<void> {
+    if (!hasPermission(context, 'projects.edit') && !hasPermission(context, 'tasks.edit')) {
+      throw new ForbiddenError('Permission denied: projects.edit or tasks.edit')
+    }
+
+    const { data: existing, error: fetchError } = await (this.supabase as any)
+      .from('work_item_materials')
+      .select('company_id')
+      .eq('id', materialEntryId)
+      .single()
+
+    if (fetchError || !existing) {
+      throw new NotFoundError('Work item material', materialEntryId)
+    }
+
+    if (context.companyId && existing.company_id !== context.companyId) {
+      throw new Error('Permission denied: company mismatch')
+    }
+
     const { error } = await (this.supabase as any)
       .from('work_item_materials')
       .delete()

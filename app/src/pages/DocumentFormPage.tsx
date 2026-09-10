@@ -31,16 +31,8 @@ const docTypeLabels: Record<DocumentType, { en: string; ar: string }> = {
 function defaultDocNumber(type: DocumentType): string {
   const prefix = type
   const year = new Date().getFullYear()
-  const seq = String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')
-  return `${prefix}-${year}-${seq}`
+  return `${prefix}-${year}-`
 }
-
-/* ── conflict demo affected docs ──────────────────────── */
-const affectedDocs = [
-  { number: 'PINV-2024-001', type: 'Proforma Invoice', checked: true },
-  { number: 'PKL-2024-001', type: 'Packing List', checked: true },
-  { number: 'CINV-2024-001', type: 'Commercial Invoice', checked: true },
-]
 
 /* ════════════════════════════════════════════════════════ */
 export default function DocumentFormPage() {
@@ -53,7 +45,7 @@ export default function DocumentFormPage() {
   const [searchParams] = useSearchParams()
 
   const typeFromUrl = (searchParams.get('type') || 'QUOT') as DocumentType
-  const projectId = searchParams.get('projectId') || 'proj-1'
+  const projectId = searchParams.get('projectId') || undefined
 
   const { data: workItemsRaw } = useWorkItems(currentCompany.id)
   const { data: customersRaw } = useCustomers(currentCompany.id)
@@ -89,12 +81,12 @@ export default function DocumentFormPage() {
   const [showStamp, setShowStamp] = useState(currentCompany.showStamp ?? true)
 
   // Commercial terms
-  const [validUntil, setValidUntil] = useState('2024-12-31')
-  const [subtotal, setSubtotal] = useState(52500)
+  const [validUntil, setValidUntil] = useState('')
+  const [subtotal, setSubtotal] = useState(0)
   const [vatRate, setVatRate] = useState<number>(0)
-  const [origin, setOrigin] = useState('Saudi Arabia')
+  const [origin, setOrigin] = useState('')
   const [packing, setPacking] = useState('')
-  const [deliveryTime, setDeliveryTime] = useState('15 business days')
+  const [deliveryTime, setDeliveryTime] = useState('')
   const [incoterm, setIncoterm] = useState(currentCompany.defaultIncoterm || '')
   const [deliveryTerms, setDeliveryTerms] = useState(currentCompany.defaultDeliveryTerms || 'Within 15 business days')
   const [paymentTerms, setPaymentTerms] = useState(currentCompany.defaultPaymentTerms || 'Net 30 days')
@@ -148,7 +140,7 @@ export default function DocumentFormPage() {
   const [consignee, setConsignee] = useState(customer.name)
   const [notifyParty, setNotifyParty] = useState(customer.name)
   const [placeOfReceipt, setPlaceOfReceipt] = useState('')
-  const [descriptionOfGoods, setDescriptionOfGoods] = useState('HIGH DENSITY POLYETHYLENE (HDPE)')
+  const [descriptionOfGoods, setDescriptionOfGoods] = useState('')
   const [grossWeight, setGrossWeight] = useState('')
   const [netWeight, setNetWeight] = useState('')
   const [packages, setPackages] = useState('')
@@ -171,7 +163,7 @@ export default function DocumentFormPage() {
   const [conflictOpen, setConflictOpen] = useState(false)
   const [conflictQty, setConflictQty] = useState(50)
   const [syncModalOpen, setSyncModalOpen] = useState(false)
-  const [syncChecklist, setSyncChecklist] = useState(affectedDocs.map(d => ({ ...d })))
+  const [syncChecklist, setSyncChecklist] = useState<Array<{number: string; type: string; checked: boolean}>>([])
 
   /* ── computed ───────────────────────────────────────── */
   const vatAmount = useMemo(() => {

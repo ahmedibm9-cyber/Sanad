@@ -39,7 +39,7 @@ export interface Document {
 }
 
 export interface CreateDocumentInput {
-  work_item_id: string
+  work_item_id?: string | null
   document_type: DocumentType
   document_number: string
   language?: string
@@ -81,12 +81,18 @@ export class DocumentService {
       throw new Error('Permission denied: documents.view')
     }
 
-    const { data, error } = await (this.supabase as any)
+    const query = (this.supabase as any)
       .from('documents')
       .select('*')
       .eq('work_item_id', workItemId)
       .is('deleted_at', null)
       .order('created_date', { ascending: false })
+
+    if (context.companyId) {
+      query.eq('company_id', context.companyId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       appLogger.error('Error fetching documents', error)
@@ -104,12 +110,17 @@ export class DocumentService {
       throw new Error('Permission denied: documents.view')
     }
 
-    const { data, error } = await (this.supabase as any)
+    const query = (this.supabase as any)
       .from('documents')
       .select('*')
       .eq('id', id)
       .is('deleted_at', null)
-      .single()
+
+    if (context.companyId) {
+      query.eq('company_id', context.companyId)
+    }
+
+    const { data, error } = await query.single()
 
     if (error || !data) {
       throw new NotFoundError('Document', id)
@@ -310,6 +321,12 @@ export class DocumentService {
    */
   async restoreDocument(id: string, context: RequestContext): Promise<Document> {
     requirePermission(context, 'trash.restore')
+
+    const doc = await this.getDocumentById(id, context)
+
+    if (context.companyId && doc.company_id !== context.companyId) {
+      throw new Error('Permission denied: company mismatch')
+    }
 
     const { error } = await (this.supabase as any)
       .from('documents')
