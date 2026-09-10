@@ -1,10 +1,11 @@
 import type { TemplateProps } from '../types'
-import { renderFullaTemplate } from '../fullaTemplateRenderer'
+import { renderFullaTemplate, getFullaTemplateCSS } from '../fullaTemplateRenderer'
 import { adaptForTemplate } from '../fullaSchemaAdapter'
 
 function CommercialInvoiceTemplate({ data, lang }: TemplateProps) {
   const templateData = adaptForTemplate(data, 'fulla-commercial-invoice-680')
   const html = renderFullaTemplate('invoice-commercial', templateData)
+  const css = getFullaTemplateCSS()
 
   return (
     <div
@@ -12,13 +13,12 @@ function CommercialInvoiceTemplate({ data, lang }: TemplateProps) {
       className={lang === 'ar' ? 'font-arabic' : ''}
       style={{
         fontFamily: lang === 'ar' ? "'Noto Sans Arabic', sans-serif" : "'Inter', sans-serif",
-        width: '210mm',
-        minHeight: '297mm',
-        margin: '0 auto',
         background: '#fff',
       }}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    >
+      <style dangerouslySetInnerHTML={{ __html: css }} />
+      <div dangerouslySetInnerHTML={{ __html: html }} />
+    </div>
   )
 }
 

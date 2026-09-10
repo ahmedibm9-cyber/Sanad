@@ -273,7 +273,7 @@ export default function DocumentPreviewPage() {
       {/*  A4 DOCUMENT PREVIEW                           */}
       {/* ═══════════════════════════════════════════════ */}
       <div className="flex justify-center mb-8 print:mb-0">
-        <div className="bg-white shadow-xl print:shadow-none w-full" style={{ maxWidth: '800px', minHeight: '1122px', padding: '48px 56px', pageBreakAfter: 'always' }}>
+        <div className="bg-white shadow-xl print:shadow-none overflow-hidden" style={{ width: '794px', pageBreakAfter: 'always' }}>
           <TemplateRenderer template={template} data={docData} lang={previewLang} />
         </div>
       </div>
