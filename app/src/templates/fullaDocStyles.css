@@ -1,0 +1,613 @@
+/* ── Fulla Document Styles (ported from Fulla HTML app) ── */
+/* These are the exact CSS rules used by Fulla's renderPrintDocument() */
+
+/* ── Base Paper ──────────────────────────────────────────── */
+.paper {
+  background: #fff;
+  width: 210mm;
+  min-height: 297mm;
+  margin: auto;
+  padding: 9mm 10mm;
+  box-shadow: 0 4px 20px #0005;
+  color: #111;
+  direction: ltr;
+  font: 10px Arial, sans-serif;
+  position: relative;
+}
+.paper * { box-sizing: border-box }
+.paper table { width: 100%; border-collapse: collapse }
+.paper th, .paper td { vertical-align: top }
+
+/* ── Bordered Table (.bd) ────────────────────────────────── */
+.paper .bd th, .paper .bd td {
+  border: 1px solid #444;
+  padding: 5px;
+}
+
+/* ── Utility Classes ─────────────────────────────────────── */
+.paper .title { text-align: center; font-size: 18px; font-weight: 800 }
+.paper .logo { font-size: 31px; letter-spacing: 8px; font-weight: 800; color: #333 }
+.paper .r { text-align: right }
+.paper .c { text-align: center }
+.paper .b { font-weight: 700 }
+.paper .sm { font-size: 9px }
+.paper .tiny { font-size: 8px }
+.paper .mono { direction: ltr; font-family: Consolas, monospace; display: inline-block }
+.paper .sig { max-width: 180px; max-height: 145px; object-fit: contain }
+.paper .qr { width: 105px; height: 105px }
+.paper .avoid { break-inside: avoid; page-break-inside: avoid }
+
+/* ── Stamp Image ─────────────────────────────────────────── */
+.paper .stamp-image {
+  position: relative;
+  left: var(--stamp-x, 0mm);
+  top: var(--stamp-y, 0mm);
+  width: var(--stamp-width, 180px);
+  max-width: none !important;
+  max-height: 145px;
+  object-fit: contain;
+}
+
+/* ── Bank Print / Doc Notes ──────────────────────────────── */
+.bank-print { margin-top: 9px; font-size: 10.5px; line-height: 1.55 }
+.doc-notes { font-size: 9px }
+
+/* ── Manufacturer Entry ──────────────────────────────────── */
+.manufacturer-entry {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.5fr) 1fr;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+/* ── Print Layout (CSS variable-driven spacing) ──────────── */
+.paper.print-layout {
+  position: relative !important;
+  padding: var(--page-pad, 9mm) !important;
+  line-height: var(--doc-line, 1.55);
+  font-size: var(--doc-font, 10px);
+  font-family: var(--doc-font-family, Arial, sans-serif) !important;
+}
+.paper.print-layout > .doc-header {
+  margin-bottom: var(--gap-header, 4mm) !important;
+}
+.paper.print-layout > .doc-customer {
+  margin-top: 0 !important;
+  margin-bottom: var(--gap-customer, 4mm) !important;
+}
+.paper.print-layout .doc-items {
+  margin-top: 0 !important;
+  margin-bottom: var(--gap-items, 4mm) !important;
+}
+.paper.print-layout > .doc-terms, .paper.print-layout > .doc-summary {
+  margin-top: 0 !important;
+  margin-bottom: var(--gap-terms, 3mm) !important;
+}
+.paper.print-layout .doc-footer {
+  margin-top: var(--gap-footer, 6mm) !important;
+}
+.paper.print-layout .bd th, .paper.print-layout .bd td {
+  padding: var(--cell-pad, 5px) !important;
+}
+.paper.print-layout .doc-section {
+  margin-bottom: var(--section-gap, 3mm) !important;
+}
+
+/* Print layout title/fonts */
+.paper.print-layout .title,
+.paper.print-layout .doc-main-title {
+  font-family: var(--doc-title-font-family, var(--doc-font-family, Arial, sans-serif)) !important;
+  font-size: var(--doc-title-size, 18px) !important;
+}
+.paper.print-layout .doc-items,
+.paper.print-layout .doc-items th,
+.paper.print-layout .doc-items td {
+  font-family: var(--doc-table-font-family, var(--doc-font-family, Arial, sans-serif)) !important;
+  font-size: var(--doc-table-size, 9.5px) !important;
+}
+.paper.print-layout .sm,
+.paper.print-layout .bank-print,
+.paper.print-layout .doc-notes {
+  font-size: var(--doc-small-size, 9px) !important;
+}
+.paper.print-layout .tiny {
+  font-size: calc(var(--doc-small-size, 9px) * 0.88) !important;
+}
+
+/* ── Logo wrapper ────────────────────────────────────────── */
+.company-logo-wrap > .logo {
+  width: 100%;
+  text-align: center;
+  font-size: clamp(22px, calc(var(--logo-width, 170px) / 5.5), 34px);
+  letter-spacing: 7px;
+  white-space: nowrap;
+}
+.paper.print-layout .company-logo-wrap { z-index: 5 }
+
+/* ── Stamp positioning in print layout ───────────────────── */
+.paper.print-layout .stamp-image,
+.paper.print-layout .v617-document-stamp {
+  position: absolute !important;
+  left: calc(50% + var(--stamp-x, 0mm)) !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: calc(18mm - var(--stamp-y, 0mm)) !important;
+  width: var(--stamp-width, 180px) !important;
+  max-width: none !important;
+  max-height: 115px !important;
+  height: auto !important;
+  transform: translateX(-50%) !important;
+  object-fit: contain !important;
+  z-index: 7 !important;
+  pointer-events: none !important;
+}
+
+/* ── Template Variant Overrides ──────────────────────────── */
+.paper.print-layout.tpl-elegant {
+  font-family: Georgia, "Times New Roman", serif;
+}
+.paper.print-layout.tpl-compact {
+  font-size: 9px;
+}
+.paper.print-layout.tpl-borderless .bd th,
+.paper.print-layout.tpl-borderless .bd td {
+  border-width: 0 0 1px !important;
+}
+.paper.print-layout.tpl-grayscale {
+  filter: grayscale(1);
+}
+.paper.print-layout.tpl-executive .title,
+.paper.print-layout.tpl-corporate .title {
+  letter-spacing: 0.6px;
+}
+
+/* ── Document Type Titles ────────────────────────────────── */
+.paper.doc-quote .title,
+.paper.doc-loading .title {
+  font-weight: 900;
+}
+
+/* ── Quote-specific ──────────────────────────────────────── */
+.paper.doc-quote .quote-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.paper.doc-quote .quote-extra {
+  border: 1px solid #bbb;
+  padding: 8px;
+  margin-bottom: var(--gap-items, 4mm);
+}
+
+/* ── Loading Title Bar ───────────────────────────────────── */
+.loading-titlebar {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  align-items: stretch;
+  border: 1px solid #d8d8d8;
+  border-bottom: 3px solid var(--load-gold, #c99a2e);
+}
+.loading-titlebar .load-title {
+  background: var(--load-accent, #155c43);
+  color: #fff;
+  padding: 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 78px;
+}
+.loading-titlebar .load-brand {
+  padding: 9px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.paper.print-layout .loading-titlebar .load-title > b:first-child {
+  font-family: var(--doc-title-font-family, var(--doc-font-family, Arial, sans-serif)) !important;
+  font-size: var(--doc-title-size, 18px) !important;
+}
+.paper.print-layout .loading-titlebar .load-title > b:last-child {
+  font-family: var(--doc-title-font-family, var(--doc-font-family, Arial, sans-serif)) !important;
+  font-size: calc(var(--doc-title-size, 18px) * 0.86) !important;
+}
+
+/* ── Loading Metadata ────────────────────────────────────── */
+.loading-meta td { vertical-align: middle }
+.loading-approval { margin-top: var(--gap-footer, 7mm) !important }
+.loading-approval .sig-name {
+  font-size: 17px;
+  height: 34px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* ── Loading Template Variants ───────────────────────────── */
+.paper.doc-loading.tpl-load-minimal .loading-titlebar {
+  border-width: 0 0 2px;
+  grid-template-columns: 1fr auto;
+}
+.paper.doc-loading.tpl-load-borderless .bd th,
+.paper.doc-loading.tpl-load-borderless .bd td {
+  border-width: 0 0 1px !important;
+}
+.paper.doc-loading.tpl-load-industrial {
+  font-family: Arial, sans-serif;
+}
+
+/* ── Document Details Box ────────────────────────────────── */
+.doc-details-box .detail-row {
+  display: grid;
+  grid-template-columns: minmax(95px, 0.42fr) 1fr;
+  gap: 8px;
+  padding: 2px 0;
+  align-items: start;
+}
+.doc-details-box .detail-label { font-weight: 700 }
+.doc-details-box .detail-value { overflow-wrap: anywhere }
+.doc-details-box .detail-title { font-weight: 800; margin-bottom: 7px }
+
+/* ── Print Language Direction ─────────────────────────────── */
+.print-lang-en table,
+.print-lang-en .doc-items,
+.print-lang-en .doc-customer,
+.print-lang-en .doc-terms {
+  direction: ltr !important;
+}
+
+/* ── Theme Variants (border/background) ──────────────────── */
+.tpl-premium-gold, .tpl-pack-premium, .tpl-bl-premium {
+  border-top: 6px solid #9a7425 !important;
+  background: linear-gradient(180deg, #fffdf7 0, #fff 26%) !important;
+}
+.tpl-executive-navy, .tpl-pack-navy, .tpl-bl-navy {
+  border-top: 7px solid #173f5f !important;
+}
+.tpl-minimal-pro, .tpl-pack-minimal-pro, .tpl-bl-minimal-pro {
+  box-shadow: none !important;
+  border: 1px solid #bbb !important;
+}
+.tpl-trade-grid, .tpl-pack-trade-grid, .tpl-bl-trade-grid {
+  outline: 2px solid #246b55;
+  outline-offset: -7px;
+}
+.tpl-fulla-signature, .tpl-pack-signature, .tpl-bl-signature {
+  border-bottom: 8px solid #0f4c5c !important;
+}
+.tpl-split-header, .tpl-pack-split, .tpl-bl-split {
+  border-top: 7px solid #0f4c5c !important;
+}
+.tpl-split-header .doc-customer, .tpl-pack-split .doc-customer {
+  grid-template-columns: 1fr 1fr !important;
+}
+.tpl-export-pro, .tpl-pack-export-pro, .tpl-bl-export-pro {
+  border-top: 6px solid #1c6b59 !important;
+  background: linear-gradient(180deg, #f3fbf7 0, #fff 24%) !important;
+}
+.tpl-compact-dual, .tpl-pack-compact-dual, .tpl-bl-compact-dual {
+  border: 1px solid #8b999e !important;
+  box-shadow: none !important;
+}
+.tpl-compact-dual .doc-customer, .tpl-pack-compact-dual .doc-customer {
+  grid-template-columns: 1fr 1fr !important;
+  gap: 6px !important;
+}
+.tpl-emerald-panel, .tpl-pack-emerald, .tpl-bl-emerald {
+  border-right: 8px solid #176b4f !important;
+  background: linear-gradient(90deg, #f0f8f4 0, #fff 18%) !important;
+}
+.tpl-formal-line, .tpl-pack-formal, .tpl-bl-formal {
+  border-top: 2px solid #222 !important;
+  border-bottom: 2px solid #222 !important;
+  box-shadow: none !important;
+}
+
+/* ── v620 Print Boxes Theme ──────────────────────────────── */
+.paper.v620-print-boxes {
+  --v620-line: #44545b;
+  --v620-soft: #f4f6f7;
+  --v620-accent: #123f4a;
+}
+.paper.v620-print-boxes > .doc-header {
+  border-bottom: 2px solid var(--v620-accent);
+  padding-bottom: 7px !important;
+  margin-bottom: var(--gap-header, 4mm) !important;
+}
+.paper.v620-print-boxes .doc-customer:not(table),
+.paper.v620-print-boxes .doc-details-box,
+.paper.v620-print-boxes .doc-terms,
+.paper.v620-print-boxes .doc-summary:not(table),
+.paper.v620-print-boxes .quote-extra {
+  border: 1px solid var(--v620-line) !important;
+  padding: 8px !important;
+  background: #fff;
+}
+.paper.v620-print-boxes table.doc-customer,
+.paper.v620-print-boxes table.doc-summary,
+.paper.v620-print-boxes table.doc-items {
+  border: 1px solid var(--v620-line) !important;
+}
+.paper.v620-print-boxes .bd th, .paper.v620-print-boxes .bd td {
+  border-color: var(--v620-line) !important;
+}
+.paper.v620-print-boxes .bd th {
+  background: var(--v620-soft);
+  font-weight: 800;
+}
+.paper.v620-print-boxes .title,
+.paper.v620-print-boxes .doc-main-title {
+  color: var(--v620-accent);
+}
+.paper.v620-print-boxes .doc-footer {
+  border-top: 1px solid var(--v620-line);
+  padding-top: 6px;
+}
+
+/* ── v620 Studio Theme ───────────────────────────────────── */
+.paper.v620-studio {
+  --v620-accent: #173f5f;
+  --v620-soft: #eaf0f5;
+  border-top: 8px solid #173f5f !important;
+  border-left: 5px solid #173f5f !important;
+}
+.paper.v620-studio .title {
+  background: #173f5f;
+  color: #fff !important;
+  padding: 7px 11px;
+  letter-spacing: 0.8px;
+}
+.paper.v620-studio .bd th { background: #173f5f; color: #fff }
+
+/* ── v620 Executive Theme ────────────────────────────────── */
+.paper.v620-executive {
+  --v620-accent: #263642;
+  --v620-soft: #eef1f3;
+  outline: 2px solid #263642;
+  outline-offset: -5px;
+  padding: 11mm !important;
+}
+.paper.v620-executive > .doc-header { border-bottom: 4px double #263642 }
+.paper.v620-executive .title { letter-spacing: 1.2px }
+.paper.v620-executive .bd th { background: #263642; color: #fff }
+
+/* ── v620 Cards Theme ────────────────────────────────────── */
+.paper.v620-cards { --v620-accent: #2c6570; --v620-soft: #eef6f7 }
+.paper.v620-cards .doc-customer:not(table),
+.paper.v620-cards .doc-details-box,
+.paper.v620-cards .doc-terms,
+.paper.v620-cards .quote-extra {
+  border-radius: 10px !important;
+  border-color: #9bb9c0 !important;
+  background: #f8fbfc !important;
+}
+.paper.v620-cards table { border-radius: 8px; overflow: hidden }
+.paper.v620-cards .bd th { background: #dcecee; color: #204c55 }
+
+/* ── v620 Emerald Theme ──────────────────────────────────── */
+.paper.v620-emerald {
+  --v620-accent: #176b4f;
+  --v620-soft: #e9f5ef;
+  border-top: 9px solid #176b4f !important;
+}
+.paper.v620-emerald > .doc-header {
+  background: linear-gradient(90deg, #edf8f2, #fff);
+  padding: 8px !important;
+}
+.paper.v620-emerald .bd th { background: #176b4f; color: #fff }
+.paper.v620-emerald .doc-summary td { background: #f0f8f4 }
+
+/* ── v620 Ledger Theme ───────────────────────────────────── */
+.paper.v620-ledger {
+  --v620-accent: #24292d;
+  --v620-soft: #eceeef;
+  font-family: "Courier New", monospace !important;
+  border: 1px solid #24292d !important;
+  box-shadow: none !important;
+}
+.paper.v620-ledger * { border-radius: 0 !important }
+.paper.v620-ledger .bd th { background: #24292d; color: #fff }
+.paper.v620-ledger > .doc-header { border-bottom: 3px solid #24292d }
+
+/* ── v620 Sandstone Theme ────────────────────────────────── */
+.paper.v620-sandstone {
+  --v620-accent: #8a6524;
+  --v620-soft: #f8f1df;
+  background: linear-gradient(180deg, #fbf5e7 0, #fff 25%) !important;
+  border-top: 7px solid #a77a27 !important;
+}
+.paper.v620-sandstone .bd th { background: #8a6524; color: #fff }
+.paper.v620-sandstone .doc-customer:not(table),
+.paper.v620-sandstone .doc-details-box,
+.paper.v620-sandstone .doc-terms {
+  border-color: #bca36d !important;
+  background: #fffdf8 !important;
+}
+
+/* ── v620 Dual Theme ─────────────────────────────────────── */
+.paper.v620-dual {
+  --v620-accent: #0f6071;
+  --v620-soft: #e9f4f6;
+  border-top: 7px solid #0f6071 !important;
+  border-bottom: 7px solid #253f56 !important;
+}
+.paper.v620-dual > .doc-header {
+  background: linear-gradient(90deg, #0f6071 0 52%, #253f56 52% 100%);
+  color: #fff;
+  padding: 9px !important;
+}
+.paper.v620-dual > .doc-header .title,
+.paper.v620-dual > .doc-header .logo,
+.paper.v620-dual > .doc-header b { color: #fff !important }
+.paper.v620-dual .bd th { background: #253f56; color: #fff }
+
+/* ── v620 Retained Theme Variants ────────────────────────── */
+.paper.v620-retained-classic { --v620-accent: #123f4a }
+.paper.v620-retained-seven { --v620-accent: #52666f; --v620-soft: #f1f3f4 }
+.paper.v620-retained-trade { --v620-accent: #246b55; --v620-soft: #edf6f1 }
+
+/* ── v621 Generic Details ────────────────────────────────── */
+.v621-generic-details .detail-title {
+  grid-column: 1 / -1;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 4px;
+}
+.v621-generic-details .detail-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.48fr) 1fr;
+  gap: 6px;
+}
+
+/* ── Company Letterhead v675 ─────────────────────────────── */
+.paper .company-letterhead-v675 {
+  min-width: 0 !important;
+  text-align: left !important;
+  color: #111 !important;
+}
+.paper .company-letterhead-v675 .co-name {
+  display: block !important;
+  margin: 0 0 3px !important;
+  font-family: Arial, Tahoma, "Segoe UI", sans-serif !important;
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0 !important;
+  color: #111 !important;
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+}
+.paper .company-letterhead-v675 .co-name-ar {
+  display: block !important;
+  margin: 0 0 3px !important;
+  font-family: Tahoma, Arial, "Segoe UI", sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+  color: #111 !important;
+}
+.paper .company-letterhead-v675 .co-contact {
+  display: block !important;
+  margin: 0 !important;
+  font-family: Arial, Tahoma, "Segoe UI", sans-serif !important;
+  font-size: 9px !important;
+  font-weight: 500 !important;
+  line-height: 1.38 !important;
+  letter-spacing: 0 !important;
+  color: #222 !important;
+}
+.paper .company-letterhead-v675 .co-contact-line {
+  display: block !important;
+  width: auto !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+.paper .company-letterhead-v675 .co-contact-line b {
+  font-weight: 700 !important;
+}
+
+/* ── Packing Letterhead v690 ─────────────────────────────── */
+.paper .v690-packing-letterhead {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.25fr) auto minmax(165px, 0.8fr) !important;
+  gap: 14px !important;
+  align-items: start !important;
+  border-bottom: 4px solid #0f4c5c !important;
+  padding: 0 0 9px !important;
+  margin: 0 !important;
+  background: #fff !important;
+  color: #111 !important;
+  text-align: initial !important;
+}
+.paper .v690-packing-company {
+  min-width: 0 !important;
+  text-align: left !important;
+}
+.paper .v690-packing-logo {
+  text-align: center !important;
+  min-width: 125px !important;
+}
+.paper .v690-packing-logo img {
+  max-width: 160px !important;
+  max-height: 72px !important;
+  object-fit: contain !important;
+}
+.paper .v690-packing-document {
+  text-align: right !important;
+  min-width: 0 !important;
+}
+.paper .v690-packing-document .title {
+  font-size: 20px !important;
+  line-height: 1.15 !important;
+  font-weight: 800 !important;
+  color: #0f4c5c !important;
+  text-align: right !important;
+  margin: 0 0 5px !important;
+}
+.paper .v690-packing-document .v690-pack-number {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+}
+.paper .v690-packing-document .v690-pack-date {
+  font-size: 9.5px !important;
+  white-space: nowrap !important;
+}
+
+/* ── Packing Company v690 ────────────────────────────────── */
+.paper .v690-packing-company > div > div:first-child,
+.paper .v690-packing-company .company-letterhead-v675 .co-name {
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  line-height: 1.15 !important;
+}
+.paper .v690-packing-company .sm,
+.paper .v690-packing-company .company-letterhead-v675 .co-contact {
+  font-size: 9px !important;
+  line-height: 1.38 !important;
+  font-weight: 500 !important;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media screen and (max-width: 900px) {
+  .loading-titlebar { grid-template-columns: 1fr }
+  .paper.doc-quote .quote-meta { grid-template-columns: 1fr }
+}
+@media (max-width: 760px) {
+  .paper .v690-packing-letterhead { grid-template-columns: 1fr auto !important }
+  .paper .v690-packing-document { grid-column: 1 / -1 !important; text-align: left !important }
+  .paper .v690-packing-document .title { text-align: left !important }
+}
+
+/* ── Print Media ─────────────────────────────────────────── */
+@media print {
+  @page { size: A4 portrait; margin: 0 }
+  body { background: #fff }
+  .paper { box-shadow: none !important; margin: 0; width: 210mm; min-height: 297mm }
+  .noprint { display: none !important }
+  .v617-stamp-fallback { display: block !important }
+  .paper.v620-print-boxes { box-shadow: none !important }
+  .paper.v620-cards table { border-radius: 0 }
+  .paper.v620-executive { outline-offset: -4px }
+  .v621-generic-details { break-inside: avoid; page-break-inside: avoid }
+  .paper .company-letterhead-v675 .co-name,
+  .paper .v690-packing-company .company-letterhead-v675 .co-name {
+    font-size: 18px !important;
+    font-weight: 800 !important;
+  }
+  .paper .company-letterhead-v675 .co-contact,
+  .paper .v690-packing-company .company-letterhead-v675 .co-contact {
+    font-size: 9px !important;
+  }
+  .paper .v690-packing-letterhead {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .print-lang-en {
+    font-family: Arial, "Segoe UI", sans-serif !important;
+  }
+}

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { FullaTemplateKey } from '../types'
+import '../fullaDocStyles.css'
 
 /* ── A4 Page Wrapper ────────────────────────────────────── */
 export function A4Page({
@@ -15,13 +16,13 @@ export function A4Page({
   return (
     <div
       dir={isAr ? 'rtl' : 'ltr'}
-      className={`bg-white text-[11px] leading-relaxed ${isAr ? 'font-arabic' : ''}`}
+      className={isAr ? 'font-arabic' : ''}
       style={{
         fontFamily: isAr ? "'Noto Sans Arabic', sans-serif" : "'Inter', sans-serif",
         width: '210mm',
         minHeight: '297mm',
-        padding: '15mm',
         margin: '0 auto',
+        background: '#fff',
       }}
       data-template={templateKey}
     >
