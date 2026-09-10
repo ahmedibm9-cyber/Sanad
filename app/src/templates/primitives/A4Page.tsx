@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import type { FullaTemplateKey } from '../types'
-import '../fullaDocStyles.css'
+
+/* ── Fulla Template CSS (from Fulla_Dynamic_HTML_CSS_Templates) ── */
+import './fullaTemplateStyles.css'
 
 /* ── A4 Page Wrapper ────────────────────────────────────── */
 export function A4Page({
