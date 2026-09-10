@@ -124,7 +124,7 @@ export default function DocumentPreviewPage() {
   const { data: workItemMaterials } = useWorkItemMaterials(project?.id)
 
   const [template, setTemplate] = useState<string>(
-    currentCompany.defaultTemplate || 'fulla-commercial-invoice-680'
+    (currentCompany as any).defaultTemplate || (currentCompany as any).default_template || 'fulla-commercial-invoice-680'
   )
   const [previewLang, setPreviewLang] = useState<'en' | 'ar'>('en')
 
@@ -132,27 +132,30 @@ export default function DocumentPreviewPage() {
     if (!project) return emptyDoc
     const dbMaterials = workItemMaterials ?? []
     const items: DocPreviewItem[] = dbMaterials.length > 0
-      ? dbMaterials.map((m: any) => ({
-          material: m.material_name || m.materialName || '',
-          description: m.description || m.grade || '',
-          grade: m.grade || '',
-          hsCode: m.hs_code || m.hsCode || '',
-          origin: m.origin || '',
-          packing: m.packing_description || m.packing || '',
-          quantity: Number(m.quantity) || 0,
-          unit: m.weight_unit || m.weightUnit || 'MT',
-          unitPrice: Number(m.unit_price || m.unitPrice) || 0,
-          currency: m.currency || 'SAR',
-          total: (Number(m.quantity) || 0) * (Number(m.unit_price || m.unitPrice) || 0),
-          packages: Number(m.packages) || 0,
-          netWeight: Number(m.net_weight || m.netWeight) || 0,
-          grossWeight: Number(m.gross_weight || m.grossWeight) || 0,
-          cbm: Number(m.cbm) || 0,
-        }))
+      ? dbMaterials.map((m: any) => {
+          const mat = m.materials || {}
+          return {
+            material: mat.name || m.material_name || m.materialName || '',
+            description: mat.description || mat.grade || m.description || m.grade || '',
+            grade: mat.grade || m.grade || '',
+            hsCode: mat.hs_code || m.hs_code || m.hsCode || '',
+            origin: mat.origin_country || m.origin || '',
+            packing: m.packing_description || m.packing || '',
+            quantity: Number(m.quantity) || 0,
+            unit: mat.unit || m.weight_unit || m.weightUnit || 'MT',
+            unitPrice: Number(m.unit_price || m.unitPrice) || 0,
+            currency: m.currency || 'SAR',
+            total: (Number(m.quantity) || 0) * (Number(m.unit_price || m.unitPrice) || 0),
+            packages: Number(m.packages) || 0,
+            netWeight: Number(m.net_weight || m.netWeight) || 0,
+            grossWeight: Number(m.gross_weight || m.grossWeight) || 0,
+            cbm: Number(m.cbm) || 0,
+          }
+        })
       : []
 
     const subtotal = items.reduce((s, i) => s + i.total, 0)
-    const vatRate = currentCompany.defaultVatRate || 0
+    const vatRate = (currentCompany as any).defaultVatRate ?? (currentCompany as any).default_vat_rate ?? 0
     const vatAmount = Math.round(subtotal * (vatRate / 100) * 100) / 100
     const customer = customersList.find(c => c.id === project.customer_id) || customersList[0]
 
@@ -163,33 +166,33 @@ export default function DocumentPreviewPage() {
       date: new Date().toISOString().split('T')[0],
       language: previewLang,
       template,
-      preparedBy: currentCompany.defaultPreparedBy || '',
-      showSignature: currentCompany.showSignature ?? true,
-      showStamp: currentCompany.showStamp ?? true,
+      preparedBy: (currentCompany as any).defaultPreparedBy || (currentCompany as any).default_prepared_by || '',
+      showSignature: (currentCompany as any).showSignature ?? (currentCompany as any).show_signature ?? true,
+      showStamp: (currentCompany as any).showStamp ?? (currentCompany as any).show_stamp ?? true,
       vatRate,
       status: 'draft' as const,
       notes: '',
-      terms: (project as any).payment_terms || (project as any).paymentTerms || currentCompany.defaultPaymentTerms || '',
+      terms: (project as any).payment_terms || (project as any).paymentTerms || (currentCompany as any).defaultPaymentTerms || (currentCompany as any).default_payment_terms || '',
       items,
       subtotal,
       vatAmount,
       total: subtotal + vatAmount,
       currency: items[0]?.currency || 'SAR',
       company: {
-        nameEn: currentCompany.legalNameEn || currentCompany.nameEn,
-        nameAr: currentCompany.legalNameAr || currentCompany.nameAr,
-        legalNameEn: currentCompany.legalNameEn,
-        legalNameAr: currentCompany.legalNameAr,
-        crNumber: currentCompany.crNumber || '',
-        vatNumber: currentCompany.vatNumber || '',
-        address: currentCompany.address || '',
-        phone: currentCompany.phone || '',
-        email: currentCompany.email || '',
-        website: currentCompany.website,
-        bankName: currentCompany.bankName || '',
-        accountName: currentCompany.accountName,
-        iban: currentCompany.iban || '',
-        swift: currentCompany.swift || '',
+        nameEn: (currentCompany as any).nameEn || currentCompany.name_en || '',
+        nameAr: (currentCompany as any).nameAr || currentCompany.name_ar || '',
+        legalNameEn: (currentCompany as any).legalNameEn || currentCompany.legal_name_en || undefined,
+        legalNameAr: (currentCompany as any).legalNameAr || currentCompany.legal_name_ar || undefined,
+        crNumber: (currentCompany as any).crNumber || (currentCompany as any).cr_number || '',
+        vatNumber: (currentCompany as any).vatNumber || (currentCompany as any).vat_number || '',
+        address: (currentCompany as any).address || '',
+        phone: (currentCompany as any).phone || '',
+        email: (currentCompany as any).email || '',
+        website: (currentCompany as any).website,
+        bankName: (currentCompany as any).bankName || (currentCompany as any).bank_name || '',
+        accountName: (currentCompany as any).accountName || (currentCompany as any).account_name,
+        iban: (currentCompany as any).iban || '',
+        swift: (currentCompany as any).swift || '',
         logo: undefined,
         stamp: undefined,
         signature: undefined,
@@ -204,7 +207,7 @@ export default function DocumentPreviewPage() {
         country: customer?.country || undefined,
         city: customer?.city || undefined,
       },
-      incoterm: project.incoterm || currentCompany.defaultIncoterm || 'FOB',
+      incoterm: project.incoterm || (currentCompany as any).defaultIncoterm || (currentCompany as any).default_incoterm || 'FOB',
       portOfLoading: (project as any).port_of_loading || (project as any).portOfLoading || '',
       portOfDischarge: (project as any).port_of_discharge || (project as any).portOfDischarge || '',
       shipping: {
