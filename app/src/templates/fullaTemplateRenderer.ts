@@ -199,6 +199,12 @@ const TITLE_OVERRIDES: Record<string, { pageClass?: string; titleHtml?: string }
 
 function getByPath(obj: unknown, path: string): unknown {
   if (!path) return undefined
+  if (obj == null || typeof obj !== 'object') return undefined
+  // Try flat key first (e.g., "company.name" as a single key in the data object)
+  if (path in (obj as Record<string, unknown>)) {
+    return (obj as Record<string, unknown>)[path]
+  }
+  // Fall back to nested path traversal
   return path.split('.').reduce<unknown>((v, k) => {
     if (v == null || typeof v !== 'object') return undefined
     return (v as Record<string, unknown>)[k]
@@ -360,16 +366,26 @@ export function renderFullaTemplate(
   const isPacking = templateId === 'packing-list'
   const isDelivery = templateId === 'delivery-note'
 
+  // Detect item count: try array first, then count flat keys like "items.0.xxx"
+  const itemCount = Array.isArray(data.items)
+    ? data.items.length
+    : (() => {
+        let max = -1
+        for (const key of Object.keys(data)) {
+          const m = key.match(/^items\.(\d+)\./)
+          if (m) max = Math.max(max, parseInt(m[1], 10))
+        }
+        return max + 1
+      })()
+
   if (isInvoice || isPacking) {
     const bodySelector = isPacking ? '[data-items-body="packing"]' : '[data-items-body="invoice"]'
     const tbody = page.querySelector<HTMLElement>(bodySelector)
-    const itemCount = Array.isArray(data.items) ? data.items.length : 0
     if (tbody && itemCount > 0) {
       cloneInvoiceRows(tbody, itemCount)
     }
   } else if (isDelivery) {
     const tbody = page.querySelector<HTMLElement>('tbody')
-    const itemCount = Array.isArray(data.items) ? data.items.length : 0
     if (tbody && itemCount > 0) {
       cloneDeliveryRows(tbody, itemCount)
     }
