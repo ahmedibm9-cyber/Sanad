@@ -88,15 +88,40 @@ export interface Customer {
   companyId: CompanyId
   name: string
   nameAr?: string
+  legalName?: string
   contactPerson?: string
   phone?: string
   phoneSecondary?: string
   email?: string
+  website?: string
   country?: string
   city?: string
   address?: string
   postalCode?: string
   vatNumber?: string
+  registrationNumber?: string
+  // Commercial defaults
+  defaultCurrency?: string
+  defaultVatTreatment?: string
+  paymentTerms?: string
+  paymentMethodNotes?: string
+  incoterm?: string
+  deliveryTerms?: string
+  defaultDocumentLanguage?: string
+  defaultTemplate?: string
+  commercialNotes?: string
+  // Logistics defaults
+  defaultDestCountry?: string
+  defaultDestCity?: string
+  defaultPort?: string
+  transportResponsibility?: string
+  loadingResponsibility?: string
+  unloadingResponsibility?: string
+  defaultConsignee?: string
+  defaultNotifyParty?: string
+  packingInstructions?: string
+  shippingNotes?: string
+  specialHandling?: string
   notes?: string
   createdAt: string
 }

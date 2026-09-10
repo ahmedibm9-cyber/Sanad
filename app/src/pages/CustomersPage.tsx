@@ -16,15 +16,38 @@ function toUICustomer(c: DbCustomer): Customer {
     companyId: c.company_id,
     name: c.name,
     nameAr: c.name_ar ?? undefined,
+    legalName: c.legal_name ?? undefined,
     contactPerson: c.contact_person ?? undefined,
     phone: c.phone ?? undefined,
     phoneSecondary: c.phone_secondary ?? undefined,
     email: c.email ?? undefined,
+    website: c.website ?? undefined,
     country: c.country ?? undefined,
     city: c.city ?? undefined,
     address: c.address ?? undefined,
     postalCode: c.postal_code ?? undefined,
     vatNumber: c.vat_number ?? undefined,
+    registrationNumber: c.registration_number ?? undefined,
+    defaultCurrency: c.default_currency ?? undefined,
+    defaultVatTreatment: c.default_vat_treatment ?? undefined,
+    paymentTerms: c.payment_terms ?? undefined,
+    paymentMethodNotes: c.payment_method_notes ?? undefined,
+    incoterm: c.default_incoterm ?? undefined,
+    deliveryTerms: c.delivery_terms ?? undefined,
+    defaultDocumentLanguage: c.default_document_language ?? undefined,
+    defaultTemplate: c.default_document_template ?? undefined,
+    commercialNotes: c.commercial_notes ?? undefined,
+    defaultDestCountry: c.default_dest_country ?? undefined,
+    defaultDestCity: c.default_dest_city ?? undefined,
+    defaultPort: c.default_port ?? undefined,
+    transportResponsibility: c.transport_responsibility ?? undefined,
+    loadingResponsibility: c.loading_responsibility ?? undefined,
+    unloadingResponsibility: c.unloading_responsibility ?? undefined,
+    defaultConsignee: c.default_consignee ?? undefined,
+    defaultNotifyParty: c.default_notify_party ?? undefined,
+    packingInstructions: c.packing_instructions ?? undefined,
+    shippingNotes: c.shipping_notes ?? undefined,
+    specialHandling: c.special_handling ?? undefined,
     notes: c.notes ?? undefined,
     createdAt: c.created_at,
   }
@@ -35,15 +58,38 @@ function toDbUpdates(data: Partial<Customer>): Record<string, unknown> {
   const r: Record<string, unknown> = {}
   if (data.name !== undefined) r.name = data.name
   if (data.nameAr !== undefined) r.name_ar = data.nameAr
+  if (data.legalName !== undefined) r.legal_name = data.legalName
   if (data.contactPerson !== undefined) r.contact_person = data.contactPerson
   if (data.phone !== undefined) r.phone = data.phone
   if (data.phoneSecondary !== undefined) r.phone_secondary = data.phoneSecondary
   if (data.email !== undefined) r.email = data.email
+  if (data.website !== undefined) r.website = data.website
   if (data.country !== undefined) r.country = data.country
   if (data.city !== undefined) r.city = data.city
   if (data.address !== undefined) r.address = data.address
   if (data.postalCode !== undefined) r.postal_code = data.postalCode
   if (data.vatNumber !== undefined) r.vat_number = data.vatNumber
+  if (data.registrationNumber !== undefined) r.registration_number = data.registrationNumber
+  if (data.defaultCurrency !== undefined) r.default_currency = data.defaultCurrency
+  if (data.defaultVatTreatment !== undefined) r.default_vat_treatment = data.defaultVatTreatment
+  if (data.paymentTerms !== undefined) r.payment_terms = data.paymentTerms
+  if (data.paymentMethodNotes !== undefined) r.payment_method_notes = data.paymentMethodNotes
+  if (data.incoterm !== undefined) r.default_incoterm = data.incoterm
+  if (data.deliveryTerms !== undefined) r.delivery_terms = data.deliveryTerms
+  if (data.defaultDocumentLanguage !== undefined) r.default_document_language = data.defaultDocumentLanguage
+  if (data.defaultTemplate !== undefined) r.default_document_template = data.defaultTemplate
+  if (data.commercialNotes !== undefined) r.commercial_notes = data.commercialNotes
+  if (data.defaultDestCountry !== undefined) r.default_dest_country = data.defaultDestCountry
+  if (data.defaultDestCity !== undefined) r.default_dest_city = data.defaultDestCity
+  if (data.defaultPort !== undefined) r.default_port = data.defaultPort
+  if (data.transportResponsibility !== undefined) r.transport_responsibility = data.transportResponsibility
+  if (data.loadingResponsibility !== undefined) r.loading_responsibility = data.loadingResponsibility
+  if (data.unloadingResponsibility !== undefined) r.unloading_responsibility = data.unloadingResponsibility
+  if (data.defaultConsignee !== undefined) r.default_consignee = data.defaultConsignee
+  if (data.defaultNotifyParty !== undefined) r.default_notify_party = data.defaultNotifyParty
+  if (data.packingInstructions !== undefined) r.packing_instructions = data.packingInstructions
+  if (data.shippingNotes !== undefined) r.shipping_notes = data.shippingNotes
+  if (data.specialHandling !== undefined) r.special_handling = data.specialHandling
   if (data.notes !== undefined) r.notes = data.notes
   return r
 }
