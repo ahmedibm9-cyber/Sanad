@@ -1,0 +1,992 @@
+import { useState, useMemo, type ReactNode } from 'react'
+import {
+  BarChart3, Calendar, Building2, Users, FileText, CheckSquare,
+  AlertTriangle, Activity, Globe, Package, ShieldCheck,
+  FileDown, FileSpreadsheet, CheckCircle
+} from 'lucide-react'
+import { useLanguage } from '../contexts/LanguageContext'
+import { useCompany } from '../contexts/CompanyContext'
+import { useWorkItems, useAuditEvents, useCompanyUsers } from '../hooks/useData'
+import type { WorkItem } from '../types'
+import type { WorkItem as ServiceWorkItem } from '../hooks/useData'
+import type { AuditEvent } from '../hooks/useData'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import { exportToExcel } from '../lib/excelExport'
+
+// ─── Type Mapping Helpers ──────────────────────────────
+function mapWorkItem(item: ServiceWorkItem, materials?: any[]): WorkItem {
+  return {
+    id: item.id,
+    type: item.type,
+    companyId: item.company_id,
+    name: item.name,
+    customerId: item.customer_id || undefined,
+    status: item.status,
+    isPinned: item.pinned,
+    materials: materials || [],
+    destinationCountry: item.destination_country || undefined,
+    destinationCity: item.destination_city || undefined,
+    currency: item.currency || undefined,
+    incoterm: item.incoterm || undefined,
+    paymentTerms: item.payment_terms || undefined,
+    deliveryTerms: item.delivery_terms || undefined,
+    containerNumber: item.container_number || undefined,
+    vesselName: item.vessel_name || undefined,
+    voyageNumber: item.voyage_number || undefined,
+    portOfLoading: item.port_of_loading || undefined,
+    portOfDischarge: item.port_of_discharge || undefined,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+    createdBy: item.created_by || undefined,
+    documents: [],
+    attachments: [],
+    reportIssues: [],
+    projectNotes: [],
+  }
+}
+
+function mapAuditEventToActivityLog(event: AuditEvent) {
+  return {
+    id: event.id,
+    userId: event.actor_user_id,
+    userName: '', // Will be resolved from company users if needed
+    companyId: event.company_id || '',
+    action: event.action,
+    entityType: event.entity_type,
+    entityId: event.entity_id || '',
+    entityRef: event.entity_reference || undefined,
+    before: event.before_json || undefined,
+    after: event.after_json || undefined,
+    timestamp: event.created_at,
+  }
+}
+
+function mapCompany(company: any) {
+  return {
+    id: company.id,
+    nameEn: company.name_en || company.nameEn || '',
+    nameAr: company.name_ar || company.nameAr || '',
+    shortName: company.short_name || company.shortName || '',
+    code: company.company_code || company.code || '',
+  }
+}
+
+// ─── Filter State ──────────────────────────────────────
+interface ReportFiltersState {
+  dateFrom: string
+  dateTo: string
+  status: string
+  companyId: string
+}
+
+const defaultFilters: ReportFiltersState = {
+  dateFrom: '',
+  dateTo: '',
+  status: '',
+  companyId: '',
+}
+
+// ─── Helper: apply common filters to a list of WorkItems ──
+function filterWorkItems(items: WorkItem[], filters: ReportFiltersState): WorkItem[] {
+  return items.filter(item => {
+    if (filters.status && item.status !== filters.status) return false
+    if (filters.companyId && item.companyId !== filters.companyId) return false
+    if (filters.dateFrom && item.createdAt.substring(0, 10) < filters.dateFrom) return false
+    if (filters.dateTo && item.createdAt.substring(0, 10) > filters.dateTo) return false
+    return true
+  })
+}
+
+// ─── Report Item definition ────────────────────────────
+interface ReportItem {
+  id: string
+  name: string
+  nameAr: string
+  icon: ReactNode
+}
+
+const reports: ReportItem[] = [
+  { id: 'by-status', name: 'Projects by Status', nameAr: 'المشاريع حسب الحالة', icon: <BarChart3 className="w-4 h-4" /> },
+  { id: 'by-date', name: 'Projects by Date', nameAr: 'المشاريع حسب التاريخ', icon: <Calendar className="w-4 h-4" /> },
+  { id: 'by-company', name: 'Projects by Company', nameAr: 'المشاريع حسب الشركة', icon: <Building2 className="w-4 h-4" /> },
+  { id: 'by-customer', name: 'Projects by Customer', nameAr: 'المشاريع حسب العميل', icon: <Users className="w-4 h-4" /> },
+  { id: 'documents-register', name: 'Documents Register', nameAr: 'سجل المستندات', icon: <FileText className="w-4 h-4" /> },
+  { id: 'tasks', name: 'Tasks', nameAr: 'المهام', icon: <CheckSquare className="w-4 h-4" /> },
+  { id: 'overdue-tasks', name: 'Overdue Tasks', nameAr: 'المهام المتأخرة', icon: <AlertTriangle className="w-4 h-4" /> },
+  { id: 'user-activity', name: 'User Activity', nameAr: 'نشاط المستخدمين', icon: <Activity className="w-4 h-4" /> },
+  { id: 'customer-export-history', name: 'Customer Export History', nameAr: 'سجل تصدير العملاء', icon: <Globe className="w-4 h-4" /> },
+  { id: 'material-export-history', name: 'Material Export History', nameAr: 'سجل تصدير المواد', icon: <Package className="w-4 h-4" /> },
+  { id: 'audit', name: 'Audit Report', nameAr: 'تقرير التدقيق', icon: <ShieldCheck className="w-4 h-4" /> },
+]
+
+// ─── Filter Bar (controlled, rendered once in parent) ──
+function ReportFilterBar({ filters, onChange }: { filters: ReportFiltersState; onChange: (f: ReportFiltersState) => void }) {
+  const { t } = useLanguage()
+  const { companies: allCompanies } = useCompany()
+  const update = (patch: Partial<ReportFiltersState>) => onChange({ ...filters, ...patch })
+
+  return (
+    <div className="flex flex-wrap items-end gap-3 mb-4">
+      <div>
+        <label className="label-field">{t('From Date', 'من تاريخ')}</label>
+        <input
+          type="date"
+          className="input-field w-40"
+          value={filters.dateFrom}
+          onChange={e => update({ dateFrom: e.target.value })}
+        />
+      </div>
+      <div>
+        <label className="label-field">{t('To Date', 'إلى تاريخ')}</label>
+        <input
+          type="date"
+          className="input-field w-40"
+          value={filters.dateTo}
+          onChange={e => update({ dateTo: e.target.value })}
+        />
+      </div>
+      <div>
+        <label className="label-field">{t('Status', 'الحالة')}</label>
+        <select
+          className="select-field w-44"
+          value={filters.status}
+          onChange={e => update({ status: e.target.value })}
+        >
+          <option value="">{t('All', 'الكل')}</option>
+          <option value="in_progress">{t('In Progress', 'قيد التنفيذ')}</option>
+          <option value="completed">{t('Completed', 'مكتمل')}</option>
+          <option value="cancelled">{t('Cancelled', 'ملغى')}</option>
+          <option value="archived">{t('Archived', 'مؤرشف')}</option>
+        </select>
+      </div>
+      <div>
+        <label className="label-field">{t('Company', 'الشركة')}</label>
+        <select
+          className="select-field w-44"
+          value={filters.companyId}
+          onChange={e => update({ companyId: e.target.value })}
+        >
+          <option value="">{t('All Companies', 'كل الشركات')}</option>
+          {allCompanies.map(c => (
+            <option key={c.id} value={c.id}>{c.nameEn}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  )
+}
+
+// ─── Export Actions ────────────────────────────────────
+function ReportActions({
+  headers,
+  rows,
+  sheetName,
+  filename,
+  pdfHeaders,
+  pdfRows,
+  pdfTitle,
+}: {
+  headers: string[]
+  rows: (string | number)[][]
+  sheetName: string
+  filename: string
+  pdfHeaders?: string[]
+  pdfRows?: (string | number)[][]
+  pdfTitle?: string
+}) {
+  const { t } = useLanguage()
+  const [exported, setExported] = useState<string | null>(null)
+
+  const handleExportPdf = () => {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(14)
+    doc.text(pdfTitle || sheetName, 15, 20)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(120, 120, 120)
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 15, 26)
+
+    autoTable(doc, {
+      startY: 30,
+      head: [pdfHeaders || headers],
+      body: (pdfRows || rows) as any[][],
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255] },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+      margin: { left: 15, right: 15 },
+    })
+
+    doc.save(`${filename}.pdf`)
+    setExported('PDF')
+    setTimeout(() => setExported(null), 2000)
+  }
+
+  const handleExportExcel = () => {
+    exportToExcel(headers, rows, sheetName, filename)
+    setExported('Excel')
+    setTimeout(() => setExported(null), 2000)
+  }
+
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      {exported ? (
+        <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+          <CheckCircle className="w-4 h-4" />
+          {t(`Exported to ${exported} successfully`, `تم التصدير إلى ${exported} بنجاح`)}
+        </div>
+      ) : (
+        <>
+          <button onClick={handleExportPdf} className="btn-secondary">
+            <FileDown className="w-4 h-4 ms-2" />
+            {t('Export PDF', 'تصدير PDF')}
+          </button>
+          <button onClick={handleExportExcel} className="btn-secondary">
+            <FileSpreadsheet className="w-4 h-4 ms-2" />
+            {t('Export Excel', 'تصدير Excel')}
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── Empty state row helper ────────────────────────────
+function EmptyRow({ colSpan, message }: { colSpan: number; message: string }) {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="px-4 py-8 text-center text-gray-400 empty-state">
+        {message}
+      </td>
+    </tr>
+  )
+}
+
+// ─── Report: Projects by Status ────────────────────────
+function ProjectsByStatusReport({ filtered }: { filtered: WorkItem[] }) {
+  const { t } = useLanguage()
+  const statusCounts = useMemo(() => filtered.reduce((acc, p) => {
+    acc[p.status] = (acc[p.status] || 0) + 1
+    return acc
+  }, {} as Record<string, number>), [filtered])
+
+  const statusLabels: Record<string, string> = {
+    in_progress: t('In Progress', 'قيد التنفيذ'),
+    completed: t('Completed', 'مكتمل'),
+    cancelled: t('Cancelled', 'ملغى'),
+    archived: t('Archived', 'مؤرشف'),
+  }
+  const statusColors: Record<string, string> = {
+    in_progress: 'bg-yellow-100 text-yellow-800',
+    completed: 'bg-green-100 text-green-800',
+    cancelled: 'bg-red-100 text-red-800',
+    archived: 'bg-gray-100 text-gray-800',
+  }
+
+  return (
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Count', 'العدد')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Percentage', 'النسبة')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(statusCounts).map(([status, count]) => {
+            const total = filtered.length || 1
+            const pct = ((count / total) * 100).toFixed(1)
+            return (
+              <tr key={status} className="border-b border-gray-100 table-row-hover">
+                <td className="px-4 py-3">
+                  <span className={`status-badge ${statusColors[status] || ''}`}>{statusLabels[status] || status}</span>
+                </td>
+                <td className="px-4 py-3 font-medium">{count}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-brand-600 rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="text-gray-500">{pct}%</span>
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+          {Object.keys(statusCounts).length === 0 && (
+            <EmptyRow colSpan={3} message={t('No projects match the selected filters.', 'لا توجد مشاريع مطابقة للمرشّحات المحددة.')} />
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ─── Report: Projects by Date ──────────────────────────
+function ProjectsByDateReport({ filtered }: { filtered: WorkItem[] }) {
+  const { t } = useLanguage()
+  const byMonth = useMemo(() => filtered.reduce((acc, p) => {
+    const month = p.createdAt.substring(0, 7)
+    acc[month] = (acc[month] || 0) + 1
+    return acc
+  }, {} as Record<string, number>), [filtered])
+
+  return (
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Month', 'الشهر')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Projects Created', 'مشاريع منشأة')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(byMonth).sort().map(([month, count]) => (
+            <tr key={month} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-medium">{month}</td>
+              <td className="px-4 py-3">{count}</td>
+            </tr>
+          ))}
+          {Object.keys(byMonth).length === 0 && (
+            <EmptyRow colSpan={2} message={t('No projects match the selected filters.', 'لا توجد مشاريع مطابقة للمرشّحات المحددة.')} />
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ─── Report: Projects by Company ───────────────────────
+function ProjectsByCompanyReport({ filtered }: { filtered: WorkItem[] }) {
+  const { t } = useLanguage()
+  const { companies: allCompanies } = useCompany()
+  const byCompany = useMemo(() => filtered.reduce((acc, p) => {
+    const comp = allCompanies.find(c => c.id === p.companyId)
+    const name = comp?.name_en || comp?.nameEn || p.companyId
+    acc[name] = (acc[name] || 0) + 1
+    return acc
+  }, {} as Record<string, number>), [filtered, allCompanies])
+
+  return (
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Company', 'الشركة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Projects', 'المشاريع')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(byCompany).map(([name, count]) => (
+            <tr key={name} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-medium">{name}</td>
+              <td className="px-4 py-3">{count}</td>
+            </tr>
+          ))}
+          {Object.keys(byCompany).length === 0 && (
+            <EmptyRow colSpan={2} message={t('No projects match the selected filters.', 'لا توجد مشاريع مطابقة للمرشّحات المحددة.')} />
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ─── Report: Projects by Customer ──────────────────────
+function ProjectsByCustomerReport({ filtered }: { filtered: WorkItem[] }) {
+  const { t } = useLanguage()
+  const byCustomer = useMemo(() => filtered.reduce((acc, p) => {
+    const name = p.customerName || 'Unknown'
+    acc[name] = (acc[name] || 0) + 1
+    return acc
+  }, {} as Record<string, number>), [filtered])
+
+  return (
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Projects', 'المشاريع')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(byCustomer).sort((a, b) => b[1] - a[1]).map(([name, count]) => (
+            <tr key={name} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-medium">{name}</td>
+              <td className="px-4 py-3">{count}</td>
+            </tr>
+          ))}
+          {Object.keys(byCustomer).length === 0 && (
+            <EmptyRow colSpan={2} message={t('No projects match the selected filters.', 'لا توجد مشاريع مطابقة للمرشّحات المحددة.')} />
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ─── Report: Documents Register ────────────────────────
+function DocumentsRegisterReport({ filtered }: { filtered: WorkItem[] }) {
+  const { t } = useLanguage()
+  const allDocs = useMemo(() => filtered.flatMap(p => p.documents.map(d => ({ ...d, projectName: p.name }))), [filtered])
+
+  return (
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Doc Number', 'رقم المستند')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Type', 'النوع')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Project', 'المشروع')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Date', 'التاريخ')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {allDocs.map(doc => (
+            <tr key={doc.id} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-mono text-brand-700 font-medium">{doc.number}</td>
+              <td className="px-4 py-3">{doc.type}</td>
+              <td className="px-4 py-3">{doc.projectName}</td>
+              <td className="px-4 py-3">{doc.date}</td>
+              <td className="px-4 py-3">
+                <span className={`status-badge ${doc.status === 'final' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                  {doc.status === 'final' ? t('Final', 'نهائي') : t('Draft', 'مسودة')}
+                </span>
+              </td>
+            </tr>
+          ))}
+          {allDocs.length === 0 && (
+            <EmptyRow colSpan={5} message={t('No documents found.', 'لا توجد مستندات.')} />
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ─── Report: Tasks ─────────────────────────────────────
+function TasksReport({ filtered }: { filtered: WorkItem[] }) {
+  const { t } = useLanguage()
+  return (
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Task', 'المهمة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Created By', 'أنشأها')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Created', 'أنشئ في')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filtered.map(task => (
+            <tr key={task.id} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-medium">{task.name}</td>
+              <td className="px-4 py-3 text-gray-600">{task.customerName || '-'}</td>
+              <td className="px-4 py-3">
+                <span className={`status-badge ${
+                  task.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+                  task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                  task.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {task.status === 'in_progress' ? t('In Progress', 'قيد التنفيذ') :
+                   task.status === 'completed' ? t('Completed', 'مكتمل') :
+                   task.status === 'cancelled' ? t('Cancelled', 'ملغى') : task.status}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-gray-600">{task.createdBy || '-'}</td>
+              <td className="px-4 py-3 text-gray-500">{task.createdAt}</td>
+            </tr>
+          ))}
+          {filtered.length === 0 && (
+            <EmptyRow colSpan={5} message={t('No tasks match the selected filters.', 'لا توجد مهام مطابقة للمرشّحات المحددة.')} />
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ─── Report: Overdue Tasks ─────────────────────────────
+function OverdueTasksReport({ filtered }: { filtered: WorkItem[] }) {
+  const { t } = useLanguage()
+  return (
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Task', 'المهمة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Created', 'أنشئ في')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Days Overdue', 'أيام التأخير')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filtered.map(task => {
+            const days = Math.floor((Date.now() - new Date(task.createdAt).getTime()) / 86400000)
+            return (
+              <tr key={task.id} className="border-b border-gray-100 table-row-hover">
+                <td className="px-4 py-3 font-medium">{task.name}</td>
+                <td className="px-4 py-3 text-gray-600">{task.customerName || '-'}</td>
+                <td className="px-4 py-3 text-gray-500">{task.createdAt}</td>
+                <td className="px-4 py-3">
+                  <span className="status-badge bg-red-100 text-red-800">{days} {t('days', 'يوم')}</span>
+                </td>
+              </tr>
+            )
+          })}
+          {filtered.length === 0 && (
+            <EmptyRow colSpan={4} message={t('No overdue tasks.', 'لا توجد مهام متأخرة.')} />
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ─── Report: User Activity ─────────────────────────────
+function UserActivityReport({ filtered }: { filtered: WorkItem[] }) {
+  const { t } = useLanguage()
+  const { currentCompany } = useCompany()
+  const { data: companyUsers = [] } = useCompanyUsers(currentCompany.id)
+  const { data: auditEvents = [] } = useAuditEvents(currentCompany.id)
+  
+  const companyIds = useMemo(() => new Set(filtered.map(p => p.companyId)), [filtered])
+  const userActivity = useMemo(() => companyUsers.map((u: any) => {
+    const count = (auditEvents || []).filter(a => 
+      a.actor_user_id === u.id && 
+      companyIds.has(a.company_id || '')
+    ).length
+    return { ...u, actionCount: count, role: u.base_role || u.role || 'user' }
+  }), [companyIds, companyUsers, auditEvents])
+
+  return (
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('User', 'المستخدم')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Email', 'البريد الإلكتروني')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Role', 'الدور')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Actions Logged', 'الإجراءات المسجلة')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {userActivity.map((u: any) => (
+            <tr key={u.id} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-medium">{u.name}</td>
+              <td className="px-4 py-3 text-gray-500">{u.email}</td>
+              <td className="px-4 py-3">
+                <span className={`status-badge ${
+                  u.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                  u.role === 'user' ? 'bg-blue-100 text-blue-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {u.role}
+                </span>
+              </td>
+              <td className="px-4 py-3 font-medium">{u.actionCount}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ─── Report: Customer Export History ───────────────────
+function CustomerExportHistoryReport({ filtered }: { filtered: WorkItem[] }) {
+  const { t } = useLanguage()
+  const exportProjects = useMemo(() =>
+    filtered.filter(p => p.status === 'completed' || p.status === 'archived'),
+    [filtered]
+  )
+
+  return (
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Project', 'المشروع')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Destination', 'الوجهة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Status', 'الحالة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Date', 'التاريخ')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {exportProjects.map(p => (
+            <tr key={p.id} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-medium">{p.customerName || '-'}</td>
+              <td className="px-4 py-3">{p.name}</td>
+              <td className="px-4 py-3 text-gray-600">{p.destinationCity}{p.destinationCountry ? `, ${p.destinationCountry}` : ''}</td>
+              <td className="px-4 py-3">
+                <span className={`status-badge ${p.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                  {p.status === 'completed' ? t('Completed', 'مكتمل') : t('Archived', 'مؤرشف')}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-gray-500">{p.updatedAt}</td>
+            </tr>
+          ))}
+          {exportProjects.length === 0 && (
+            <EmptyRow colSpan={5} message={t('No export history found.', 'لا يوجد سجل تصدير.')} />
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ─── Report: Material Export History ───────────────────
+function MaterialExportHistoryReport({ filtered }: { filtered: WorkItem[] }) {
+  const { t } = useLanguage()
+  const materialExports = useMemo(() => {
+    const completedProjects = filtered.filter(p => p.status === 'completed' || p.status === 'archived')
+    return completedProjects.flatMap(p => p.materials.map(m => ({
+      materialName: m.materialName,
+      grade: m.grade || '-',
+      quantity: m.quantity,
+      unit: m.weightUnit,
+      customer: p.customerName || '-',
+      currency: m.currency,
+    })))
+  }, [filtered])
+
+  return (
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Material', 'المادة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Grade', 'الدرجة')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Quantity', 'الكمية')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Customer', 'العميل')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {materialExports.map((m, i) => (
+            <tr key={i} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 font-medium">{m.materialName}</td>
+              <td className="px-4 py-3 text-gray-600">{m.grade}</td>
+              <td className="px-4 py-3">{m.quantity} {m.unit}</td>
+              <td className="px-4 py-3 text-gray-600">{m.customer}</td>
+            </tr>
+          ))}
+          {materialExports.length === 0 && (
+            <EmptyRow colSpan={4} message={t('No material export history found.', 'لا يوجد سجل تصدير مواد.')} />
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ─── Report: Audit ─────────────────────────────────────
+function AuditReport({ auditEvents }: { auditEvents: AuditEvent[] }) {
+  const { t } = useLanguage()
+  const { currentCompany } = useCompany()
+  const { data: companyUsers = [] } = useCompanyUsers(currentCompany.id)
+  
+  const getUserName = (userId: string) => {
+    const user = (companyUsers || []).find((u: any) => u.id === userId)
+    return user?.name || userId
+  }
+
+  return (
+    <div className="card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50/80">
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Timestamp', 'الوقت')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('User', 'المستخدم')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Action', 'الإجراء')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Entity', 'الكيان')}</th>
+            <th className="text-start px-4 py-3 font-semibold text-gray-700">{t('Reference', 'المرجع')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {auditEvents.map(event => (
+            <tr key={event.id} className="border-b border-gray-100 table-row-hover">
+              <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{new Date(event.created_at).toLocaleString()}</td>
+              <td className="px-4 py-3 font-medium">{getUserName(event.actor_user_id)}</td>
+              <td className="px-4 py-3">
+                <span className={`status-badge ${
+                  event.action === 'CREATE' ? 'bg-green-100 text-green-800' :
+                  event.action === 'EDIT' ? 'bg-blue-100 text-blue-800' :
+                  event.action === 'DELETE' || event.action === 'MOVE_TO_TRASH' ? 'bg-red-100 text-red-800' :
+                  event.action === 'ARCHIVE' ? 'bg-gray-100 text-gray-800' :
+                  'bg-purple-100 text-purple-800'
+                }`}>
+                  {event.action}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-gray-600">{event.entity_type}</td>
+              <td className="px-4 py-3 text-gray-500">{event.entity_reference || event.entity_id}</td>
+            </tr>
+          ))}
+          {auditEvents.length === 0 && (
+            <EmptyRow colSpan={5} message={t('No audit entries match the selected filters.', 'لا توجد سجلات تدقيق مطابقة للمرشّحات المحددة.')} />
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ─── Main Page ─────────────────────────────────────────
+export default function ReportsPage() {
+  const { t } = useLanguage()
+  const { currentCompany, companies: allCompanies } = useCompany()
+  const [activeReport, setActiveReport] = useState('by-status')
+  const [filters, setFilters] = useState<ReportFiltersState>(defaultFilters)
+
+  // Fetch data using hooks
+  const { data: rawWorkItems = [], loading } = useWorkItems(currentCompany.id)
+  const { data: rawAuditEvents = [] } = useAuditEvents(currentCompany.id)
+
+  // Map service WorkItems to frontend WorkItem type
+  const allWorkItems = useMemo(() => (rawWorkItems || []).map(item => mapWorkItem(item)), [rawWorkItems])
+  
+  // Separate projects and tasks
+  const projects = useMemo(() => allWorkItems.filter(item => item.type === 'project'), [allWorkItems])
+  const tasks = useMemo(() => allWorkItems.filter(item => item.type === 'task'), [allWorkItems])
+
+  // Apply common WorkItem filters to projects
+  const filteredProjects = useMemo(() => filterWorkItems(projects, filters), [projects, filters])
+  // Apply common WorkItem filters to tasks, with overdue constraint
+  const filteredTasks = useMemo(() => filterWorkItems(tasks, filters), [tasks, filters])
+  const filteredOverdueTasks = useMemo(() =>
+    filteredTasks.filter(task => task.status === 'in_progress' && task.createdAt < '2024-11-15'),
+    [filteredTasks]
+  )
+  // Filter audit events by company + date range
+  const filteredAuditEvents = useMemo(() => {
+    return (rawAuditEvents || []).filter(event => {
+      if (filters.companyId && event.company_id !== filters.companyId) return false
+      if (filters.dateFrom && event.created_at.substring(0, 10) < filters.dateFrom) return false
+      if (filters.dateTo && event.created_at.substring(0, 10) > filters.dateTo) return false
+      return true
+    }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  }, [rawAuditEvents, filters])
+
+  // Compute export data for the active report
+  const { data: companyUsers = [] } = useCompanyUsers(currentCompany.id)
+  const companyIds = useMemo(() => new Set(filteredProjects.map(p => p.companyId)), [filteredProjects])
+
+  const statusLabels: Record<string, string> = {
+    in_progress: 'In Progress',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+    archived: 'Archived',
+  }
+
+  const exportData = useMemo(() => {
+    const t_ = (en: string, ar: string) => en // Always EN for exports
+    const allCompanies_ = allCompanies
+
+    switch (activeReport) {
+      case 'by-status': {
+        const statusCounts = filteredProjects.reduce((acc, p) => {
+          acc[p.status] = (acc[p.status] || 0) + 1
+          return acc
+        }, {} as Record<string, number>)
+        const total = filteredProjects.length || 1
+        const headers = [t_('Status', ''), t_('Count', ''), t_('Percentage', '')]
+        const rows: (string | number)[][] = Object.entries(statusCounts).map(([status, count]) => [
+          statusLabels[status] || status,
+          count,
+          `${((count / total) * 100).toFixed(1)}%`,
+        ])
+        return { headers, rows, sheetName: 'Projects by Status', filename: 'projects-by-status', pdfTitle: 'Projects by Status' }
+      }
+      case 'by-date': {
+        const byMonth = filteredProjects.reduce((acc, p) => {
+          const month = p.createdAt.substring(0, 7)
+          acc[month] = (acc[month] || 0) + 1
+          return acc
+        }, {} as Record<string, number>)
+        const headers = [t_('Month', ''), t_('Projects Created', '')]
+        const rows: (string | number)[][] = Object.entries(byMonth).sort().map(([month, count]) => [month, count])
+        return { headers, rows, sheetName: 'Projects by Date', filename: 'projects-by-date', pdfTitle: 'Projects by Date' }
+      }
+      case 'by-company': {
+        const byCompany = filteredProjects.reduce((acc, p) => {
+          const comp = allCompanies_.find(c => c.id === p.companyId)
+          const name = comp?.name_en || comp?.nameEn || p.companyId
+          acc[name] = (acc[name] || 0) + 1
+          return acc
+        }, {} as Record<string, number>)
+        const headers = [t_('Company', ''), t_('Projects', '')]
+        const rows: (string | number)[][] = Object.entries(byCompany).map(([name, count]) => [name, count])
+        return { headers, rows, sheetName: 'Projects by Company', filename: 'projects-by-company', pdfTitle: 'Projects by Company' }
+      }
+      case 'by-customer': {
+        const byCustomer = filteredProjects.reduce((acc, p) => {
+          const name = p.customerName || 'Unknown'
+          acc[name] = (acc[name] || 0) + 1
+          return acc
+        }, {} as Record<string, number>)
+        const headers = [t_('Customer', ''), t_('Projects', '')]
+        const rows: (string | number)[][] = Object.entries(byCustomer).sort((a, b) => b[1] - a[1]).map(([name, count]) => [name, count])
+        return { headers, rows, sheetName: 'Projects by Customer', filename: 'projects-by-customer', pdfTitle: 'Projects by Customer' }
+      }
+      case 'documents-register': {
+        const allDocs = filteredProjects.flatMap(p => p.documents.map(d => ({ ...d, projectName: p.name })))
+        const headers = [t_('Doc Number', ''), t_('Type', ''), t_('Project', ''), t_('Date', ''), t_('Status', '')]
+        const rows: (string | number)[][] = allDocs.map(d => [d.number, d.type, d.projectName, d.date, d.status === 'final' ? 'Final' : 'Draft'])
+        return { headers, rows, sheetName: 'Documents Register', filename: 'documents-register', pdfTitle: 'Documents Register' }
+      }
+      case 'tasks': {
+        const headers = [t_('Task', ''), t_('Customer', ''), t_('Status', ''), t_('Created By', ''), t_('Created', '')]
+        const rows: (string | number)[][] = filteredTasks.map(task => [
+          task.name,
+          task.customerName || '-',
+          statusLabels[task.status] || task.status,
+          task.createdBy || '-',
+          task.createdAt,
+        ])
+        return { headers, rows, sheetName: 'Tasks', filename: 'tasks-report', pdfTitle: 'Tasks Report' }
+      }
+      case 'overdue-tasks': {
+        const headers = [t_('Task', ''), t_('Customer', ''), t_('Created', ''), t_('Days Overdue', '')]
+        const rows: (string | number)[][] = filteredOverdueTasks.map(task => {
+          const days = Math.floor((Date.now() - new Date(task.createdAt).getTime()) / 86400000)
+          return [task.name, task.customerName || '-', task.createdAt, days]
+        })
+        return { headers, rows, sheetName: 'Overdue Tasks', filename: 'overdue-tasks', pdfTitle: 'Overdue Tasks' }
+      }
+      case 'user-activity': {
+        const userActivity = (companyUsers || []).map((u: any) => {
+          const count = (rawAuditEvents || []).filter(a =>
+            a.actor_user_id === u.id &&
+            companyIds.has(a.company_id || '')
+          ).length
+          return { ...u, actionCount: count, role: u.base_role || u.role || 'user' }
+        })
+        const headers = [t_('User', ''), t_('Email', ''), t_('Role', ''), t_('Actions Logged', '')]
+        const rows: (string | number)[][] = userActivity.map((u: any) => [u.name, u.email, u.role, u.actionCount])
+        return { headers, rows, sheetName: 'User Activity', filename: 'user-activity', pdfTitle: 'User Activity' }
+      }
+      case 'customer-export-history': {
+        const exportProjects = filteredProjects.filter(p => p.status === 'completed' || p.status === 'archived')
+        const headers = [t_('Customer', ''), t_('Project', ''), t_('Destination', ''), t_('Status', ''), t_('Date', '')]
+        const rows: (string | number)[][] = exportProjects.map(p => [
+          p.customerName || '-',
+          p.name,
+          `${p.destinationCity}${p.destinationCountry ? `, ${p.destinationCountry}` : ''}`,
+          p.status === 'completed' ? 'Completed' : 'Archived',
+          p.updatedAt,
+        ])
+        return { headers, rows, sheetName: 'Customer Export History', filename: 'customer-export-history', pdfTitle: 'Customer Export History' }
+      }
+      case 'material-export-history': {
+        const completedProjects = filteredProjects.filter(p => p.status === 'completed' || p.status === 'archived')
+        const materialExports = completedProjects.flatMap(p => p.materials.map(m => ({
+          materialName: m.materialName,
+          grade: m.grade || '-',
+          quantity: m.quantity,
+          unit: m.weightUnit,
+          customer: p.customerName || '-',
+        })))
+        const headers = [t_('Material', ''), t_('Grade', ''), t_('Quantity', ''), t_('Customer', '')]
+        const rows: (string | number)[][] = materialExports.map(m => [m.materialName, m.grade, `${m.quantity} ${m.unit}`, m.customer])
+        return { headers, rows, sheetName: 'Material Export History', filename: 'material-export-history', pdfTitle: 'Material Export History' }
+      }
+      case 'audit': {
+        const getUserName = (userId: string) => {
+          const user = (companyUsers || []).find((u: any) => u.id === userId)
+          return user?.name || userId
+        }
+        const headers = [t_('Timestamp', ''), t_('User', ''), t_('Action', ''), t_('Entity', ''), t_('Reference', '')]
+        const rows: (string | number)[][] = filteredAuditEvents.map(event => [
+          new Date(event.created_at).toLocaleString(),
+          getUserName(event.actor_user_id),
+          event.action,
+          event.entity_type,
+          event.entity_reference || event.entity_id,
+        ])
+        return { headers, rows, sheetName: 'Audit Report', filename: 'audit-report', pdfTitle: 'Audit Report' }
+      }
+      default:
+        return { headers: [] as string[], rows: [] as (string | number)[][], sheetName: '', filename: '', pdfTitle: '' }
+    }
+  }, [activeReport, filteredProjects, filteredTasks, filteredOverdueTasks, filteredAuditEvents, companyUsers, rawAuditEvents, companyIds])
+
+  const reportTitle = reports.find(r => r.id === activeReport)
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-gray-500">{t('Loading...', 'جاري التحميل...')}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="h-full flex overflow-hidden">
+      {/* Sidebar */}
+      <div className="w-64 flex-shrink-0 border-r border-gray-200 bg-white overflow-y-auto">
+        <div className="px-4 pt-5 pb-3">
+          <h1 className="text-lg font-bold text-gray-900">{t('Reports', 'التقارير')}</h1>
+        </div>
+        <nav className="px-2 pb-4">
+          {reports.map(report => (
+            <button
+              key={report.id}
+              onClick={() => setActiveReport(report.id)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-start transition-colors mb-0.5 ${
+                activeReport === report.id
+                  ? 'bg-brand-50 text-brand-700 font-semibold'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              {report.icon}
+              <span>{t(report.name, report.nameAr)}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-1">
+          {t(reportTitle?.name || '', reportTitle?.nameAr || '')}
+        </h2>
+        <p className="text-sm text-gray-500 mb-4">
+          {t('Data for current company', 'بيانات الشركة الحالية')}
+        </p>
+
+        {/* Filters + Actions rendered once */}
+        <ReportFilterBar filters={filters} onChange={setFilters} />
+        <ReportActions
+          headers={exportData.headers}
+          rows={exportData.rows}
+          sheetName={exportData.sheetName}
+          filename={exportData.filename}
+          pdfTitle={exportData.pdfTitle}
+        />
+
+        {/* Active report */}
+        {activeReport === 'by-status' && <ProjectsByStatusReport filtered={filteredProjects} />}
+        {activeReport === 'by-date' && <ProjectsByDateReport filtered={filteredProjects} />}
+        {activeReport === 'by-company' && <ProjectsByCompanyReport filtered={filteredProjects} />}
+        {activeReport === 'by-customer' && <ProjectsByCustomerReport filtered={filteredProjects} />}
+        {activeReport === 'documents-register' && <DocumentsRegisterReport filtered={filteredProjects} />}
+        {activeReport === 'tasks' && <TasksReport filtered={filteredTasks} />}
+        {activeReport === 'overdue-tasks' && <OverdueTasksReport filtered={filteredOverdueTasks} />}
+        {activeReport === 'user-activity' && <UserActivityReport filtered={filteredProjects} />}
+        {activeReport === 'customer-export-history' && <CustomerExportHistoryReport filtered={filteredProjects} />}
+        {activeReport === 'material-export-history' && <MaterialExportHistoryReport filtered={filteredProjects} />}
+        {activeReport === 'audit' && <AuditReport auditEvents={filteredAuditEvents} />}
+      </div>
+    </div>
+  )
+}

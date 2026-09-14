@@ -1,0 +1,7 @@
+.vercel
+e2e/.auth/
+.env.local
+coverage/
+dist/
+playwright-report/
+test-results/
