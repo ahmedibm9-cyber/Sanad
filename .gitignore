@@ -11,6 +11,7 @@ supabase/.temp/
 .wrangler/
 
 k6-tests/results-*.json
+k6-tests/results-*.jsonl
 k6-tests/smoke-results.json
 app/test-results.json
 app/e2e/tests-gen/
