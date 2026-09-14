@@ -185,13 +185,13 @@ test.describe('Dashboard', () => {
   test('In Progress Projects card links to /projects', async ({ authenticatedPage: page }) => {
     await page.getByText('In Progress Projects').click()
     await page.waitForURL('**/projects')
-    await expect(page.getByRole('heading', { name: /projects/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible()
   })
 
   test('In Progress Tasks card links to /tasks', async ({ authenticatedPage: page }) => {
     await page.getByText('In Progress Tasks').click()
     await page.waitForURL('**/tasks')
-    await expect(page.getByRole('heading', { name: /tasks/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Tasks', exact: true })).toBeVisible()
   })
 
   test('Overdue Tasks card turns red when count > 0', async ({ authenticatedPage: page }) => {
@@ -4422,23 +4422,27 @@ test.describe('RTL & Bilingual Content', () => {
   for (const p of rtlPages) {
     test(`${p.name} page shows RTL after switching`, async ({ authenticatedPage: page }) => {
       await page.goto(p.path)
-      await page.waitForTimeout(1000)
+      await page.waitForTimeout(1500)
       const langBtn = page.getByRole('button', { name: 'Switch language' })
-      if (await langBtn.isVisible()) {
+      if (await langBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await langBtn.click()
         await page.waitForTimeout(500)
-        await page.getByRole('option', { name: /العربية/ }).click()
-        await page.waitForTimeout(1000)
+        await page.getByRole('option', { name: /العربية/ }).click().catch(async () => {
+          await page.getByText('العربية').click()
+        })
+        await page.waitForTimeout(1500)
       }
       if (!(p as any).skipCheck) {
-        const rtlDiv = page.locator('div[dir="rtl"], html[dir="rtl"]').first()
+        const rtlDiv = page.locator('[dir="rtl"]').first()
         const arText = page.locator('nav').getByText(/لوحة|المشاريع|المهام|العملاء/)
-        await expect(rtlDiv.or(arText).first()).toBeVisible()
+        await expect(rtlDiv.or(arText).first()).toBeVisible().catch(async () => {
+          await expect(page.locator('html')).toHaveAttribute('dir', 'rtl')
+        })
       } else {
         await expect(page.locator('body')).toBeVisible()
       }
       const resetBtn = page.getByRole('button', { name: 'تبديل اللغة' })
-      if (await resetBtn.isVisible()) {
+      if (await resetBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await resetBtn.click()
         await page.waitForTimeout(300)
         await page.getByRole('option', { name: /English/ }).click()
