@@ -276,7 +276,6 @@ export class DocumentService {
    * Get documents for a company with optional filtering.
    */
   async getCompanyDocuments(
-    companyId: string,
     context: RequestContext,
     options: {
       type?: DocumentType
@@ -296,7 +295,7 @@ export class DocumentService {
     let query = (this.supabase as any)
       .from('documents')
       .select('*', { count: 'exact' })
-      .eq('company_id', companyId)
+      .eq('company_id', context.companyId)
       .is('deleted_at', null)
 
     if (type) {
@@ -340,6 +339,7 @@ export class DocumentService {
         updated_by: context.userId,
       })
       .eq('id', id)
+      .eq('company_id', doc.company_id)
 
     if (error) {
       throw handleSupabaseError(error)
@@ -350,6 +350,7 @@ export class DocumentService {
       .delete()
       .eq('entity_type', 'document')
       .eq('entity_id', id)
+      .eq('company_id', doc.company_id)
 
     return this.getDocumentById(id, context)
   }

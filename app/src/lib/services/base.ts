@@ -25,9 +25,9 @@ import {
 import { logAuditEvent } from '../logger'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-// ===========================================
-// Service Configuration
-// ===========================================
+  // ===========================================
+  // Service Configuration
+  // ===========================================
 
 export interface ServiceConfig {
   tableName: string
@@ -42,6 +42,16 @@ export interface ServiceConfig {
 // ===========================================
 // Base Service Class
 // ===========================================
+
+/**
+ * Allowed filter keys for findAll/count queries.
+ * Prevents arbitrary column filtering that could bypass company isolation.
+ */
+const ALLOWED_FILTER_KEYS = new Set([
+  'active', 'deleted_at', 'status', 'document_type',
+  'created_by', 'updated_by', 'category', 'file_type',
+  'entity_type', 'entity_id', 'company_id',
+])
 
 export abstract class BaseService<T extends Record<string, unknown>, TInsert, TUpdate> {
   protected supabase: SupabaseClient<Database>
@@ -92,10 +102,10 @@ export abstract class BaseService<T extends Record<string, unknown>, TInsert, TU
       query = query.eq('company_id', context.companyId)
     }
 
-    // Apply additional filters
+    // Apply additional filters (whitelisted keys only)
     if (options.filters) {
       Object.entries(options.filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
+        if (value !== undefined && value !== null && value !== '' && ALLOWED_FILTER_KEYS.has(key)) {
           query = query.eq(key, value)
         }
       })
@@ -191,6 +201,9 @@ export abstract class BaseService<T extends Record<string, unknown>, TInsert, TU
 
   /**
    * Update an existing record.
+   * Defense-in-depth: findById (line 211) filters by company_id when companyIdRequired is true.
+   * The UPDATE WHERE clause also includes company_id (lines 231-233), preventing cross-tenant
+   * updates even if RLS were misconfigured. Optimistic lock (version check) prevents silent overwrites.
    */
   async update(id: string, data: TUpdate, context: RequestContext): Promise<T> {
     if (this.config.editPermission) {
@@ -255,6 +268,7 @@ export abstract class BaseService<T extends Record<string, unknown>, TInsert, TU
         updated_by: context.userId,
       } as any)
       .eq('id', id)
+      .eq('company_id', context.companyId)
 
     if (error) {
       throw handleSupabaseError(error)
@@ -305,6 +319,7 @@ export abstract class BaseService<T extends Record<string, unknown>, TInsert, TU
         updated_by: context.userId,
       } as any)
       .eq('id', id)
+      .eq('company_id', context.companyId)
 
     if (error) {
       throw handleSupabaseError(error)
@@ -315,6 +330,7 @@ export abstract class BaseService<T extends Record<string, unknown>, TInsert, TU
       .from('trash_entries')
       .delete()
       .eq('id', (trashEntry as any).id)
+      .eq('company_id', context.companyId)
 
     // Get and return restored record
     return this.findById(id, context)
@@ -337,7 +353,7 @@ export abstract class BaseService<T extends Record<string, unknown>, TInsert, TU
 
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
+        if (value !== undefined && value !== null && value !== '' && ALLOWED_FILTER_KEYS.has(key)) {
           query = query.eq(key, value)
         }
       })

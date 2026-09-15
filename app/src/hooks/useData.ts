@@ -108,7 +108,7 @@ export function useCustomers(companyId: string | undefined) {
   const ctx = useRequestContext()
   return useFetch(async () => {
     if (!companyId || !ctx) return []
-    const result = await service.getCustomers(companyId, ctx)
+    const result = await service.getCustomers(ctx)
     return result.data
   }, [companyId, ctx?.userId])
 }
@@ -232,7 +232,7 @@ export function useMaterials(companyId: string | undefined) {
   const ctx = useRequestContext()
   return useFetch(async () => {
     if (!companyId || !ctx) return []
-    const result = await service.getMaterials(companyId, ctx)
+    const result = await service.getMaterials(ctx)
     return result.data
   }, [companyId, ctx?.userId])
 }
@@ -550,7 +550,7 @@ export function useCompanyDocuments(companyId: string | undefined) {
   const ctx = useRequestContext()
   return useFetch(async () => {
     if (!companyId || !ctx) return []
-    const result = await service.getCompanyDocuments(companyId, ctx)
+    const result = await service.getCompanyDocuments(ctx)
     return result.data
   }, [companyId, ctx?.userId])
 }

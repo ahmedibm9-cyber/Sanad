@@ -379,20 +379,19 @@ export class SharedDataService {
     errorMessage?: string,
   ): Promise<void> {
     for (const conflict of conflicts) {
-      await (this.supabase as any)
-        .from('audit_events')
-        .insert({
-          company_id: context.companyId!,
-          actor_user_id: context.userId,
-          action: 'EDIT',
-          entity_type: 'document',
-          entity_id: documentId,
-          entity_ref: `Shared data sync for field: ${conflict.fieldKey}`,
-          before_json: { [conflict.fieldKey]: beforeData[conflict.fieldKey] },
-          after_json: errorMessage
+      await (this.supabase as any).rpc('record_audit_event', {
+        p_company_id: context.companyId!,
+        p_action: 'EDIT',
+        p_entity_type: 'document',
+        p_entity_id: documentId,
+        p_changes: {
+          entityReference: `Shared data sync for field: ${conflict.fieldKey}`,
+          before: { [conflict.fieldKey]: beforeData[conflict.fieldKey] },
+          after: errorMessage
             ? { [conflict.fieldKey]: beforeData[conflict.fieldKey], _sync_error: errorMessage }
             : { [conflict.fieldKey]: afterData[conflict.fieldKey] },
-        })
+        },
+      })
     }
   }
 
@@ -404,18 +403,17 @@ export class SharedDataService {
     projectUpdateData: Record<string, unknown>
   ): Promise<void> {
     for (const conflict of conflicts) {
-      await (this.supabase as any)
-        .from('audit_events')
-        .insert({
-          company_id: context.companyId!,
-          actor_user_id: context.userId,
-          action: 'EDIT',
-          entity_type: 'work_item',
-          entity_id: workItemId,
-          entity_ref: `Shared data sync for field: ${conflict.fieldKey}`,
-          before_json: { [conflict.fieldKey]: projectSnapshot[conflict.fieldKey] },
-          after_json: { [conflict.fieldKey]: projectUpdateData[conflict.fieldKey] },
-        })
+      await (this.supabase as any).rpc('record_audit_event', {
+        p_company_id: context.companyId!,
+        p_action: 'EDIT',
+        p_entity_type: 'work_item',
+        p_entity_id: workItemId,
+        p_changes: {
+          entityReference: `Shared data sync for field: ${conflict.fieldKey}`,
+          before: { [conflict.fieldKey]: projectSnapshot[conflict.fieldKey] },
+          after: { [conflict.fieldKey]: projectUpdateData[conflict.fieldKey] },
+        },
+      })
     }
   }
 

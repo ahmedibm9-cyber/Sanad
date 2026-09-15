@@ -77,7 +77,7 @@ export function LicensingSettings() {
         <div className="flex items-center gap-2">
           <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 font-mono text-sm text-gray-600 tracking-wider flex items-center gap-2">
             <Key size={14} className="text-gray-400" />
-            {licenseInfo?.key || 'No license key configured'}
+            {licenseInfo?.key ? '••••••••••••••••' : 'No license key configured'}
           </div>
         </div>
         {licenseInfo?.plan && (

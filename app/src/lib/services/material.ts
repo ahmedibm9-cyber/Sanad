@@ -92,7 +92,6 @@ export class MaterialService {
    * Get all materials for a company.
    */
   async getMaterials(
-    companyId: string,
     context: RequestContext,
     options: { search?: string; page?: number; pageSize?: number } = {}
   ): Promise<{ data: Material[]; total: number }> {
@@ -107,7 +106,7 @@ export class MaterialService {
     let query = (this.supabase as any)
       .from('materials')
       .select('*', { count: 'exact' })
-      .eq('company_id', companyId)
+      .eq('company_id', context.companyId)
       .eq('active', true)
       .is('deleted_at', null)
 
@@ -295,6 +294,7 @@ export class MaterialService {
       .delete()
       .eq('entity_type', 'material')
       .eq('entity_id', id)
+      .eq('company_id', context.companyId)
 
     appLogger.info('Material restored', { materialId: id })
     return this.getMaterialById(id, context)
@@ -467,6 +467,7 @@ export class MaterialService {
       .from('material_price_events')
       .select('*')
       .eq('material_id', materialId)
+      .eq('company_id', context.companyId)
       .order('recorded_at', { ascending: false })
       .limit(limit)
 
@@ -480,11 +481,12 @@ export class MaterialService {
   /**
    * Get latest selling price for a material.
    */
-  async getLatestPrice(materialId: string): Promise<{ price: number; currency: string } | null> {
+  async getLatestPrice(materialId: string, context: RequestContext): Promise<{ price: number; currency: string } | null> {
     const { data, error } = await (this.supabase as any)
       .from('materials')
       .select('last_selling_price, last_selling_currency')
       .eq('id', materialId)
+      .eq('company_id', context.companyId)
       .single()
 
     if (error || !data) {
@@ -504,11 +506,11 @@ export class MaterialService {
   /**
    * Get material count for a company.
    */
-  async getMaterialCount(companyId: string): Promise<number> {
+  async getMaterialCount(context: RequestContext): Promise<number> {
     const { count, error } = await (this.supabase as any)
       .from('materials')
       .select('*', { count: 'exact', head: true })
-      .eq('company_id', companyId)
+      .eq('company_id', context.companyId)
       .eq('active', true)
       .is('deleted_at', null)
 

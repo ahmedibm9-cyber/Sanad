@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => {
   const state = {
     existingPermissions: [] as Array<{ permission_key: string; allowed: boolean }>,
   }
-  const auditInsert = vi.fn().mockResolvedValue({ error: null })
+  const auditRpc = vi.fn().mockResolvedValue({ error: null })
   const membershipChain = {
     select: vi.fn(() => membershipChain),
     delete: vi.fn(() => membershipChain),
@@ -18,12 +18,12 @@ const mocks = vi.hoisted(() => {
   const mockSupabase = {
     from: vi.fn((table: string) => {
       if (table === 'membership_permissions') return membershipChain
-      if (table === 'audit_events') return { insert: auditInsert }
       return {}
     }),
+    rpc: auditRpc,
   }
 
-  return { state, auditInsert, mockSupabase }
+  return { state, auditRpc, mockSupabase }
 })
 
 vi.mock('@/lib/supabase', () => ({
@@ -43,7 +43,7 @@ describe('MembershipService', () => {
     mocks.state.existingPermissions = [
       { permission_key: 'projects.view', allowed: true },
     ]
-    mocks.auditInsert.mockResolvedValue({ error: null })
+    mocks.auditRpc.mockResolvedValue({ error: null })
 
     const { MembershipService } = await import('@/lib/services/membership')
     const service = new MembershipService()
@@ -59,14 +59,16 @@ describe('MembershipService', () => {
       },
     )
 
-    expect(mocks.auditInsert).toHaveBeenCalledWith(expect.objectContaining({
-      company_id: 'company-1',
-      actor_user_id: 'user-1',
-      action: 'PERMISSION_CHANGE',
-      entity_type: 'membership',
-      entity_id: 'membership-1',
-      before_json: { 'projects.view': true },
-      after_json: { 'projects.view': false },
+    expect(mocks.auditRpc).toHaveBeenCalledWith('record_audit_event', expect.objectContaining({
+      p_company_id: 'company-1',
+      p_action: 'PERMISSION_CHANGE',
+      p_entity_type: 'membership',
+      p_entity_id: 'membership-1',
+      p_changes: expect.objectContaining({
+        entityReference: 'membership-1',
+        before: { 'projects.view': true },
+        after: { 'projects.view': false },
+      }),
     }))
   })
 })

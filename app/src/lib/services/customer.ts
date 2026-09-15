@@ -124,7 +124,6 @@ export class CustomerService {
    * Get all customers for a company.
    */
   async getCustomers(
-    companyId: string,
     context: RequestContext,
     options: { search?: string; page?: number; pageSize?: number } = {}
   ): Promise<{ data: Customer[]; total: number }> {
@@ -139,7 +138,7 @@ export class CustomerService {
     let query = (this.supabase as any)
       .from('customers')
       .select('*', { count: 'exact' })
-      .eq('company_id', companyId)
+      .eq('company_id', context.companyId)
       .eq('active', true)
       .is('deleted_at', null)
 
@@ -361,6 +360,7 @@ export class CustomerService {
       .delete()
       .eq('entity_type', 'customer')
       .eq('entity_id', id)
+      .eq('company_id', context.companyId)
 
     appLogger.info('Customer restored', { customerId: id })
     return this.getCustomerById(id, context)
@@ -369,11 +369,11 @@ export class CustomerService {
   /**
    * Get customer count for a company.
    */
-  async getCustomerCount(companyId: string, context: RequestContext): Promise<number> {
+  async getCustomerCount(context: RequestContext): Promise<number> {
     const { count, error } = await (this.supabase as any)
       .from('customers')
       .select('*', { count: 'exact', head: true })
-      .eq('company_id', companyId)
+      .eq('company_id', context.companyId)
       .eq('active', true)
       .is('deleted_at', null)
 

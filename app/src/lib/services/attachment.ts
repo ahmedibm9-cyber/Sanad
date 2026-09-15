@@ -120,6 +120,11 @@ export class AttachmentService {
   async uploadAttachment(input: CreateAttachmentInput, context: RequestContext): Promise<Attachment> {
     requirePermission(context, 'files.upload')
 
+    // Validate R2 key belongs to this company's namespace
+    if (!input.r2_object_key || !input.r2_object_key.startsWith(`companies/${context.companyId}/`)) {
+      throw new Error('Invalid R2 object key: must belong to current company namespace')
+    }
+
     const { data: workItem } = await (this.supabase as any)
       .from('work_items')
       .select('company_id')
@@ -196,6 +201,18 @@ export class AttachmentService {
   async deleteAttachment(id: string, context: RequestContext): Promise<void> {
     requirePermission(context, 'files.delete')
 
+    const { data: attachment, error: fetchError } = await (this.supabase as any)
+      .from('attachments')
+      .select('r2_object_key, company_id')
+      .eq('id', id)
+      .eq('company_id', context.companyId)
+      .single()
+
+    if (fetchError) {
+      appLogger.error('Error fetching attachment for deletion', fetchError)
+      throw handleSupabaseError(fetchError)
+    }
+
     const { error } = await (this.supabase as any)
       .from('attachments')
       .update({ active: false })
@@ -205,6 +222,12 @@ export class AttachmentService {
     if (error) {
       appLogger.error('Error deleting attachment', error)
       throw handleSupabaseError(error)
+    }
+
+    try {
+      await deleteFromR2(attachment.r2_object_key, attachment.company_id)
+    } catch (r2Error) {
+      appLogger.error('Failed to delete attachment from R2', { error: r2Error, r2_object_key: attachment.r2_object_key })
     }
 
     appLogger.info('Attachment deleted', { attachmentId: id })
@@ -232,11 +255,12 @@ export class AttachmentService {
   /**
    * Get attachment count for a work item.
    */
-  async getAttachmentCount(workItemId: string): Promise<number> {
+  async getAttachmentCount(workItemId: string, context: RequestContext): Promise<number> {
     const { count, error } = await (this.supabase as any)
       .from('attachments')
       .select('*', { count: 'exact', head: true })
       .eq('work_item_id', workItemId)
+      .eq('company_id', context.companyId)
       .eq('active', true)
 
     if (error) {

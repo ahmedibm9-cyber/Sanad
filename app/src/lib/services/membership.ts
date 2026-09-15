@@ -341,18 +341,13 @@ export class MembershipService {
       return acc
     }, {})
 
-    const { error: auditError } = await (this.supabase as any)
-      .from('audit_events')
-      .insert({
-        company_id: context.companyId,
-        actor_user_id: context.userId,
-        action: 'PERMISSION_CHANGE',
-        entity_type: 'membership',
-        entity_id: membershipId,
-        entity_reference: membershipId,
-        before_json: before,
-        after_json: after,
-      })
+    const { error: auditError } = await (this.supabase as any).rpc('record_audit_event', {
+      p_company_id: context.companyId,
+      p_action: 'PERMISSION_CHANGE',
+      p_entity_type: 'membership',
+      p_entity_id: membershipId,
+      p_changes: { entityReference: membershipId, before, after },
+    })
 
     if (auditError) {
       appLogger.error('Failed to audit permission update', auditError)

@@ -16,7 +16,10 @@ describe('SharedDataService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    testState.supabase = { from: vi.fn() }
+    testState.supabase = {
+      from: vi.fn(),
+      rpc: vi.fn().mockResolvedValue({ error: null }),
+    }
     service = new SharedDataService()
   })
 
@@ -61,7 +64,6 @@ describe('SharedDataService', () => {
   })
 
   it('audits the project and each affected document, including a failed update', async () => {
-    const auditEvents: Record<string, unknown>[] = []
     const project = { id: 'work-1', quantity: 50, unit_price: 1000, currency: 'SAR' }
     const documents = new Map([
       ['doc-1', { id: 'doc-1', document_data: { quantity: 50 } }],
@@ -70,13 +72,6 @@ describe('SharedDataService', () => {
     let documentUpdateCount = 0
 
     testState.supabase.from.mockImplementation((table: string) => {
-      if (table === 'audit_events') {
-        return { insert: vi.fn(async (event: Record<string, unknown>) => {
-          auditEvents.push(event)
-          return { error: null }
-        }) }
-      }
-
       let id: string | undefined
       return {
         select: vi.fn(() => ({
@@ -111,18 +106,32 @@ describe('SharedDataService', () => {
       isSystemAdmin: false,
     })
 
-    expect(auditEvents).toEqual([
-      expect.objectContaining({
-        company_id: 'company-1', actor_user_id: 'user-1', entity_type: 'work_item', entity_id: 'work-1',
-        before_json: { quantity: 50 }, after_json: { quantity: 55 },
+    expect(testState.supabase.rpc).toHaveBeenCalledTimes(3)
+    expect(testState.supabase.rpc).toHaveBeenCalledWith('record_audit_event', expect.objectContaining({
+      p_company_id: 'company-1',
+      p_action: 'EDIT',
+      p_entity_type: 'work_item',
+      p_entity_id: 'work-1',
+      p_changes: expect.objectContaining({
+        entityReference: expect.any(String),
+        before: { quantity: 50 },
+        after: { quantity: 55 },
       }),
-      expect.objectContaining({
-        entity_type: 'document', entity_id: 'doc-1', before_json: { quantity: 50 }, after_json: { quantity: 55 },
+    }))
+    expect(testState.supabase.rpc).toHaveBeenCalledWith('record_audit_event', expect.objectContaining({
+      p_company_id: 'company-1',
+      p_action: 'EDIT',
+      p_entity_type: 'document',
+      p_entity_id: 'doc-1',
+    }))
+    expect(testState.supabase.rpc).toHaveBeenCalledWith('record_audit_event', expect.objectContaining({
+      p_company_id: 'company-1',
+      p_action: 'EDIT',
+      p_entity_type: 'document',
+      p_entity_id: 'doc-2',
+      p_changes: expect.objectContaining({
+        after: expect.objectContaining({ _sync_error: 'DB error' }),
       }),
-      expect.objectContaining({
-        entity_type: 'document', entity_id: 'doc-2', before_json: { quantity: 60 },
-        after_json: { quantity: 60, _sync_error: 'DB error' },
-      }),
-    ])
+    }))
   })
 })

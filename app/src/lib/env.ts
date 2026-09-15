@@ -5,8 +5,6 @@
 export interface ClientEnvironment {
   supabaseUrl: string
   supabaseAnonKey: string
-  licenseServerUrl?: string
-  licenseKey?: string
   appName: string
   appVersion: string
   appEnv: 'development' | 'staging' | 'production'
@@ -61,8 +59,6 @@ function getValidatedClientEnv(): ClientEnvironment {
   _clientEnv = {
     supabaseUrl,
     supabaseAnonKey,
-    licenseServerUrl: validateOptional(import.meta.env.VITE_LICENSE_SERVER_URL),
-    licenseKey: validateOptional(import.meta.env.VITE_LICENSE_KEY),
     appName: import.meta.env.VITE_APP_NAME || 'SANAD',
     appVersion: import.meta.env.VITE_APP_VERSION || '0.1.0',
     appEnv: (import.meta.env.VITE_APP_ENV || 'development') as 'development' | 'staging' | 'production',
@@ -107,8 +103,6 @@ export const env = {
   get isDevelopment(): boolean { return getClientEnv().appEnv === 'development' },
   get isStaging(): boolean { return getClientEnv().appEnv === 'staging' },
   get isProduction(): boolean { return getClientEnv().appEnv === 'production' },
-  get licenseServerUrl(): string | undefined { return getClientEnv().licenseServerUrl },
-  get licenseKey(): string | undefined { return getClientEnv().licenseKey },
   get appName(): string { return getClientEnv().appName },
   get appVersion(): string { return getClientEnv().appVersion },
   get appEnv(): string { return getClientEnv().appEnv },

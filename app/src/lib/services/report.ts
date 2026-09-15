@@ -264,19 +264,19 @@ export class ReportService {
   private async userActivityReport(filters: ReportFilters, context: RequestContext): Promise<ReportResult> {
     let query = (this.supabase as any)
       .from('audit_events')
-      .select('actor_user_id, action, entity_type, created_at')
+      .select('user_id, action, entity_type, created_at')
       .eq('company_id', context.companyId!)
       .order('created_at', { ascending: false })
       .limit(100)
 
-    if (filters.userId) query = query.eq('actor_user_id', filters.userId)
+    if (filters.userId) query = query.eq('user_id', filters.userId)
 
     const { data, error } = await query
 
     if (error) throw handleSupabaseError(error)
 
     const rows = (data || []).map((item: any) => ({
-      user: item.actor_user_id,
+      user: item.user_id,
       action: item.action,
       entity: item.entity_type,
       date: item.created_at,
@@ -292,7 +292,7 @@ export class ReportService {
   private async auditReport(filters: ReportFilters, context: RequestContext): Promise<ReportResult> {
     let query = (this.supabase as any)
       .from('audit_events')
-      .select('actor_user_id, action, entity_type, entity_reference, created_at')
+      .select('user_id, action, entity_type, changes, created_at')
       .eq('company_id', context.companyId!)
       .order('created_at', { ascending: false })
       .limit(100)
@@ -305,10 +305,10 @@ export class ReportService {
     if (error) throw handleSupabaseError(error)
 
     const rows = (data || []).map((item: any) => ({
-      user: item.actor_user_id,
+      user: item.user_id,
       action: item.action,
       entity: item.entity_type,
-      reference: item.entity_reference,
+      reference: item.changes?.entityReference || '',
       date: item.created_at,
     }))
 

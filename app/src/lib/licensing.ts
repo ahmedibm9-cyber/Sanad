@@ -80,12 +80,7 @@ export class LicenseService {
 
   constructor(config?: Partial<LicenseConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config }
-    if (env.licenseServerUrl) {
-      this.config.serverUrl = env.licenseServerUrl
-    }
-    if (env.licenseKey) {
-      this.config.applicationCredential = undefined // Never store in client
-    }
+    // Server URL must be provided via config or stored locally
   }
 
   /**
@@ -223,9 +218,6 @@ export class LicenseService {
     // Try storage first
     const storedKey = localStorage.getItem(STORAGE_KEYS.LICENSE_KEY)
     if (storedKey) return storedKey
-
-    // Try environment
-    if (env.licenseKey) return env.licenseKey
 
     return null
   }

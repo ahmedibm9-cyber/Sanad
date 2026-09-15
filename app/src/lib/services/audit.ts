@@ -16,7 +16,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // ===========================================
 
 export type AuditAction = 
-  | 'CREATE' | 'VIEW' | 'EDIT' | 'MOVE_TO_TRASH' | 'RESTORE'
+  | 'CREATE' | 'VIEW' | 'EDIT' | 'DELETE' | 'MOVE_TO_TRASH' | 'RESTORE'
   | 'DOWNLOAD' | 'PDF_GENERATE' | 'PDF_DOWNLOAD' | 'EXPORT'
   | 'ARCHIVE' | 'REOPEN' | 'PERMISSION_CHANGE' | 'SETTINGS_CHANGE'
   | 'FACTORY_IMPORT' | 'BACKUP' | 'RESTORE_BACKUP' | 'TASK_TO_PROJECT'
@@ -70,19 +70,20 @@ export class AuditService {
     after?: Record<string, unknown>
     metadata?: Record<string, unknown>
   }, context: RequestContext): Promise<void> {
-    const { error } = await (this.supabase as any)
-      .from('audit_events')
-      .insert({
-        company_id: context.companyId || null,
-        actor_user_id: context.userId,
-        action: params.action,
-        entity_type: params.entityType,
-        entity_id: params.entityId || null,
-        entity_reference: params.entityReference || null,
-        before_json: params.before || null,
-        after_json: params.after || null,
-        metadata_json: params.metadata || null,
-      })
+    if (!context.companyId) return
+
+    const { error } = await (this.supabase as any).rpc('record_audit_event', {
+      p_company_id: context.companyId,
+      p_action: params.action,
+      p_entity_type: params.entityType,
+      p_entity_id: params.entityId || null,
+      p_changes: {
+        entityReference: params.entityReference || null,
+        before: params.before || null,
+        after: params.after || null,
+        metadata: params.metadata || null,
+      },
+    })
 
     if (error) {
       // Audit failures should not break the application
@@ -137,7 +138,14 @@ export class AuditService {
     }
 
     return {
-      data: data || [],
+      data: (data || []).map((event: any) => ({
+        ...event,
+        actor_user_id: event.user_id,
+        entity_reference: event.changes?.entityReference || null,
+        before_json: event.changes?.before || null,
+        after_json: event.changes?.after || null,
+        metadata_json: event.changes?.metadata || null,
+      })),
       total: count || 0,
     }
   }
@@ -165,7 +173,14 @@ export class AuditService {
       throw handleSupabaseError(error)
     }
 
-    return data || []
+    return (data || []).map((event: any) => ({
+      ...event,
+      actor_user_id: event.user_id,
+      entity_reference: event.changes?.entityReference || null,
+      before_json: event.changes?.before || null,
+      after_json: event.changes?.after || null,
+      metadata_json: event.changes?.metadata || null,
+    }))
   }
 
   /**
