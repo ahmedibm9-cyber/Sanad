@@ -166,7 +166,7 @@ export default function ProjectDetailPage() {
     if (!editingNoteId || !editingNoteContent.trim() || !user) return
     setMutationError(null)
     try {
-      await getNoteService().updateNote(editingNoteId, { body: editingNoteContent.trim() }, { userId: user.id, companyId: currentCompany.id, permissions: permissions?.permissions || {}, isSystemAdmin: user.isSystemAdmin })
+      await getNoteService().updateNote(editingNoteId, { content: editingNoteContent.trim() }, { userId: user.id, companyId: currentCompany.id, permissions: permissions?.permissions || {}, isSystemAdmin: user.isSystemAdmin })
       refetchNotes()
       setEditingNoteId(null)
       setEditingNoteContent('')
@@ -512,7 +512,7 @@ export default function ProjectDetailPage() {
               {t('Documents', 'المستندات')} ({hookDocs.length})
             </h3>
             <div className="relative">
-              <button onClick={() => setShowInvoiceDropdown(!showInvoiceDropdown)} className="btn-primary">
+              <button onClick={(e) => { e.stopPropagation(); setShowInvoiceDropdown(!showInvoiceDropdown) }} className="btn-primary">
                 <Plus className="w-4 h-4 me-1.5" />
                 {t('New Document', 'مستند جديد')}
                 <ChevronDown className="w-3 h-3 ms-1.5" />
@@ -744,7 +744,7 @@ export default function ProjectDetailPage() {
                   if (!user) return
                   setSavingIssue(true); setMutationError(null)
                   try {
-                    await getReportIssueService().createIssue(workItem.id, { body: issueDesc.trim(), severity: issueSeverity }, { userId: user.id, companyId: currentCompany.id, permissions: permissions?.permissions || {}, isSystemAdmin: user.isSystemAdmin })
+                    await getReportIssueService().createIssue(workItem.id, { description: issueDesc.trim(), severity: issueSeverity }, { userId: user.id, companyId: currentCompany.id, permissions: permissions?.permissions || {}, isSystemAdmin: user.isSystemAdmin })
                     await refetchIssues(); setIssueDesc(''); setShowIssueForm(false)
                   } catch (error) {
                     setMutationError(error instanceof Error ? error.message : t('The issue could not be saved. Your entered data has been preserved.', 'تعذر حفظ المشكلة. تم الاحتفاظ بالبيانات المدخلة.'))
@@ -764,7 +764,7 @@ export default function ProjectDetailPage() {
                 return (
                   <div key={issue.id} className="card p-4">
                     <div className="flex items-start justify-between">
-                      <p className="text-sm text-gray-700 flex-1">{issue.body}</p>
+                      <p className="text-sm text-gray-700 flex-1">{issue.description}</p>
                     </div>
                     <div className="flex items-center gap-3 mt-3">
                       <div>
@@ -795,7 +795,7 @@ export default function ProjectDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                      <span>{t('Reported by', 'أبلغه')} {issue.reporter_user_id || '—'}</span>
+                      <span>{t('Reported by', 'أبلغه')} {issue.reported_by || '—'}</span>
                       <span>&middot;</span>
                       <span>
                         {new Date(issue.created_at).toLocaleDateString('en-US', {
@@ -836,7 +836,7 @@ export default function ProjectDetailPage() {
                   if (!user) return
                   setSavingNote(true); setMutationError(null)
                   try {
-                    await getNoteService().createNote(workItem.id, { body: newNote.trim() }, { userId: user.id, companyId: currentCompany.id, permissions: permissions?.permissions || {}, isSystemAdmin: user.isSystemAdmin })
+                    await getNoteService().createNote(workItem.id, { content: newNote.trim() }, { userId: user.id, companyId: currentCompany.id, permissions: permissions?.permissions || {}, isSystemAdmin: user.isSystemAdmin })
                     await refetchNotes(); setNewNote(''); setShowNoteForm(false)
                   } catch (error) {
                     setMutationError(error instanceof Error ? error.message : t('The note could not be saved. Your entered data has been preserved.', 'تعذر حفظ الملاحظة. تم الاحتفاظ بالبيانات المدخلة.'))
@@ -875,9 +875,9 @@ export default function ProjectDetailPage() {
                     </div>
                   ) : (
                     <>
-                      <p className="text-sm text-gray-700">{note.body}</p>
+                      <p className="text-sm text-gray-700">{note.content}</p>
                       <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                        <span>{note.author_user_id || '—'}</span>
+                        <span>{note.created_by || '—'}</span>
                         <span>&middot;</span>
                         <span>
                           {new Date(note.created_at).toLocaleDateString('en-US', {
@@ -887,7 +887,7 @@ export default function ProjectDetailPage() {
                           })}
                         </span>
                         <button
-                          onClick={() => startEditNote(note.id, note.body)}
+                          onClick={() => startEditNote(note.id, note.content)}
                           className="ms-auto text-gray-400 hover:text-brand-600 transition-colors"
                           title={t('Edit', 'تعديل')}
                           aria-label={t('Edit note', 'تعديل الملاحظة')}

@@ -22,8 +22,8 @@ export interface ReportIssue {
   id: string
   company_id: string
   work_item_id: string
-  reporter_user_id: string
-  body: string
+  reported_by: string
+  description: string
   severity: IssueSeverity
   status: IssueStatus
   resolved_by: string | null
@@ -33,12 +33,12 @@ export interface ReportIssue {
 }
 
 export interface CreateIssueInput {
-  body: string
+  description: string
   severity?: IssueSeverity
 }
 
 export interface UpdateIssueInput {
-  body?: string
+  description?: string
   severity?: IssueSeverity
   status?: IssueStatus
 }
@@ -116,8 +116,8 @@ export class ReportIssueService {
       .insert({
         company_id: workItem.company_id,
         work_item_id: workItemId,
-        reporter_user_id: context.userId,
-        body: input.body,
+        reported_by: context.userId,
+        description: input.description,
         severity: input.severity || 'medium',
         status: 'open',
       })
@@ -140,7 +140,7 @@ export class ReportIssueService {
     const existing = await this.getIssueById(id, context)
 
     const updateData: Record<string, unknown> = {}
-    if (input.body !== undefined) updateData.body = input.body
+    if (input.description !== undefined) updateData.description = input.description
     if (input.severity !== undefined) updateData.severity = input.severity
     if (input.status !== undefined) {
       updateData.status = input.status

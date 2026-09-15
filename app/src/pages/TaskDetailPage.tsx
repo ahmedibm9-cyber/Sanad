@@ -173,8 +173,8 @@ export default function TaskDetailPage() {
   const mappedNotes = useMemo<ProjectNote[]>(() => {
     return (dbNotes ?? []).map((n: Note) => ({
       id: n.id,
-      content: n.body,
-      author: n.author_user_id,
+      content: n.content,
+      author: n.created_by,
       createdAt: n.created_at,
     }))
   }, [dbNotes])
@@ -183,10 +183,10 @@ export default function TaskDetailPage() {
   const mappedIssues = useMemo<ReportIssue[]>(() => {
     return (dbIssues ?? []).map((i: DbReportIssue) => ({
       id: i.id,
-      description: i.body,
+      description: i.description,
       severity: i.severity as ReportIssue['severity'],
       status: i.status as ReportIssue['status'],
-      reporter: i.reporter_user_id,
+      reporter: i.reported_by,
       createdAt: i.created_at,
     }))
   }, [dbIssues])
@@ -726,7 +726,7 @@ export default function TaskDetailPage() {
                 <button onClick={() => { setShowIssueForm(false); setIssueDesc(''); setIssueSeverity('medium') }} className="btn-ghost">{t('Cancel', 'إلغاء')}</button>
                 <button onClick={async () => {
                   if (!issueDesc.trim() || !user || !task) return
-                  await getReportIssueService().createIssue(task.id, { body: issueDesc.trim(), severity: issueSeverity as any }, { userId: user.id, companyId: currentCompany.id, permissions: permissions?.permissions || {}, isSystemAdmin: user.isSystemAdmin })
+                   await getReportIssueService().createIssue(task.id, { description: issueDesc.trim(), severity: issueSeverity as any }, { userId: user.id, companyId: currentCompany.id, permissions: permissions?.permissions || {}, isSystemAdmin: user.isSystemAdmin })
                   await refetchIssues(); setIssueDesc(''); setIssueSeverity('medium'); setShowIssueForm(false)
                 }} className="btn-primary">{t('Submit', 'إرسال')}</button>
               </div>
@@ -805,7 +805,7 @@ export default function TaskDetailPage() {
                 <button onClick={() => { setShowNoteForm(false); setNewNote('') }} className="btn-ghost">{t('Cancel', 'إلغاء')}</button>
                 <button onClick={async () => {
                   if (!newNote.trim() || !user || !task) return
-                  await getNoteService().createNote(task.id, { body: newNote.trim() }, { userId: user.id, companyId: currentCompany.id, permissions: permissions?.permissions || {}, isSystemAdmin: user.isSystemAdmin })
+                   await getNoteService().createNote(task.id, { content: newNote.trim() }, { userId: user.id, companyId: currentCompany.id, permissions: permissions?.permissions || {}, isSystemAdmin: user.isSystemAdmin })
                   await refetchNotes(); setNewNote(''); setShowNoteForm(false)
                 }} className="btn-primary">{t('Save Note', 'حفظ الملاحظة')}</button>
               </div>

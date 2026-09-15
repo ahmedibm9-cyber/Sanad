@@ -110,7 +110,7 @@ export function useCustomers(companyId: string | undefined) {
     if (!companyId || !ctx) return []
     const result = await service.getCustomers(ctx)
     return result.data
-  }, [companyId, ctx?.userId])
+  }, [companyId, ctx])
 }
 
 export function useCustomerById(id: string | undefined) {
@@ -148,7 +148,7 @@ export function useCreateCustomer() {
       return result
     } catch (err) {
       appLogger.error('Failed to create customer', err)
-      return null
+      throw err
     } finally {
       setLoading(false)
     }

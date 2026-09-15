@@ -36,8 +36,8 @@ function makeNote(overrides: Partial<import('@/lib/services/note').Note> = {}) {
     id: 'note-1',
     company_id: 'company-1',
     work_item_id: 'wi-1',
-    author_user_id: 'user-1',
-    body: 'Test note',
+    created_by: 'user-1',
+    content: 'Test note',
     active: true,
     created_at: new Date().toISOString(),
     ...overrides,
@@ -211,7 +211,7 @@ describe('NoteService — soft delete (active column)', () => {
     const service = new NoteService()
     const context = makeContext({ userId: 'other-user', isSystemAdmin: false })
 
-    const deletedNote = makeNote({ active: false, author_user_id: 'user-1' })
+    const deletedNote = makeNote({ active: false, created_by: 'user-1' })
     const chain = createChainableMock({ data: deletedNote, error: null })
 
     // @ts-expect-error – private
@@ -227,7 +227,7 @@ describe('NoteService — soft delete (active column)', () => {
     const service = new NoteService()
     const context = makeContext({ userId: 'other-user', isSystemAdmin: false })
 
-    const existingNote = makeNote({ author_user_id: 'user-1' })
+    const existingNote = makeNote({ created_by: 'user-1' })
     const chain = createChainableMock({ data: existingNote, error: null })
 
     // @ts-expect-error – private

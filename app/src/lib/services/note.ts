@@ -18,18 +18,18 @@ export interface Note {
   id: string
   company_id: string
   work_item_id: string
-  author_user_id: string
-  body: string
+  created_by: string
+  content: string
   active: boolean
   created_at: string
 }
 
 export interface CreateNoteInput {
-  body: string
+  content: string
 }
 
 export interface UpdateNoteInput {
-  body: string
+  content: string
 }
 
 // ===========================================
@@ -106,8 +106,8 @@ export class NoteService {
       .insert({
         company_id: workItem.company_id,
         work_item_id: workItemId,
-        author_user_id: context.userId,
-        body: input.body,
+        created_by: context.userId,
+        content: input.content,
       })
       .select()
       .single()
@@ -128,13 +128,13 @@ export class NoteService {
     const existing = await this.getNoteById(id, context)
 
     // Only author or admin can edit
-    if (existing.author_user_id !== context.userId && !context.isSystemAdmin) {
+    if (existing.created_by !== context.userId && !context.isSystemAdmin) {
       throw new Error('Not authorized to edit this note')
     }
 
     const { data, error } = await (this.supabase as any)
       .from('notes')
-      .update({ body: input.body })
+      .update({ content: input.content })
       .eq('id', id)
       .eq('company_id', context.companyId)
       .select()
@@ -155,7 +155,7 @@ export class NoteService {
   async deleteNote(id: string, context: RequestContext): Promise<void> {
     const existing = await this.getNoteById(id, context)
 
-    if (existing.author_user_id !== context.userId && !context.isSystemAdmin) {
+    if (existing.created_by !== context.userId && !context.isSystemAdmin) {
       throw new Error('Not authorized to delete this note')
     }
 
@@ -188,7 +188,7 @@ export class NoteService {
       throw new NotFoundError('Note', id)
     }
 
-    if (existing.author_user_id !== context.userId && !context.isSystemAdmin) {
+    if (existing.created_by !== context.userId && !context.isSystemAdmin) {
       throw new Error('Not authorized to restore this note')
     }
 

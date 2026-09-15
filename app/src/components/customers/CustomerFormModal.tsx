@@ -79,11 +79,16 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
 
   const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }))
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true)
-    onSave({ ...form, id: customer?.id, companyId: customer?.companyId })
-    setSaving(false)
-    onClose()
+    try {
+      await onSave({ ...form, id: customer?.id, companyId: customer?.companyId })
+      onClose()
+    } catch {
+      // error already surfaced by caller
+    } finally {
+      setSaving(false)
+    }
   }
 
   const field = (label: string, fieldKey: string, opts?: { type?: string; placeholder?: string; required?: boolean; half?: boolean }) => (

@@ -139,6 +139,7 @@ export class TodoService {
         due_time: input.due_time || null,
         priority: input.priority || 'medium',
         is_done: false,
+        active: true,
       })
       .select()
       .single()

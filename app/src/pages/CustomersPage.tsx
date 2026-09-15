@@ -137,16 +137,20 @@ export default function CustomersPage() {
   }, [customers])
 
   const handleSave = async (data: Partial<Customer>) => {
-    if (editingCustomer) {
-      const updates = toDbUpdates(data)
-      if (Object.keys(updates).length > 0) {
-        await update(editingCustomer.id, updates as Record<string, unknown>)
+    try {
+      if (editingCustomer) {
+        const updates = toDbUpdates(data)
+        if (Object.keys(updates).length > 0) {
+          await update(editingCustomer.id, updates as Record<string, unknown>)
+        }
+      } else {
+        const dbData = toDbUpdates(data)
+        await create(dbData as Record<string, unknown>, currentCompany.id)
       }
-    } else {
-      const dbData = toDbUpdates(data)
-      await create(dbData as Record<string, unknown>, currentCompany.id)
+      refetch()
+    } catch {
+      // error already logged/thrown by service
     }
-    refetch()
   }
 
   const handleDelete = async () => {

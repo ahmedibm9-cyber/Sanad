@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Search,
@@ -459,7 +460,7 @@ export default function ProjectsPage() {
                               >
                                 <MoreVertical className="w-4 h-4" />
                               </button>
-                              {openMenuId === project.id && (
+                              {openMenuId === project.id && createPortal(
                                 <div className="absolute top-full end-0 mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
                                   <button
                                     onClick={() => { setOpenMenuId(null); navigate(`/projects/${project.id}`) }}
@@ -482,7 +483,8 @@ export default function ProjectsPage() {
                                     <Trash2 className="w-3.5 h-3.5" />
                                     {t('Move to Trash', 'نقل إلى سلة المهملات')}
                                   </button>
-                                </div>
+                                </div>,
+                                document.body
                               )}
                             </div>
                           </div>
