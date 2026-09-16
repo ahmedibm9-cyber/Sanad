@@ -23,7 +23,15 @@ async function globalSetup(config: FullConfig) {
   await page.goto(`${baseURL}/login`)
   await page.getByRole('textbox', { name: 'Email' }).fill(e2eEnvironment.email)
   await page.getByRole('textbox', { name: 'Password' }).fill(e2eEnvironment.password)
-  await page.getByRole('button', { name: 'Sign In' }).click()
+  await page.waitForTimeout(2000)
+  const signInBtn = page.getByRole('button', { name: 'Sign In' })
+  await signInBtn.waitFor({ state: 'visible', timeout: 10_000 })
+  for (let i = 0; i < 20; i++) {
+    const disabled = await signInBtn.evaluate((el: HTMLButtonElement) => el.disabled)
+    if (!disabled) break
+    await page.waitForTimeout(500)
+  }
+  await signInBtn.click()
   await page.waitForURL('**/dashboard', { timeout: 30_000 })
 
   await page.context().storageState({ path: AUTH_FILE })
