@@ -51,7 +51,7 @@ test.describe('RTL and Bilingual', () => {
     await page.getByText('عربي').click()
     await page.waitForTimeout(500)
     await page.getByRole('button', { name: /تبديل اللغة/ }).click()
-    await page.getByText('EN').click()
+    await page.getByRole('option', { name: 'English' }).click()
     await page.waitForTimeout(500)
     const ltrDir = page.locator('[dir="ltr"]')
     if (await ltrDir.count() > 0) {
