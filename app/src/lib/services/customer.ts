@@ -22,6 +22,7 @@ export interface Customer {
   name_ar: string | null
   legal_name: string | null
   contact_person: string | null
+  contacts: any
   phone: string | null
   phone_secondary: string | null
   email: string | null
@@ -71,6 +72,7 @@ export interface CreateCustomerInput {
   name_ar?: string
   legal_name?: string
   contact_person?: string
+  contacts?: any
   phone?: string
   phone_secondary?: string
   email?: string

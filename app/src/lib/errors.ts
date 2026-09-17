@@ -140,7 +140,7 @@ export function handleSupabaseError(error: { message: string; code?: string; det
   if (error.code === '42501' || error.message.includes('permission denied')) {
     return new ForbiddenError('Database permission denied')
   }
-  return new DatabaseError(error.message)
+  return new DatabaseError('An unexpected database error occurred. Please try again.')
 }
 
 /**

@@ -1,0 +1,16 @@
+{
+  "name": "vercel-domain-investigation",
+  "version": "1.0.0",
+  "description": "Investigation of Vercel domain registration anomalies",
+  "main": "investigate.js",
+  "scripts": {
+    "investigate": "node investigate.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["vercel", "domain", "investigation", "security"],
+  "author": "Security Investigation",
+  "license": "MIT",
+  "dependencies": {
+    "playwright": "^1.40.0"
+  }
+}

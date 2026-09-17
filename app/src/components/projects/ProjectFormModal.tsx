@@ -4,7 +4,9 @@ import { useCompany } from '../../contexts/CompanyContext'
 import Modal from '../common/Modal'
 import FormSection from '../common/FormSection'
 import type { WorkItem, Customer, Material, ProjectMaterial } from '../../types'
-import { useCustomers, useMaterials } from '../../hooks/useData'
+import { useCustomers, useMaterials, useCreateCustomer, useCreateMaterial } from '../../hooks/useData'
+import CustomerFormModal from '../customers/CustomerFormModal'
+import MaterialFormModal from '../materials/MaterialFormModal'
 import { Plus, Trash2, AlertCircle } from 'lucide-react'
 
 interface ProjectFormModalProps {
@@ -32,6 +34,11 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
   })
   const [materialLines, setMaterialLines] = useState<ProjectMaterial[]>([])
   const [customerDefaultsApplied, setCustomerDefaultsApplied] = useState(false)
+  const [showCustomerModal, setShowCustomerModal] = useState(false)
+  const [showMaterialModal, setShowMaterialModal] = useState(false)
+  const [addMaterialForLine, setAddMaterialForLine] = useState<number | null>(null)
+  const { create: createCustomer } = useCreateCustomer()
+  const { create: createMaterial } = useCreateMaterial()
 
   useEffect(() => {
     if (item) {
@@ -62,16 +69,18 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
 
   const handleCustomerChange = (customerId: string) => {
     update('customerId', customerId)
-    const customer = (customers || []).find(c => c.id === customerId)
+    const customer = (customers || []).find((c: any) => c.id === customerId)
     if (customer && !isEdit) {
       setForm(prev => ({
         ...prev,
         customerId,
-        currency: 'SAR',
-        incoterm: 'FOB',
-        paymentTerms: 'Net 30 days',
-        destinationCountry: customer.country || '',
-        destinationCity: customer.city || '',
+        currency: customer.default_currency || 'SAR',
+        incoterm: customer.default_incoterm || 'FOB',
+        paymentTerms: customer.payment_terms || 'Net 30 days',
+        deliveryTerms: customer.delivery_terms || '',
+        destinationCountry: customer.default_dest_country || customer.country || '',
+        destinationCity: customer.default_dest_city || customer.city || '',
+        portOfDischarge: customer.default_port || '',
       }))
       setCustomerDefaultsApplied(true)
       setTimeout(() => setCustomerDefaultsApplied(false), 4000)
@@ -100,13 +109,44 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
     if (mat) {
       setMaterialLines(prev => prev.map((line, i) => i === idx ? {
         ...line, materialId, materialName: mat.name, grade: mat.grade || '',
-        unitPrice: mat.last_selling_price || 0, currency: mat.last_selling_currency || form.currency,
+        unitPrice: line.unitPrice || mat.last_selling_price || 0,
+        currency: mat.last_selling_currency || form.currency,
         packing: mat.default_packing || '', origin: mat.origin || '', hsCode: mat.hs_code || '',
       } : line))
     }
   }
 
+  const handleCustomerCreated = async (customerData: Partial<Customer>) => {
+    if (!currentCompany?.id) return
+    const result = await createCustomer(customerData, currentCompany.id)
+    if (result) {
+      handleCustomerChange(result.id)
+    }
+    setShowCustomerModal(false)
+  }
+
+  const handleMaterialCreated = async (materialData: Partial<Material>) => {
+    if (!currentCompany?.id) return
+    const result = await createMaterial(materialData, currentCompany.id)
+    if (result && addMaterialForLine !== null) {
+      updateMaterialLine(addMaterialForLine, 'materialId', result.id)
+      updateMaterialLine(addMaterialForLine, 'materialName', result.name)
+      updateMaterialLine(addMaterialForLine, 'grade', result.grade || '')
+      updateMaterialLine(addMaterialForLine, 'unitPrice', result.last_selling_price || 0)
+      updateMaterialLine(addMaterialForLine, 'currency', result.last_selling_currency || form.currency)
+      updateMaterialLine(addMaterialForLine, 'packing', result.default_packing || '')
+      updateMaterialLine(addMaterialForLine, 'origin', result.origin || '')
+      updateMaterialLine(addMaterialForLine, 'hsCode', result.hs_code || '')
+    }
+    setShowMaterialModal(false)
+    setAddMaterialForLine(null)
+  }
+
   const handleSave = async () => {
+    if (!materialLines.some(l => l.materialId)) {
+      setSaveError(t('Please select at least one material before saving.', 'يرجى اختيار مادة واحدة على الأقل قبل الحفظ.'))
+      return
+    }
     setSaving(true)
     setSaveError(null)
     try {
@@ -120,6 +160,7 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
   }
 
   return (
+    <>
     <Modal
       open={open} onClose={onClose} size="xl"
       title={isEdit
@@ -133,7 +174,7 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
       footer={
         <>
           <button onClick={onClose} className="btn-secondary" disabled={saving}>{t('Cancel', 'إلغاء')}</button>
-          <button onClick={handleSave} className="btn-primary min-w-[140px]" disabled={saving || !form.name || !form.customerId}>
+          <button onClick={handleSave} className="btn-primary min-w-[140px]" disabled={saving || !form.name || !form.customerId || !materialLines.some(l => l.materialId)}>
             {saving
               ? t('Saving...', 'جاري الحفظ...')
               : isEdit ? t('Save Changes', 'حفظ التغييرات') : (mode === 'project' ? t('Create Project', 'إنشاء المشروع') : t('Create Task', 'إنشاء المهمة'))
@@ -159,10 +200,15 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
           </div>
           <div>
             <label className="label-field">Customer *</label>
-            <select className="select-field" value={form.customerId} onChange={e => handleCustomerChange(e.target.value)}>
-              <option value="">{t('— Select Customer —', '— اختر العميل —')}</option>
-              {(customers || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <div className="flex gap-2">
+              <select className="select-field flex-1" value={form.customerId} onChange={e => handleCustomerChange(e.target.value)}>
+                <option value="">{t('— Select Customer —', '— اختر العميل —')}</option>
+                {(customers || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <button type="button" onClick={() => setShowCustomerModal(true)} className="btn-secondary px-3" title={t('Add new customer', 'إضافة عميل جديد')}>
+                <Plus size={16} />
+              </button>
+            </div>
           </div>
         </FormSection>
 
@@ -246,10 +292,15 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
                 <div className="grid grid-cols-4 gap-3">
                   <div>
                     <label className="label-field text-xs">Material</label>
-                    <select className="select-field text-sm" value={line.materialId} onChange={e => handleMaterialSelect(idx, e.target.value)}>
-                      <option value="">Select...</option>
-                      {(materials || []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                    </select>
+                    <div className="flex gap-1">
+                      <select className="select-field text-sm flex-1" value={line.materialId} onChange={e => handleMaterialSelect(idx, e.target.value)}>
+                        <option value="">Select...</option>
+                        {(materials || []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                      </select>
+                      <button type="button" onClick={() => { setAddMaterialForLine(idx); setShowMaterialModal(true); }} className="btn-secondary px-2 py-1" title={t('Add new material', 'إضافة مادة جديدة')}>
+                        <Plus size={14} />
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <label className="label-field text-xs">Grade</label>
@@ -262,6 +313,19 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
                   <div>
                     <label className="label-field text-xs">Unit Price</label>
                     <input className="input-field text-sm" type="number" value={line.unitPrice || ''} onChange={e => updateMaterialLine(idx, 'unitPrice', Number(e.target.value))} />
+                    {line.materialId && (() => {
+                      const mat = (materials || []).find(m => m.id === line.materialId)
+                      const lastPrice = mat?.last_selling_price
+                      if (lastPrice && lastPrice > 0) {
+                        const cur = mat?.last_selling_currency || form.currency
+                        return (
+                          <p className="text-[10px] text-gray-400 mt-0.5" title={t(`Last selling price: ${lastPrice} ${cur}`, `آخر سعر بيع: ${lastPrice} ${cur}`)}>
+                            {t('Last price', 'آخر سعر')}: {lastPrice} {cur}
+                          </p>
+                        )
+                      }
+                      return null
+                    })()}
                   </div>
                 </div>
                 <div className="grid grid-cols-4 gap-3">
@@ -298,5 +362,8 @@ export default function ProjectFormModal({ open, onClose, onSave, item, mode }: 
         </FormSection>
       </div>
     </Modal>
+    <CustomerFormModal open={showCustomerModal} onClose={() => setShowCustomerModal(false)} onSave={handleCustomerCreated} />
+    <MaterialFormModal open={showMaterialModal} onClose={() => { setShowMaterialModal(false); setAddMaterialForLine(null); }} onSave={handleMaterialCreated} />
+    </>
   )
 }

@@ -49,7 +49,11 @@ function formatCurrency(amount: number, currency: string) {
 
 export default function ProjectsPage() {
   const { t } = useLanguage()
-  const { currentCompany } = useCompany()
+  const { currentCompany, hasPermission } = useCompany()
+  const canCreate = hasPermission('projects.create')
+  const canEdit = hasPermission('projects.edit')
+  const canArchive = hasPermission('projects.archive')
+  const canDelete = hasPermission('projects.delete')
   const navigate = useNavigate()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -62,6 +66,8 @@ export default function ProjectsPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [archiveConfirmId, setArchiveConfirmId] = useState<string | null>(null)
   const [trashConfirmId, setTrashConfirmId] = useState<string | null>(null)
+  const [archiving, setArchiving] = useState(false)
+  const [trashing, setTrashing] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const PAGE_SIZE = 10
 
@@ -150,25 +156,33 @@ export default function ProjectsPage() {
 
   // ── Row actions (Supabase mutations) ──
   const handleArchive = async (id: string) => {
+    if (archiving) return
+    setArchiving(true)
     try {
       await updateWorkItem(id, { status: 'archived' } as any)
       refetch()
     } catch (err) {
       appLogger.error('Failed to archive project', err)
+    } finally {
+      setArchiving(false)
+      setArchiveConfirmId(null)
+      setOpenMenuId(null)
     }
-    setArchiveConfirmId(null)
-    setOpenMenuId(null)
   }
 
   const handleTrash = async (id: string) => {
+    if (trashing) return
+    setTrashing(true)
     try {
       await deleteWorkItem(id)
       refetch()
     } catch (err) {
       appLogger.error('Failed to trash project', err)
+    } finally {
+      setTrashing(false)
+      setTrashConfirmId(null)
+      setOpenMenuId(null)
     }
-    setTrashConfirmId(null)
-    setOpenMenuId(null)
   }
 
   const handleTogglePin = async (id: string, currentlyPinned: boolean) => {
@@ -218,10 +232,12 @@ export default function ProjectsPage() {
             )}
           </p>
         </div>
-        <button onClick={() => setShowProjectForm(true)} className="btn-primary">
-          <Plus className="w-4 h-4 me-1.5" />
-          {t('New Project', 'مشروع جديد')}
-        </button>
+        {canCreate && (
+          <button onClick={() => setShowProjectForm(true)} className="btn-primary">
+            <Plus className="w-4 h-4 me-1.5" />
+            {t('New Project', 'مشروع جديد')}
+          </button>
+        )}
       </div>
 
       {/* Search & Filters */}
@@ -462,27 +478,33 @@ export default function ProjectsPage() {
                               </button>
                               {openMenuId === project.id && createPortal(
                                 <div className="absolute top-full end-0 mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
-                                  <button
-                                    onClick={() => { setOpenMenuId(null); navigate(`/projects/${project.id}`) }}
-                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                    {t('Edit', 'تعديل')}
-                                  </button>
-                                  <button
-                                    onClick={() => { setArchiveConfirmId(project.id); setOpenMenuId(null) }}
-                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                  >
-                                    <Archive className="w-3.5 h-3.5" />
-                                    {t('Archive', 'أرشفة')}
-                                  </button>
-                                  <button
-                                    onClick={() => { setTrashConfirmId(project.id); setOpenMenuId(null) }}
-                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    {t('Move to Trash', 'نقل إلى سلة المهملات')}
-                                  </button>
+                                  {canEdit && (
+                                    <button
+                                      onClick={() => { setOpenMenuId(null); navigate(`/projects/${project.id}`) }}
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                    >
+                                      <Pencil className="w-3.5 h-3.5" />
+                                      {t('Edit', 'تعديل')}
+                                    </button>
+                                  )}
+                                  {canArchive && (
+                                    <button
+                                      onClick={() => { setArchiveConfirmId(project.id); setOpenMenuId(null) }}
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                    >
+                                      <Archive className="w-3.5 h-3.5" />
+                                      {t('Archive', 'أرشفة')}
+                                    </button>
+                                  )}
+                                  {canDelete && (
+                                    <button
+                                      onClick={() => { setTrashConfirmId(project.id); setOpenMenuId(null) }}
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      {t('Move to Trash', 'نقل إلى سلة المهملات')}
+                                    </button>
+                                  )}
                                 </div>,
                                 document.body
                               )}
@@ -602,6 +624,7 @@ export default function ProjectsPage() {
       confirmLabel={t('Archive', 'أرشفة')}
       cancelLabel={t('Cancel', 'إلغاء')}
       variant="warning"
+      loading={archiving}
     />
 
     {/* Trash Confirm */}
@@ -615,6 +638,7 @@ export default function ProjectsPage() {
       confirmLabel={t('Move to Trash', 'نقل إلى سلة المهملات')}
       cancelLabel={t('Cancel', 'إلغاء')}
       variant="danger"
+      loading={trashing}
     />
     </>
   )

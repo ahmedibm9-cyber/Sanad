@@ -11,7 +11,7 @@ import { appLogger } from '../../lib/logger'
 interface MaterialFormModalProps {
   open: boolean
   onClose: () => void
-  onSave: (material: Partial<Material>) => void
+  onSave: (material: Partial<Material>) => Promise<void>
   material?: Material | null
 }
 
@@ -54,10 +54,13 @@ export default function MaterialFormModal({ open, onClose, onSave, material }: M
     coaFileRef.current = null
   }, [material, open])
 
+  const [formError, setFormError] = useState<string | null>(null)
+
   const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }))
 
   const handleSave = async () => {
     setSaving(true)
+    setFormError(null)
     try {
       const companyId = currentCompany?.id || ''
       const materialId = material?.id || `temp-${Date.now()}`
@@ -88,7 +91,7 @@ export default function MaterialFormModal({ open, onClose, onSave, material }: M
         coaKey = key
       }
 
-      onSave({
+      await onSave({
         ...material,
         name: form.name, grade: form.grade, manufacturer: form.manufacturer,
         origin: form.origin, hsCode: form.hsCode, defaultPacking: form.defaultPacking,
@@ -98,11 +101,12 @@ export default function MaterialFormModal({ open, onClose, onSave, material }: M
         msdsFile: msdsKey,
         coaFile: coaKey,
       })
-    } catch (err) {
-      appLogger.error('Failed to upload files', err)
-    } finally {
       setSaving(false)
       onClose()
+    } catch (err) {
+      appLogger.error('Failed to save material', err)
+      setFormError(t('Failed to save material. Please try again.', 'فشل حفظ المادة. يرجى المحاولة مرة أخرى.'))
+      setSaving(false)
     }
   }
 
@@ -143,6 +147,11 @@ export default function MaterialFormModal({ open, onClose, onSave, material }: M
       }
     >
       <div className="space-y-5">
+        {formError && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {formError}
+          </div>
+        )}
         <FormSection title="Material Information" titleAr="معلومات المادة">
           <div className="grid grid-cols-2 gap-4">
             <div>

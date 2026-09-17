@@ -6,9 +6,19 @@ import {
 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useApp } from '../contexts/AppContext'
+import { useCompany } from '../contexts/CompanyContext'
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../hooks/useData'
+import { getSettingsService } from '../lib/services/settings'
 import type { Notification } from '../types'
 import type { Notification as DbNotification } from '../hooks/useData'
+
+/** Category mapping for filtering preferences */
+const CATEGORY_MAP: Record<string, string[]> = {
+  tasks: ['task_assigned', 'task_overdue', 'todo_reminder'],
+  documents: ['document_created', 'document_status_change', 'attachment', 'report_issue'],
+  approvals: ['permission_change'],
+  system: ['project_status', 'backup_success', 'backup_failure', 'user_created', 'project_archived', 'customer_created'],
+}
 
 const typeIcons: Record<string, React.ReactNode> = {
   task_assigned: <CheckCircle className="w-5 h-5 text-blue-600" />,
@@ -67,24 +77,60 @@ function formatTimeAgo(dateStr: string): string {
 export default function NotificationsPage() {
   const { t } = useLanguage()
   const { currentUser } = useApp()
+  const { currentCompany } = useCompany()
 
   const { data: dbNotifications = [], loading, refetch } = useNotifications(currentUser.id)
   const { markRead: markReadDb } = useMarkNotificationRead()
   const { markAllRead: markAllReadDb } = useMarkAllNotificationsRead()
 
+  // Load notification preferences from company_settings
+  const [prefs, setPrefs] = useState<Record<string, boolean>>({})
+  useEffect(() => {
+    if (!currentCompany?.id) return
+    const ctx = {
+      userId: currentUser.id,
+      companyId: currentCompany.id,
+      permissions: {},
+      isSystemAdmin: currentUser.role === 'admin',
+    }
+    getSettingsService().getCompanySettings(currentCompany.id, ctx)
+      .then((settings) => {
+        const notifPrefs = (settings as any)?.settings?.notifications
+        if (notifPrefs && typeof notifPrefs === 'object') {
+          setPrefs(notifPrefs)
+        }
+      })
+      .catch(() => { /* no preferences, show all */ })
+  }, [currentCompany?.id, currentUser.id])
+
+  /** Returns true if a notification type should be shown based on preferences */
+  const isTypeEnabled = (type: string): boolean => {
+    // Check direct key match first
+    if (type in prefs) return prefs[type]
+    // Check category-level: if any type in a category is disabled, check
+    for (const [, types] of Object.entries(CATEGORY_MAP)) {
+      if (types.includes(type)) {
+        return prefs[type] ?? true
+      }
+    }
+    return true
+  }
+
   // Map Supabase Notification to UI Notification type
   const mappedNotifications = useMemo<Notification[]>(() => {
-    return (dbNotifications ?? []).map((n: DbNotification) => ({
-      id: n.id,
-      type: n.type,
-      title: n.title,
-      message: n.body ?? '',
-      read: !!n.read_at,
-      createdAt: n.created_at,
-      entityId: n.entity_id ?? undefined,
-      entityType: n.entity_type ?? undefined,
-    }))
-  }, [dbNotifications])
+    return (dbNotifications ?? [])
+      .filter((n: DbNotification) => isTypeEnabled(n.type))
+      .map((n: DbNotification) => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        message: n.body ?? '',
+        read: !!n.read_at,
+        createdAt: n.created_at,
+        entityId: n.entity_id ?? undefined,
+        entityType: n.entity_type ?? undefined,
+      }))
+  }, [dbNotifications, prefs])
 
   const [notifs, setNotifs] = useState<Notification[]>(mappedNotifications)
   const [typeFilter, setTypeFilter] = useState('')

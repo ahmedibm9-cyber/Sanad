@@ -272,7 +272,7 @@ export function useCreateMaterial() {
       return result
     } catch (err) {
       appLogger.error('Failed to create material', err)
-      return null
+      throw err
     } finally {
       setLoading(false)
     }
@@ -685,7 +685,7 @@ export function useCreateTodo() {
       return result
     } catch (err) {
       appLogger.error('Failed to create todo', err)
-      return null
+      throw err
     } finally {
       setLoading(false)
     }

@@ -37,6 +37,7 @@ import { getNoteService } from '../lib/services/note'
 import { getReportIssueService } from '../lib/services/reportIssue'
 import AttachmentUploadModal from '../components/common/AttachmentUploadModal'
 import ConfirmModal from '../components/common/ConfirmModal'
+import VoiceInputButton from '../components/common/VoiceInputButton'
 import ProjectFormModal from '../components/projects/ProjectFormModal'
 import type { WorkItemStatus, Document, ProjectNote, ReportIssue } from '../types'
 import type { WorkItemMaterial, Document as DbDocument, Note, ReportIssue as DbReportIssue, Attachment as DbAttachment } from '../hooks/useData'
@@ -799,7 +800,10 @@ export default function TaskDetailPage() {
             <div className="card p-4 space-y-3">
               <div>
                 <label className="label-field">{t('Note', 'ملاحظة')} *</label>
-                <textarea className="input-field" rows={3} value={newNote} onChange={e => setNewNote(e.target.value)} placeholder={t('Write your note...', 'اكتب ملاحظتك...')} />
+                <div className="flex gap-2">
+                  <textarea className="input-field flex-1" rows={3} value={newNote} onChange={e => setNewNote(e.target.value)} placeholder={t('Write your note...', 'اكتب ملاحظتك...')} />
+                  <VoiceInputButton onTranscript={(text) => setNewNote(prev => prev ? prev + ' ' + text : text)} size="sm" />
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <button onClick={() => { setShowNoteForm(false); setNewNote('') }} className="btn-ghost">{t('Cancel', 'إلغاء')}</button>

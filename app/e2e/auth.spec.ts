@@ -69,18 +69,14 @@ test.describe('Authentication', () => {
   test('A9: empty email shows validation or error', async ({ page }) => {
     await page.goto('/login')
     await page.getByRole('button', { name: 'Sign In' }).click()
-    await page.waitForTimeout(2000)
-    const errorVisible = await page.getByText(/email|required|fill|invalid/i).isVisible().catch(() => false)
-    expect(errorVisible || true).toBeTruthy()
+    await expect(page.getByText(/email|required|fill|invalid/i)).toBeVisible({ timeout: 5000 })
   })
 
   test('A10: empty password shows validation or error', async ({ page }) => {
     await page.goto('/login')
     await page.getByRole('textbox', { name: 'Email' }).fill('test@test.com')
     await page.getByRole('button', { name: 'Sign In' }).click()
-    await page.waitForTimeout(2000)
-    const errorVisible = await page.getByText(/password|required|fill/i).isVisible().catch(() => false)
-    expect(errorVisible || true).toBeTruthy()
+    await expect(page.getByText(/password|required|fill/i)).toBeVisible({ timeout: 5000 })
   })
 
   test('A11: user can sign out', async ({ page }) => {

@@ -25,7 +25,7 @@ import { appLogger } from '../lib/logger'
 // Types
 // ===========================================
 
-// Default company for when no company is loaded
+// Default company for when no company is loaded — includes camelCase aliases
 const DEFAULT_COMPANY: Company = {
   id: '',
   name_en: '',
@@ -39,6 +39,33 @@ const DEFAULT_COMPANY: Company = {
   updated_at: '',
   created_by: null,
   updated_by: null,
+  // camelCase aliases (prevents undefined in UI)
+  shortName: '',
+  nameEn: '',
+  nameAr: '',
+  legalNameEn: undefined,
+  legalNameAr: undefined,
+  companyCode: '',
+  code: '',
+  postalCode: undefined,
+  vatNumber: undefined,
+  bankName: undefined,
+  accountName: undefined,
+  accountNumber: undefined,
+  bankCurrency: undefined,
+  defaultLanguage: undefined,
+  defaultTemplate: undefined,
+  defaultVatRate: undefined,
+  defaultCurrency: undefined,
+  defaultWeightUnit: undefined,
+  defaultPackingUnit: undefined,
+  defaultIncoterm: undefined,
+  defaultPaymentTerms: undefined,
+  defaultDeliveryTerms: undefined,
+  defaultPreparedBy: undefined,
+  showSignature: undefined,
+  showStamp: undefined,
+  crNumber: undefined,
 }
 
 interface CompanyContextType {
@@ -110,11 +137,18 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
 
         setCompanies(userCompanies)
 
-        // Auto-select first company if none selected
-        if (userCompanies.length > 0 && !currentCompany) {
-          setCurrentCompanyState(userCompanies[0])
-          // Load permissions for the first company
-          const perms = await permissionService.getUserPermissions(user.id, userCompanies[0].id)
+        // Restore previously selected company from localStorage, else auto-select first
+        if (userCompanies.length > 0) {
+          let restored: Company | undefined
+          try {
+            const savedId = localStorage.getItem('sanad_company_id')
+            if (savedId) {
+              restored = userCompanies.find(c => c.id === savedId)
+            }
+          } catch { /* SSR / private browsing */ }
+          const selected = restored || userCompanies[0]
+          setCurrentCompanyState(selected)
+          const perms = await permissionService.getUserPermissions(user.id, selected.id)
           setPermissions(perms)
         }
       } catch (error) {
@@ -146,11 +180,12 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     loadPermissions()
   }, [user, currentCompany])
 
-  // Set current company
+  // Set current company (with localStorage persistence)
   const setCurrentCompany = useCallback((companyId: string) => {
     const company = companies.find(c => c.id === companyId)
     if (company) {
       setCurrentCompanyState(company)
+      try { localStorage.setItem('sanad_company_id', companyId) } catch { /* SSR / private browsing */ }
     }
   }, [companies])
 

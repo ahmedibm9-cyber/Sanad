@@ -21,6 +21,10 @@ import {
   X,
   Trash2,
   Loader2,
+  Clock,
+  Users,
+  ClipboardCheck,
+  Settings,
 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCompany } from '../contexts/CompanyContext'
@@ -82,10 +86,10 @@ interface BankAccount {
 }
 
 export default function SettingsPage() {
-  const { t } = useLanguage()
+  const { t, dir } = useLanguage()
   const { currentCompany } = useCompany()
   const { currentUser } = useApp()
-  const { user } = useAuth()
+  const { user, licenseInfo } = useAuth()
   const [activeTab, setActiveTab] = useState<SettingsTab>('identity')
   const [saved, setSaved] = useState(false)
 
@@ -138,6 +142,54 @@ export default function SettingsPage() {
         })
         .catch(() => { /* keep hardcoded defaults */ })
     })
+
+    // Load backup settings from backup_settings table
+    const backupService = getBackupService()
+    backupService.getBackupSettings(ctx)
+      .then((settings) => {
+        if (settings) {
+          setForm((prev) => ({
+            ...prev,
+            autoBackup: settings.auto_backup_enabled,
+            backupSchedule: settings.backup_schedule,
+            retentionDays: settings.retention_days,
+            lastBackup: settings.last_backup_at || prev.lastBackup,
+          }))
+        }
+      })
+      .catch(() => { /* keep defaults */ })
+
+    // Load backup history
+    backupService.getBackupHistory(ctx, 10)
+      .then((history) => setBackupHistory(history))
+      .catch(() => { /* non-critical */ })
+  }, [currentCompany?.id, user])
+
+  // ─── Load bankAccounts from company_settings on mount ─────
+  useEffect(() => {
+    if (!currentCompany?.id || !user) return
+    const ctx = {
+      userId: user.id,
+      companyId: currentCompany.id,
+      permissions: {},
+      isSystemAdmin: user.isSystemAdmin || false,
+    }
+    getSettingsService().getCompanySettings(currentCompany.id, ctx)
+      .then((settings) => {
+        const saved = (settings as any)?.settings?.bank_accounts
+        if (Array.isArray(saved) && saved.length > 0) {
+          setBankAccounts(saved.map((a: any, i: number) => ({
+            id: a.id || String(i + 1),
+            bankName: a.bankName || '',
+            accountName: a.accountName || '',
+            accountNumber: a.accountNumber || '',
+            iban: a.iban || '',
+            swift: a.swift || '',
+            bankCurrency: a.bankCurrency || 'SAR',
+          })))
+        }
+      })
+      .catch(() => { /* keep defaults */ })
   }, [currentCompany?.id, user])
 
   // ─── Config list DB persistence helpers ────────────────────
@@ -158,17 +210,31 @@ export default function SettingsPage() {
   }, [currentCompany?.id, user])
 
   // ─── Banking: Multiple accounts state ──────────────────────
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([
-    {
-      id: '1',
-      bankName: currentCompany.bankName || '',
-      accountName: currentCompany.accountName || '',
-      accountNumber: currentCompany.accountNumber || '',
-      iban: currentCompany.iban || '',
-      swift: currentCompany.swift || '',
-      bankCurrency: currentCompany.bankCurrency || 'SAR',
-    },
-  ])
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(() => {
+    const saved = (currentCompany as any).bankAccounts
+    if (Array.isArray(saved) && saved.length > 0) {
+      return saved.map((a: any, i: number) => ({
+        id: a.id || String(i + 1),
+        bankName: a.bankName || '',
+        accountName: a.accountName || '',
+        accountNumber: a.accountNumber || '',
+        iban: a.iban || '',
+        swift: a.swift || '',
+        bankCurrency: a.bankCurrency || 'SAR',
+      }))
+    }
+    return [
+      {
+        id: '1',
+        bankName: currentCompany.bankName || '',
+        accountName: currentCompany.accountName || '',
+        accountNumber: currentCompany.accountNumber || '',
+        iban: currentCompany.iban || '',
+        swift: currentCompany.swift || '',
+        bankCurrency: currentCompany.bankCurrency || 'SAR',
+      },
+    ]
+  })
   const [showAddBank, setShowAddBank] = useState(false)
   const [newBank, setNewBank] = useState<BankAccount>({
     id: '',
@@ -184,6 +250,19 @@ export default function SettingsPage() {
   const [showBackupConfirm, setShowBackupConfirm] = useState(false)
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false)
   const [backupSuccess, setBackupSuccess] = useState(false)
+  const [backupLoading, setBackupLoading] = useState(false)
+  const [restoreLoading, setRestoreLoading] = useState(false)
+  const [backupHistory, setBackupHistory] = useState<Array<{
+    id: string; type: string; status: string; created_at: string; completed_at: string | null; error_message: string | null
+  }>>([])
+
+  // ─── Notification Preferences: Category toggles ─────────
+  const NOTIFICATION_CATEGORIES = [
+    { id: 'tasks', en: 'Tasks', ar: 'المهام', icon: ClipboardCheck, types: ['task_assigned', 'task_overdue', 'todo_reminder'] },
+    { id: 'documents', en: 'Documents', ar: 'المستندات', icon: FileText, types: ['document_created', 'document_status_change', 'attachment', 'report_issue'] },
+    { id: 'approvals', en: 'Approvals & Permissions', ar: 'الموافقات والصلاحيات', icon: Shield, types: ['permission_change'] },
+    { id: 'system', en: 'System', ar: 'النظام', icon: Settings, types: ['project_status', 'backup_success', 'backup_failure', 'user_created', 'project_archived', 'customer_created'] },
+  ]
 
   // Form state — initialized from currentCompany
   const [form, setForm] = useState({
@@ -298,12 +377,13 @@ export default function SettingsPage() {
         postal_code: form.postalCode,
         vat_number: form.vatNumber,
         cr_number: form.crNumber,
-        bank_name: form.bankName,
-        account_name: form.accountName,
-        account_number: form.accountNumber,
-        iban: form.iban,
-        swift: form.swift,
-        bank_currency: form.bankCurrency,
+        bank_name: bankAccounts[0]?.bankName || form.bankName,
+        account_name: bankAccounts[0]?.accountName || form.accountName,
+        account_number: bankAccounts[0]?.accountNumber || form.accountNumber,
+        iban: bankAccounts[0]?.iban || form.iban,
+        swift: bankAccounts[0]?.swift || form.swift,
+        bank_currency: bankAccounts[0]?.bankCurrency || form.bankCurrency,
+        bank_accounts: bankAccounts,
         default_language: form.defaultLanguage,
         default_template: form.defaultTemplate,
         default_vat_rate: form.defaultVatRate,
@@ -334,6 +414,18 @@ export default function SettingsPage() {
         show_stamp: form.showStamp,
       }, { onConflict: 'company_id' })
 
+      // Persist backup settings to backup_settings table
+      try {
+        const backupService = getBackupService()
+        await backupService.updateBackupSettings({
+          auto_backup_enabled: form.autoBackup,
+          backup_schedule: form.backupSchedule,
+          retention_days: form.retentionDays,
+        }, ctx)
+      } catch {
+        // Backup settings persistence is non-critical for the save flow
+      }
+
       // Log audit event
       try {
         const auditService = getAuditService()
@@ -354,7 +446,7 @@ export default function SettingsPage() {
     } finally {
       setSaving(false)
     }
-  }, [currentCompany?.id, user, form])
+  }, [currentCompany?.id, user, form, bankAccounts])
 
   // ─── Toggle Switch Component ──────────────────────────────
   const Toggle = ({ checked, onChange, disabled = false }: { checked: boolean; onChange: () => void; disabled?: boolean }) => (
@@ -1154,25 +1246,69 @@ export default function SettingsPage() {
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-semibold text-brand-900 mb-1">{t('Notification Preferences', 'تفضيلات الإشعارات')}</h2>
-              <p className="text-sm text-gray-500">{t('Choose which notifications you want to receive', 'اختر الإشعارات التي تريد تلقيها')}</p>
+              <p className="text-sm text-gray-500">{t('Choose which notification categories you want to receive', 'اختر فئات الإشعارات التي تريد تلقيها')}</p>
             </div>
 
-            <div className="space-y-1">
-              {NOTIFICATION_TYPES.map((notif) => (
-                <div
-                  key={notif.key}
-                  className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">{t(notif.en, notif.ar)}</p>
-                    <p className="text-xs text-gray-400">{notif.key.replace(/_/g, '.')}</p>
+            {/* Category-based notification groups */}
+            <div className="space-y-4">
+              {NOTIFICATION_CATEGORIES.map((cat) => {
+                const CatIcon = cat.icon
+                const allEnabled = cat.types.every((k) => form.notifications[k] ?? true)
+                const someDisabled = cat.types.some((k) => !(form.notifications[k] ?? true))
+                return (
+                  <div key={cat.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                    {/* Category header */}
+                    <div className="flex items-center justify-between px-4 py-3 bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-brand-100 rounded-lg">
+                          <CatIcon className="w-4 h-4 text-brand-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700">{t(cat.en, cat.ar)}</p>
+                          <p className="text-xs text-gray-400">
+                            {someDisabled
+                              ? t('Partially enabled', 'مفعّل جزئياً')
+                              : allEnabled
+                                ? t('All enabled', 'الكل مفعّل')
+                                : t('All disabled', 'الكل معطّل')}
+                          </p>
+                        </div>
+                      </div>
+                      <Toggle
+                        checked={allEnabled}
+                        onChange={() => {
+                          const newState = !allEnabled
+                          setForm((prev) => ({
+                            ...prev,
+                            notifications: {
+                              ...prev.notifications,
+                              ...Object.fromEntries(cat.types.map((k) => [k, newState])),
+                            },
+                          }))
+                        }}
+                      />
+                    </div>
+                    {/* Individual types in category */}
+                    <div className="divide-y divide-gray-100">
+                      {cat.types.map((typeKey) => {
+                        const notifDef = NOTIFICATION_TYPES.find((n) => n.key === typeKey)
+                        if (!notifDef) return null
+                        return (
+                          <div key={typeKey} className="flex items-center justify-between py-3 px-4 hover:bg-gray-50/50 transition-colors">
+                            <div className="ps-10">
+                              <p className="text-sm font-medium text-gray-700">{t(notifDef.en, notifDef.ar)}</p>
+                            </div>
+                            <Toggle
+                              checked={form.notifications[typeKey] ?? true}
+                              onChange={() => handleNotificationToggle(typeKey)}
+                            />
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
-                  <Toggle
-                    checked={form.notifications[notif.key] ?? true}
-                    onChange={() => handleNotificationToggle(notif.key)}
-                  />
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
@@ -1228,7 +1364,7 @@ export default function SettingsPage() {
               <div>
                 <p className="text-sm font-medium text-emerald-800">{t('Last Backup', 'آخر نسخ احتياطي')}</p>
                 <p className="text-xs text-emerald-600">
-                  {new Date(form.lastBackup).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}
+                  {new Date(form.lastBackup).toLocaleString(dir === 'rtl' ? 'ar-SA' : 'en-US', { dateStyle: 'full', timeStyle: 'short' })}
                 </p>
               </div>
             </div>
@@ -1253,18 +1389,72 @@ export default function SettingsPage() {
               <button
                 className="btn-primary gap-2"
                 onClick={() => setShowBackupConfirm(true)}
+                disabled={backupLoading}
               >
-                <Download className="w-4 h-4" />
-                {t('Manual Backup', 'نسخ احتياطي يدوي')}
+                {backupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                {backupLoading ? t('Backing up...', 'جاري النسخ الاحتياطي...') : t('Manual Backup', 'نسخ احتياطي يدوي')}
               </button>
               <button
                 className="btn-secondary gap-2"
                 onClick={() => setShowRestoreConfirm(true)}
+                disabled={restoreLoading}
               >
-                <RotateCcw className="w-4 h-4" />
-                {t('Restore from Backup', 'استعادة من نسخة احتياطية')}
+                {restoreLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                {restoreLoading ? t('Restoring...', 'جاري الاستعادة...') : t('Restore from Backup', 'استعادة من نسخة احتياطية')}
               </button>
             </div>
+
+            {/* Backup History */}
+            {backupHistory.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-700">{t('Backup History', 'سجل النسخ الاحتياطي')}</h3>
+                <div className="overflow-hidden rounded-lg border border-gray-200">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="text-start px-4 py-2.5 text-xs font-medium text-gray-500 uppercase">{t('Type', 'النوع')}</th>
+                        <th className="text-start px-4 py-2.5 text-xs font-medium text-gray-500 uppercase">{t('Status', 'الحالة')}</th>
+                        <th className="text-start px-4 py-2.5 text-xs font-medium text-gray-500 uppercase">{t('Created', 'تاريخ الإنشاء')}</th>
+                        <th className="text-start px-4 py-2.5 text-xs font-medium text-gray-500 uppercase">{t('Completed', 'تاريخ الانتهاء')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {backupHistory.map((b) => (
+                        <tr key={b.id} className="hover:bg-gray-50/50">
+                          <td className="px-4 py-2.5">
+                            <span className={`status-badge ${b.type === 'manual' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
+                              {b.type === 'manual' ? t('Manual', 'يدوي') : t('Automatic', 'تلقائي')}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span className={`status-badge ${
+                              b.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                              b.status === 'failed' ? 'bg-red-100 text-red-700' :
+                              'bg-amber-100 text-amber-700'
+                            }`}>
+                              {b.status === 'completed' ? t('Completed', 'مكتمل') :
+                               b.status === 'failed' ? t('Failed', 'فشل') :
+                               t('In Progress', 'قيد التنفيذ')}
+                            </span>
+                            {b.error_message && (
+                              <p className="text-xs text-red-500 mt-1">{b.error_message}</p>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 text-gray-600">
+                            {new Date(b.created_at).toLocaleString(dir === 'rtl' ? 'ar-SA' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                          </td>
+                          <td className="px-4 py-2.5 text-gray-600">
+                            {b.completed_at
+                              ? new Date(b.completed_at).toLocaleString(dir === 'rtl' ? 'ar-SA' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })
+                              : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
               <button onClick={handleSave} disabled={saving} className="btn-primary gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -1280,6 +1470,7 @@ export default function SettingsPage() {
               onConfirm={async () => {
                 setShowBackupConfirm(false)
                 if (!currentCompany?.id || !user) return
+                setBackupLoading(true)
                 try {
                   const backupService = getBackupService()
                   const ctx = {
@@ -1292,10 +1483,16 @@ export default function SettingsPage() {
                   setBackupSuccess(true)
                   setForm((prev) => ({ ...prev, lastBackup: new Date().toISOString() }))
                   setTimeout(() => setBackupSuccess(false), 5000)
+                  // Refresh history
+                  const history = await backupService.getBackupHistory(ctx, 10)
+                  setBackupHistory(history)
                 } catch (err) {
                   appLogger.error('Backup failed', err)
+                } finally {
+                  setBackupLoading(false)
                 }
               }}
+              loading={backupLoading}
               title={t('Create Manual Backup?', 'إنشاء نسخة احتياطية يدوية؟')}
               message={t(
                 'This will create an immediate backup of all your company data including documents, settings, and user data.',
@@ -1314,9 +1511,33 @@ export default function SettingsPage() {
             <ConfirmModal
               open={showRestoreConfirm}
               onClose={() => setShowRestoreConfirm(false)}
-              onConfirm={() => {
+              onConfirm={async () => {
                 setShowRestoreConfirm(false)
+                if (!currentCompany?.id || !user) return
+                setRestoreLoading(true)
+                try {
+                  const backupService = getBackupService()
+                  const ctx = {
+                    userId: user.id,
+                    companyId: currentCompany.id,
+                    permissions: {},
+                    isSystemAdmin: user.isSystemAdmin || false,
+                  }
+                  // Restore from the most recent completed backup
+                  const latest = backupHistory.find((b) => b.status === 'completed')
+                  if (latest) {
+                    await backupService.restoreBackup(latest.id, ctx)
+                    appLogger.info('Restore completed successfully')
+                  } else {
+                    appLogger.warn('No completed backup found to restore')
+                  }
+                } catch (err) {
+                  appLogger.error('Restore failed', err)
+                } finally {
+                  setRestoreLoading(false)
+                }
               }}
+              loading={restoreLoading}
               title={t('Restore from Backup?', 'الاستعادة من نسخة احتياطية؟')}
               message={t(
                 'WARNING: This will overwrite all current data with the backup. This action cannot be undone.',
@@ -1334,7 +1555,45 @@ export default function SettingsPage() {
         )
 
       // ─── 8. Licensing ──────────────────────────────
-      case 'licensing':
+      case 'licensing': {
+        const daysUntilExpiry = licenseInfo?.validUntil
+          ? Math.max(0, Math.ceil((new Date(licenseInfo.validUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+          : null
+        const statusLabel = !licenseInfo
+          ? t('Unavailable', 'غير متاح')
+          : licenseInfo.status === 'valid'
+            ? t('Active', 'نشط')
+            : licenseInfo.status === 'expiring'
+              ? t('Expiring Soon', 'ينتهي قريباً')
+              : t('Invalid', 'غير صالح')
+        const statusColor = !licenseInfo
+          ? 'bg-gray-100 text-gray-700'
+          : licenseInfo.status === 'valid'
+            ? 'bg-emerald-100 text-emerald-700'
+            : licenseInfo.status === 'expiring'
+              ? 'bg-amber-100 text-amber-700'
+              : 'bg-red-100 text-red-700'
+        const cardBg = !licenseInfo
+          ? 'bg-gray-50 border-gray-200'
+          : licenseInfo.status === 'valid'
+            ? 'bg-emerald-50 border-emerald-200'
+            : licenseInfo.status === 'expiring'
+              ? 'bg-amber-50 border-amber-200'
+              : 'bg-red-50 border-red-200'
+        const textColor = !licenseInfo
+          ? 'text-gray-800'
+          : licenseInfo.status === 'valid'
+            ? 'text-emerald-800'
+            : licenseInfo.status === 'expiring'
+              ? 'text-amber-800'
+              : 'text-red-800'
+        const subTextColor = !licenseInfo
+          ? 'text-gray-600'
+          : licenseInfo.status === 'valid'
+            ? 'text-emerald-600'
+            : licenseInfo.status === 'expiring'
+              ? 'text-amber-600'
+              : 'text-red-600'
         return (
           <div className="space-y-6">
             <div>
@@ -1343,18 +1602,26 @@ export default function SettingsPage() {
             </div>
 
             {/* License Status */}
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-5">
+            <div className={`${cardBg} border rounded-lg p-5`}>
               <div className="flex items-start gap-3">
-                <div className="p-2.5 bg-emerald-100 rounded-lg">
-                  <Shield className="w-5 h-5 text-emerald-600" />
+                <div className={`p-2.5 rounded-lg ${
+                  licenseInfo?.status === 'valid' ? 'bg-emerald-100' : licenseInfo?.status === 'expiring' ? 'bg-amber-100' : 'bg-red-100'
+                }`}>
+                  <Shield className={`w-5 h-5 ${
+                    licenseInfo?.status === 'valid' ? 'text-emerald-600' : licenseInfo?.status === 'expiring' ? 'text-amber-600' : 'text-red-600'
+                  }`} />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-emerald-800">{t('License Status', 'حالة الترخيص')}</p>
-                    <span className="status-badge bg-emerald-100 text-emerald-700">{t('Active', 'نشط')}</span>
+                    <p className={`text-sm font-semibold ${textColor}`}>{t('License Status', 'حالة الترخيص')}</p>
+                    <span className={`status-badge ${statusColor}`}>{statusLabel}</span>
                   </div>
-                  <p className="text-xs text-emerald-600 mt-1">
-                    {t('Enterprise Plan — Valid until December 31, 2025', 'خطة المؤسسات — صالحة حتى 31 ديسمبر 2025')}
+                  <p className={`text-xs ${subTextColor} mt-1`}>
+                    {licenseInfo?.plan && licenseInfo?.validUntil
+                      ? `${licenseInfo.plan} — ${t('Valid until', 'صالح حتى')} ${new Date(licenseInfo.validUntil).toLocaleDateString()}`
+                      : licenseInfo?.plan
+                        ? licenseInfo.plan
+                        : t('No license information available', 'لا توجد معلومات ترخيص متاحة')}
                   </p>
                   <div className="mt-3 grid grid-cols-3 gap-4 text-xs">
                     <div>
@@ -1379,28 +1646,48 @@ export default function SettingsPage() {
               <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('License Key', 'مفتاح الترخيص')}</h4>
               <div className="flex items-center gap-2">
                 <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 font-mono text-sm text-gray-600 tracking-wider">
-                  SANAD-ENT-****-****-****-7K2M
+                  {licenseInfo?.key ? `${licenseInfo.key.slice(0, 8)}-****-****-****-${licenseInfo.key.slice(-4)}` : '—'}
                 </div>
-                <button onClick={() => { navigator.clipboard.writeText('SANAD-ENT-****-****-****-7K2M') }} className="btn-ghost text-xs">
-                  {t('Copy', 'نسخ')}
-                </button>
+                {licenseInfo?.key && (
+                  <button onClick={() => { navigator.clipboard.writeText(licenseInfo.key) }} className="btn-ghost text-xs">
+                    {t('Copy', 'نسخ')}
+                  </button>
+                )}
               </div>
-              <p className="text-xs text-gray-400 mt-2">{t('Issued: January 1, 2024 — Owner: Mohamed Al-Hassan', 'صدر: 1 يناير 2024 — المالك: محمد الحسن')}</p>
+              {licenseInfo?.lastVerified && (
+                <p className="text-xs text-gray-400 mt-2">
+                  {t('Last verified', 'آخر تحقق')}: {new Date(licenseInfo.lastVerified).toLocaleDateString()}
+                </p>
+              )}
             </div>
 
-            {/* Upgrade notice */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-amber-800">{t('Renewal Reminder', 'تذكير بالتجديد')}</p>
-                <p className="text-xs text-amber-600 mt-0.5">
-                  {t(
-                    'Your license will expire in 365 days. Renew early to avoid service interruption.',
-                    'سينتهي ترخيصك خلال 365 يومًا. جدد مبكرًا لتجنب انقطاع الخدمة.'
-                  )}
-                </p>
+            {/* Renewal reminder — only when expiring or expired */}
+            {daysUntilExpiry !== null && daysUntilExpiry <= 60 && (
+              <div className={`border rounded-lg p-4 flex items-start gap-3 ${
+                daysUntilExpiry <= 0 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'
+              }`}>
+                <AlertTriangle className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                  daysUntilExpiry <= 0 ? 'text-red-500' : 'text-amber-500'
+                }`} />
+                <div>
+                  <p className={`text-sm font-medium ${daysUntilExpiry <= 0 ? 'text-red-800' : 'text-amber-800'}`}>
+                    {t('Renewal Reminder', 'تذكير بالتجديد')}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${daysUntilExpiry <= 0 ? 'text-red-600' : 'text-amber-600'}`}>
+                    {daysUntilExpiry <= 0
+                      ? t(
+                          'Your license has expired. Renew now to restore full access.',
+                          'انتهى ترخيصك. جدد الآن لاستعادة الوصول الكامل.'
+                        )
+                      : t(
+                          `Your license will expire in ${daysUntilExpiry} day${daysUntilExpiry === 1 ? '' : 's'}. Renew early to avoid service interruption.`,
+                          `سينتهي ترخيصك خلال ${daysUntilExpiry} يومًا. جدد مبكرًا لتجنب انقطاع الخدمة.`
+                        )
+                    }
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
               <button onClick={handleSave} disabled={saving} className="btn-primary gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -1410,6 +1697,7 @@ export default function SettingsPage() {
             </div>
           </div>
         )
+      }
     }
   }
 
@@ -1437,13 +1725,17 @@ export default function SettingsPage() {
       <div className="flex gap-6 min-h-[600px]">
         {/* ─── Left Sidebar Tabs ────────────────────────── */}
         <div className="w-56 flex-shrink-0">
-          <nav className="card p-2 space-y-0.5">
+          <nav className="card p-2 space-y-0.5" role="tablist" aria-orientation="vertical">
             {tabs.map((tab) => {
               const Icon = tab.icon
               const isActive = activeTab === tab.id
               return (
                 <button
                   key={tab.id}
+                  id={`tab-${tab.id}`}
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`panel-${tab.id}`}
                   onClick={() => setActiveTab(tab.id)}
                   className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-start ${
                     isActive
@@ -1460,7 +1752,7 @@ export default function SettingsPage() {
         </div>
 
         {/* ─── Right Content Area ────────────────────────── */}
-        <div className="flex-1 card p-6">
+        <div className="flex-1 card p-6" role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
           {renderTabContent()}
         </div>
       </div>

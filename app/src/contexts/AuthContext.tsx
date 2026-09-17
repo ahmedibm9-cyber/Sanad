@@ -30,6 +30,7 @@ interface AuthContextType {
   // License state
   licenseInfo: LicenseInfo | null
   isLicenseValid: boolean
+  isLicenseExpiringSoon: boolean
   isLicenseLoading: boolean
   verifyLicense: () => Promise<void>
   
@@ -201,6 +202,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     refreshSession,
     licenseInfo,
     isLicenseValid: licenseService.isValid(),
+    isLicenseExpiringSoon: licenseService.isExpiringSoon(),
     isLicenseLoading,
     verifyLicense,
     isSystemAdmin: user?.isSystemAdmin || false,

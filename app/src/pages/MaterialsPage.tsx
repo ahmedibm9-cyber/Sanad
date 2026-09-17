@@ -42,12 +42,17 @@ function toDbUpdates(data: Partial<Material>): Record<string, unknown> {
 
 export default function MaterialsPage() {
   const { t } = useLanguage()
-  const { currentCompany } = useCompany()
+  const { currentCompany, hasPermission } = useCompany()
+  const canCreate = hasPermission('materials.create')
+  const canEdit = hasPermission('materials.edit')
+  const canDelete = hasPermission('materials.delete')
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null)
   const [deletingMaterial, setDeletingMaterial] = useState<Material | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [page, setPage] = useState(1)
+  const [formError, setFormError] = useState<string | null>(null)
   const PAGE_SIZE = 10
 
   // ── Supabase data hooks ──
@@ -79,23 +84,34 @@ export default function MaterialsPage() {
   const origins = useMemo(() => new Set(materials.map(m => m.origin).filter(Boolean)).size, [materials])
 
   const handleSave = async (data: Partial<Material>) => {
-    if (editingMaterial) {
-      const updates = toDbUpdates(data)
-      if (Object.keys(updates).length > 0) {
-        await update(editingMaterial.id, updates as Record<string, unknown>)
+    setFormError(null)
+    try {
+      if (editingMaterial) {
+        const updates = toDbUpdates(data)
+        if (Object.keys(updates).length > 0) {
+          await update(editingMaterial.id, updates as Record<string, unknown>)
+        }
+      } else {
+        const dbData = toDbUpdates(data)
+        await create(dbData as Record<string, unknown>, currentCompany.id)
       }
-    } else {
-      const dbData = toDbUpdates(data)
-      await create(dbData as Record<string, unknown>, currentCompany.id)
+      refetch()
+    } catch {
+      setFormError(t('Failed to save material. Please try again.', 'فشل حفظ المادة. يرجى المحاولة مرة أخرى.'))
     }
-    refetch()
   }
 
   const handleDelete = async () => {
-    if (deletingMaterial) {
-      await remove(deletingMaterial.id)
-      setDeletingMaterial(null)
-      refetch()
+    if (deleting) return
+    setDeleting(true)
+    try {
+      if (deletingMaterial) {
+        await remove(deletingMaterial.id)
+        setDeletingMaterial(null)
+        refetch()
+      }
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -106,7 +122,7 @@ export default function MaterialsPage() {
           <h1 className="text-2xl font-bold text-brand-900">{t('Materials Library', 'مكتبة المواد')}</h1>
           <p className="text-sm text-gray-500 mt-1">{t(`${materials.length} materials across ${manufacturers} manufacturers from ${origins} origins`, `${materials.length} مادة من ${manufacturers} مصنّع و ${origins} أصل`)}</p>
         </div>
-        <button onClick={() => { setEditingMaterial(null); setShowForm(true) }} className="btn-primary"><Plus size={16} className="ms-1.5" />{t('Add Material', 'إضافة مادة')}</button>
+        {canCreate && <button onClick={() => { setEditingMaterial(null); setShowForm(true) }} className="btn-primary"><Plus size={16} className="ms-1.5" />{t('Add Material', 'إضافة مادة')}</button>}
       </div>
 
       {loading && (
@@ -168,8 +184,8 @@ export default function MaterialsPage() {
                         </td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => { setEditingMaterial(m); setShowForm(true) }} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600" title={t('Edit', 'تعديل')} aria-label={t('Edit material', 'تعديل المادة')}><Pencil size={15} /></button>
-                            <button onClick={() => setDeletingMaterial(m)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-red-600" title={t('Delete', 'حذف')} aria-label={t('Delete material', 'حذف المادة')}><Trash2 size={15} /></button>
+                            {canEdit && <button onClick={() => { setEditingMaterial(m); setShowForm(true) }} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600" title={t('Edit', 'تعديل')} aria-label={t('Edit material', 'تعديل المادة')}><Pencil size={15} /></button>}
+                            {canDelete && <button onClick={() => setDeletingMaterial(m)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-red-600" title={t('Delete', 'حذف')} aria-label={t('Delete material', 'حذف المادة')}><Trash2 size={15} /></button>}
                           </div>
                         </td>
                       </tr>
@@ -192,7 +208,7 @@ export default function MaterialsPage() {
       )}
 
       <MaterialFormModal open={showForm} onClose={() => { setShowForm(false); setEditingMaterial(null) }} onSave={handleSave} material={editingMaterial} />
-      <ConfirmModal open={!!deletingMaterial} onClose={() => setDeletingMaterial(null)} onConfirm={handleDelete} title={t('Move to Trash', 'نقل إلى سلة المهملات')} message={t(`Are you sure you want to move "${deletingMaterial?.name}" to trash?`, `هل أنت متأكد من نقل "${deletingMaterial?.name}" إلى سلة المهملات؟`)} details={t('This action can be undone from Trash.', 'يمكن التراجع من سلة المهملات.')} confirmLabel={t('Move to Trash', 'نقل إلى سلة المهملات')} cancelLabel={t('Cancel', 'إلغاء')} variant="danger" />
+      <ConfirmModal open={!!deletingMaterial} onClose={() => setDeletingMaterial(null)} onConfirm={handleDelete} title={t('Move to Trash', 'نقل إلى سلة المهملات')} message={t(`Are you sure you want to move "${deletingMaterial?.name}" to trash?`, `هل أنت متأكد من نقل "${deletingMaterial?.name}" إلى سلة المهملات؟`)} details={t('This action can be undone from Trash.', 'يمكن التراجع من سلة المهملات.')} confirmLabel={t('Move to Trash', 'نقل إلى سلة المهملات')} cancelLabel={t('Cancel', 'إلغاء')} variant="danger" loading={deleting} />
     </div>
   )
 }

@@ -40,7 +40,7 @@ const PRIORITY_CONFIG: Record<string, { bg: string; text: string; labelEn: strin
 }
 
 export default function Dashboard() {
-  const { t } = useLanguage()
+  const { t, dir } = useLanguage()
   const { currentCompany } = useCompany()
   const { user } = useAuth()
 
@@ -240,7 +240,7 @@ export default function Dashboard() {
               return (
                 <div
                   key={todo.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                  className={`flex flex-wrap items-center gap-2 p-3 rounded-lg transition-colors ${
                     isOverdue ? 'bg-red-50/60' : 'hover:bg-sand-50'
                   }`}
                 >
@@ -252,17 +252,19 @@ export default function Dashboard() {
                       {todo.title}
                     </p>
                     {todo.description && (
-                      <p className="text-xs text-gray-400 truncate mt-0.5">{todo.description}</p>
+                      <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{todo.description}</p>
                     )}
                   </div>
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${pConfig.bg} ${pConfig.text} shrink-0`}>
-                    {t(pConfig.labelEn, pConfig.labelAr)}
-                  </span>
-                  {todo.due_date && (
-                    <span className={`text-xs shrink-0 ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
-                      {new Date(todo.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${pConfig.bg} ${pConfig.text}`}>
+                      {t(pConfig.labelEn, pConfig.labelAr)}
                     </span>
-                  )}
+                    {todo.due_date && (
+                      <span className={`text-xs ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+                        {new Date(todo.due_date).toLocaleDateString(dir === 'rtl' ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )
             })}
@@ -321,7 +323,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                     <span className="text-xs text-gray-400 shrink-0">
-                      {new Date(doc.updated_at).toLocaleDateString('en-US', {
+                      {new Date(doc.updated_at).toLocaleDateString(dir === 'rtl' ? 'ar-SA' : 'en-US', {
                         month: 'short',
                         day: 'numeric',
                       })}
@@ -367,19 +369,34 @@ export default function Dashboard() {
                   BACKUP: '💾',
                   FACTORY_IMPORT: '🏭',
                 }
+                const ACTION_LABELS: Record<string, { en: string; ar: string }> = {
+                  CREATE: { en: 'created', ar: 'أنشأ' },
+                  EDIT: { en: 'edited', ar: 'عدّل' },
+                  UPLOAD: { en: 'uploaded to', ar: 'رفع إلى' },
+                  ARCHIVE: { en: 'archived', ar: 'أرشف' },
+                  DELETE: { en: 'deleted', ar: 'حذف' },
+                  MOVE_TO_TRASH: { en: 'moved to trash', ar: 'نقل إلى سلة المهملات' },
+                  PDF_DOWNLOAD: { en: 'downloaded PDF from', ar: 'حمّل PDF من' },
+                  DOWNLOAD: { en: 'downloaded from', ar: 'حمّل من' },
+                  RESTORE: { en: 'restored', ar: 'استعاد' },
+                  PERMISSION_CHANGE: { en: 'changed permissions for', ar: 'غيّر صلاحيات' },
+                  BACKUP: { en: 'created backup of', ar: 'أنشأ نسخة احتياطية من' },
+                  FACTORY_IMPORT: { en: 'imported factory data to', ar: 'استورد بيانات مصنع إلى' },
+                }
+                const actionLabel = ACTION_LABELS[entry.action] || { en: entry.action.toLowerCase().replace('_', ' '), ar: entry.action.toLowerCase().replace('_', ' ') }
                 return (
                   <div key={entry.id} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-sand-50 transition-colors">
-                    <span className="text-base mt-0.5">{actionIcons[entry.action] || '📌'}</span>
+                    <span className="text-base mt-0.5" aria-hidden="true">{actionIcons[entry.action] || '📌'}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-700">
-                        <span className="font-medium">{entry.actor_user_id}</span>
+                        <span className="font-medium">{user?.displayName || entry.actor_user_id.slice(0, 8)}</span>
                         {' '}
-                        <span className="text-gray-500">{entry.action.toLowerCase().replace('_', ' ')}</span>
+                        <span className="text-gray-500">{t(actionLabel.en, actionLabel.ar)}</span>
                         {' '}
                         <span className="font-medium">{entry.entity_reference || entry.entity_type}</span>
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {new Date(entry.created_at).toLocaleDateString('en-US', {
+                        {new Date(entry.created_at).toLocaleDateString(dir === 'rtl' ? 'ar-SA' : 'en-US', {
                           month: 'short',
                           day: 'numeric',
                           hour: '2-digit',

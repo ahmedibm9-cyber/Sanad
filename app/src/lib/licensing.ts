@@ -195,11 +195,21 @@ export class LicenseService {
   }
 
   /**
-   * Check if the license is valid.
+   * Check if the license is valid (not expiring, not expired, not unavailable).
    */
   isValid(): boolean {
     if (!this.currentLicense) return false
-    return this.currentLicense.status === 'valid' || this.currentLicense.status === 'expiring'
+    return this.currentLicense.status === 'valid'
+  }
+
+  /**
+   * Check if the license is expiring soon (within 30 days).
+   */
+  isExpiringSoon(): boolean {
+    if (!this.currentLicense) return false
+    if (this.currentLicense.status !== 'expiring') return false
+    if (!this.currentLicense.validUntil) return false
+    return this.daysUntil(new Date(this.currentLicense.validUntil)) <= 30
   }
 
   /**

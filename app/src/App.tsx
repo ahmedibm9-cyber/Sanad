@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import ErrorBoundary from './components/common/ErrorBoundary'
+import OfflineBanner from './components/common/OfflineBanner'
 import AppLayout from './components/layout/AppLayout'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 
@@ -20,10 +21,12 @@ const ReportsPage = lazy(() => import('./pages/ReportsPage'))
 const ActivityPage = lazy(() => import('./pages/ActivityPage'))
 const TrashPage = lazy(() => import('./pages/TrashPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
+const ConfigurableListsPage = lazy(() => import('./pages/ConfigurableListsPage'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const DocumentFormPage = lazy(() => import('./pages/DocumentFormPage'))
 const DocumentPreviewPage = lazy(() => import('./pages/DocumentPreviewPage'))
 const UsersPage = lazy(() => import('./pages/UsersPage'))
+const DocumentsPage = lazy(() => import('./pages/DocumentsPage'))
 
 function PageSpinner() {
   return (
@@ -36,6 +39,7 @@ function PageSpinner() {
 export default function App() {
   return (
     <ErrorBoundary>
+      <OfflineBanner />
       <Suspense fallback={<PageSpinner />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -56,8 +60,10 @@ export default function App() {
             <Route path="/activity" element={<ActivityPage />} />
             <Route path="/trash" element={<TrashPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/lists" element={<ConfigurableListsPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/users" element={<UsersPage />} />
+            <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/documents/:id/form" element={<DocumentFormPage />} />
             <Route path="/documents/:id/preview" element={<DocumentPreviewPage />} />
           </Route>

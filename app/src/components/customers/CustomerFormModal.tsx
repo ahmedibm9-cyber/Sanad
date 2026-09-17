@@ -3,6 +3,7 @@ import { useLanguage } from '../../contexts/LanguageContext'
 import Modal from '../common/Modal'
 import FormSection from '../common/FormSection'
 import type { Customer } from '../../types'
+import { Plus, Trash2 } from 'lucide-react'
 
 interface CustomerFormModalProps {
   open: boolean
@@ -11,9 +12,19 @@ interface CustomerFormModalProps {
   customer?: Customer | null
 }
 
+interface ContactEntry {
+  name: string
+  title: string
+  email: string
+  phone: string
+  isPrimary: boolean
+}
+
+const EMPTY_CONTACT: ContactEntry = { name: '', title: '', email: '', phone: '', isPrimary: false }
+
 const EMPTY_FORM = {
-  name: '', nameAr: '', contactPerson: '', phone: '', phoneSecondary: '', email: '', website: '',
-  country: '', city: '', address: '', postalCode: '', vatNumber: '',
+  name: '', nameAr: '', legalName: '', contactPerson: '', phone: '', phoneSecondary: '', email: '', website: '',
+  country: '', city: '', address: '', postalCode: '', vatNumber: '', registrationNumber: '',
   defaultCurrency: 'SAR', defaultVatTreatment: '0', paymentTerms: 'Net 30 days',
   paymentMethodNotes: '', incoterm: 'FOB', deliveryTerms: '', defaultDocumentLanguage: 'en',
   defaultTemplate: 'template-a', commercialNotes: '',
@@ -27,40 +38,64 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
   const { t } = useLanguage()
   const isEdit = !!customer
   const [form, setForm] = useState(EMPTY_FORM)
+  const [contacts, setContacts] = useState<ContactEntry[]>([])
   const initialFormRef = useRef(EMPTY_FORM)
+  const initialContactsRef = useRef<ContactEntry[]>([])
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (customer) {
       setForm({
         name: customer.name || '', nameAr: customer.nameAr || '',
+        legalName: customer.legalName || '',
         contactPerson: customer.contactPerson || '', phone: customer.phone || '',
         phoneSecondary: customer.phoneSecondary || '', email: customer.email || '',
-        website: '', country: customer.country || '', city: customer.city || '',
+        website: customer.website || '', country: customer.country || '', city: customer.city || '',
         address: customer.address || '', postalCode: customer.postalCode || '',
-        vatNumber: customer.vatNumber || '',
-        defaultCurrency: 'SAR', defaultVatTreatment: '0', paymentTerms: 'Net 30 days',
-        paymentMethodNotes: '', incoterm: 'FOB', deliveryTerms: '',
-        defaultDocumentLanguage: 'en', defaultTemplate: 'template-a', commercialNotes: '',
-        defaultDestCountry: customer.country || '', defaultDestCity: customer.city || '',
-        defaultPort: '', transportResponsibility: 'Seller', loadingResponsibility: 'Seller',
-        unloadingResponsibility: 'Buyer', defaultConsignee: '', defaultNotifyParty: '',
-        packingInstructions: '', shippingNotes: '', specialHandling: '',
+        vatNumber: customer.vatNumber || '', registrationNumber: customer.registrationNumber || '',
+        defaultCurrency: customer.defaultCurrency || 'SAR',
+        defaultVatTreatment: customer.defaultVatTreatment || '0',
+        paymentTerms: customer.paymentTerms || 'Net 30 days',
+        paymentMethodNotes: customer.paymentMethodNotes || '',
+        incoterm: customer.incoterm || 'FOB',
+        deliveryTerms: customer.deliveryTerms || '',
+        defaultDocumentLanguage: customer.defaultDocumentLanguage || 'en',
+        defaultTemplate: customer.defaultTemplate || 'template-a',
+        commercialNotes: customer.commercialNotes || '',
+        defaultDestCountry: customer.defaultDestCountry || '',
+        defaultDestCity: customer.defaultDestCity || '',
+        defaultPort: customer.defaultPort || '',
+        transportResponsibility: customer.transportResponsibility || 'Seller',
+        loadingResponsibility: customer.loadingResponsibility || 'Seller',
+        unloadingResponsibility: customer.unloadingResponsibility || 'Buyer',
+        defaultConsignee: customer.defaultConsignee || '',
+        defaultNotifyParty: customer.defaultNotifyParty || '',
+        packingInstructions: customer.packingInstructions || '',
+        shippingNotes: customer.shippingNotes || '',
+        specialHandling: customer.specialHandling || '',
         notes: customer.notes || '',
       })
+      setContacts(
+        (customer.contacts as ContactEntry[] | undefined)?.map(c => ({
+          name: c.name || '', title: c.title || '', email: c.email || '',
+          phone: c.phone || '', isPrimary: c.isPrimary || false,
+        })) || []
+      )
     } else {
       setForm(EMPTY_FORM)
+      setContacts([])
     }
   }, [customer, open])
 
   // Capture initial form snapshot after form state settles (on open / customer change)
   useEffect(() => {
     initialFormRef.current = form
+    initialContactsRef.current = contacts
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   // Dirty-state tracking: compare current form to initial snapshot
-  const isDirty = JSON.stringify(form) !== JSON.stringify(initialFormRef.current)
+  const isDirty = JSON.stringify(form) !== JSON.stringify(initialFormRef.current) || JSON.stringify(contacts) !== JSON.stringify(initialContactsRef.current)
 
   // Unsaved changes protection via native browser beforeunload
   const handleBeforeUnload = useCallback((e: BeforeUnloadEvent) => {
@@ -82,7 +117,7 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
   const handleSave = async () => {
     setSaving(true)
     try {
-      await onSave({ ...form, id: customer?.id, companyId: customer?.companyId })
+      await onSave({ ...form, contacts: contacts.length > 0 ? contacts : undefined, id: customer?.id, companyId: customer?.companyId })
       onClose()
     } catch {
       // error already surfaced by caller
@@ -120,6 +155,13 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
     </div>
   )
 
+  const updateContact = (index: number, field: keyof ContactEntry, value: string | boolean) => {
+    setContacts(prev => prev.map((c, i) => i === index ? { ...c, [field]: value } : c))
+  }
+
+  const addContact = () => setContacts(prev => [...prev, { ...EMPTY_CONTACT, isPrimary: prev.length === 0 }])
+  const removeContact = (index: number) => setContacts(prev => prev.filter((_, i) => i !== index))
+
   return (
     <Modal
       open={open} onClose={onClose} size="xl"
@@ -142,8 +184,59 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
           <div className="grid grid-cols-2 gap-4">
             {field('Customer Name', 'name', { required: true })}
             {field('Arabic Name', 'nameAr')}
-            {field('Legal Name', 'name', { half: false })}
+            {field('Legal Name', 'legalName', { half: false })}
             {field('Contact Person', 'contactPerson')}
+          </div>
+        </FormSection>
+
+        <FormSection title="Contacts" titleAr="جهات الاتصال المتعددة" defaultOpen={contacts.length > 0}>
+          <div className="space-y-4">
+            {contacts.map((contact, idx) => (
+              <div key={idx} className="border border-gray-200 rounded-lg p-4 space-y-3 relative">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    {t('Contact', 'جهة الاتصال')} {idx + 1}
+                    {contact.isPrimary && <span className="ms-2 text-brand-600 normal-case tracking-normal">({t('Primary', 'أساسي')})</span>}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="primaryContact"
+                        checked={contact.isPrimary}
+                        onChange={() => setContacts(prev => prev.map((c, i) => ({ ...c, isPrimary: i === idx })))}
+                        className="accent-brand-600"
+                      />
+                      {t('Primary', 'أساسي')}
+                    </label>
+                    <button type="button" onClick={() => removeContact(idx)} className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-600" title={t('Remove contact', 'حذف جهة الاتصال')}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label-field">{t('Name', 'الاسم')} *</label>
+                    <input className="input-field" value={contact.name} onChange={e => updateContact(idx, 'name', e.target.value)} placeholder={t('Contact name', 'اسم جهة الاتصال')} />
+                  </div>
+                  <div>
+                    <label className="label-field">{t('Title / Role', 'المنصب / الدور')}</label>
+                    <input className="input-field" value={contact.title} onChange={e => updateContact(idx, 'title', e.target.value)} placeholder={t('e.g. Procurement Manager', 'مثال: مدير المشتريات')} />
+                  </div>
+                  <div>
+                    <label className="label-field">{t('Email', 'البريد الإلكتروني')}</label>
+                    <input type="email" className="input-field" value={contact.email} onChange={e => updateContact(idx, 'email', e.target.value)} placeholder={t('email@example.com', 'email@example.com')} />
+                  </div>
+                  <div>
+                    <label className="label-field">{t('Phone', 'الهاتف')}</label>
+                    <input className="input-field" value={contact.phone} onChange={e => updateContact(idx, 'phone', e.target.value)} placeholder={t('+966 5XX XXX XXXX', '+966 5XX XXX XXXX')} />
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button type="button" onClick={addContact} className="flex items-center gap-2 text-sm text-brand-600 hover:text-brand-700 font-medium">
+              <Plus size={16} /> {t('Add Contact', 'إضافة جهة اتصال')}
+            </button>
           </div>
         </FormSection>
 
@@ -181,7 +274,7 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
         <FormSection title="Legal / Tax" titleAr="قانوني / ضريبي">
           <div className="grid grid-cols-2 gap-4">
             {field('VAT / Tax Number', 'vatNumber')}
-            {field('Registration Number', 'postalCode', { placeholder: 'Optional' })}
+            {field('Registration Number', 'registrationNumber', { placeholder: 'Optional' })}
           </div>
         </FormSection>
 

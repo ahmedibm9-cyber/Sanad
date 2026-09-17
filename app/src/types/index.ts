@@ -35,6 +35,15 @@ export interface Company {
   iban?: string
   swift?: string
   bankCurrency?: string
+  bankAccounts?: Array<{
+    id: string
+    bankName: string
+    accountName: string
+    accountNumber: string
+    iban: string
+    swift: string
+    bankCurrency: string
+  }>
   defaultLanguage?: Language
   defaultTemplate?: string
   defaultVatRate?: number
@@ -90,6 +99,7 @@ export interface Customer {
   nameAr?: string
   legalName?: string
   contactPerson?: string
+  contacts?: Array<{ name: string; title?: string; email?: string; phone?: string; isPrimary?: boolean }>
   phone?: string
   phoneSecondary?: string
   email?: string

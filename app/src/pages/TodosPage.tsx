@@ -30,6 +30,7 @@ export default function TodosPage() {
   const todos = todosData || []
 
   const [showForm, setShowForm] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
   const [filterPriority, setFilterPriority] = useState<'all' | 'low' | 'medium' | 'high'>('all')
   const [filterDone, setFilterDone] = useState<'all' | 'done' | 'pending'>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -71,22 +72,27 @@ export default function TodosPage() {
   async function handleAddTodo(e: React.FormEvent) {
     e.preventDefault()
     if (!formTitle.trim()) return
+    setFormError(null)
 
-    await createTodo({
-      title: formTitle.trim(),
-      description: formDescription.trim() || null,
-      due_date: formDate || null,
-      due_time: formTime || null,
-      priority: formPriority,
-    }, currentUser.id)
+    try {
+      await createTodo({
+        title: formTitle.trim(),
+        description: formDescription.trim() || null,
+        due_date: formDate || null,
+        due_time: formTime || null,
+        priority: formPriority,
+      }, currentUser.id)
 
-    refetch()
-    setFormTitle('')
-    setFormDescription('')
-    setFormDate('')
-    setFormTime('')
-    setFormPriority('medium')
-    setShowForm(false)
+      refetch()
+      setFormTitle('')
+      setFormDescription('')
+      setFormDate('')
+      setFormTime('')
+      setFormPriority('medium')
+      setShowForm(false)
+    } catch {
+      setFormError(t('Failed to create to-do. Please try again.', 'فشل إنشاء المهمة. يرجى المحاولة مرة أخرى.'))
+    }
   }
 
   async function toggleDone(id: string) {
@@ -170,7 +176,7 @@ export default function TodosPage() {
           </p>
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { setShowForm(!showForm); setFormError(null) }}
           className="btn-primary"
         >
           <Plus size={16} className="ms-1.5" />
@@ -193,6 +199,11 @@ export default function TodosPage() {
             {t('Add New To-do', 'إضافة مهمة جديدة')}
           </h3>
           <form onSubmit={handleAddTodo} className="space-y-4">
+            {formError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                {formError}
+              </div>
+            )}
             <div>
               <label className="label-field">{t('Title', 'العنوان')} *</label>
               <input

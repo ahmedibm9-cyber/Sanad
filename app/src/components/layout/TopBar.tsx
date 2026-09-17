@@ -2,16 +2,18 @@ import { useLanguage } from '../../contexts/LanguageContext'
 import { useCompany } from '../../contexts/CompanyContext'
 import { useApp } from '../../contexts/AppContext'
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, Globe, ChevronDown } from 'lucide-react'
+import { Search, Bell, Globe, ChevronDown, LogOut } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNotifications } from '../../hooks/useData'
 import GlobalSearch from '../common/GlobalSearch'
 import NotificationPanel from '../common/NotificationPanel'
+import { useAuth } from '../../contexts/AuthContext'
 
 export default function TopBar() {
   const { language, setLanguage, t, dir } = useLanguage()
   const { currentCompany } = useCompany()
   const { currentUser, searchOpen, setSearchOpen } = useApp()
+  const { signOut } = useAuth()
   const navigate = useNavigate()
   const isRtl = dir === 'rtl'
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -151,6 +153,16 @@ export default function TopBar() {
                   role="menuitem"
                 >
                   {t('Manage Users', 'إدارة المستخدمين')}
+                </button>
+              </div>
+              <div className="border-t border-gray-100">
+                <button
+                  onClick={() => { signOut(); setUserMenuOpen(false) }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 font-medium transition-colors"
+                  role="menuitem"
+                >
+                  <LogOut size={14} aria-hidden="true" />
+                  {t('Log out', 'تسجيل الخروج')}
                 </button>
               </div>
             </div>

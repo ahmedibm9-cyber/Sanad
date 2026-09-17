@@ -81,6 +81,15 @@ export interface Company {
   bankCurrency?: string
   defaultLanguage?: 'en' | 'ar'
   defaultVatRate?: number
+  bankAccounts?: Array<{
+    id: string
+    bankName: string
+    accountName: string
+    accountNumber: string
+    iban: string
+    swift: string
+    bankCurrency: string
+  }>
 }
 
 export interface CreateCompanyInput {

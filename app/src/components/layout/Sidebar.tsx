@@ -5,6 +5,7 @@ import { useApp } from '../../contexts/AppContext'
 import {
   LayoutDashboard, FolderOpen, ListTodo, CheckSquare, Users, Package,
   Factory, BarChart3, Activity, Trash2, Settings, ChevronDown, ChevronLeft, ChevronRight,
+  FileText, ListChecks,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -32,6 +33,7 @@ const navSections: NavSection[] = [
     items: [
       { path: '/customers', icon: Users, en: 'Customers', ar: 'العملاء' },
       { path: '/materials', icon: Package, en: 'Materials', ar: 'المواد' },
+      { path: '/documents', icon: FileText, en: 'Documents', ar: 'المستندات' },
       { path: '/factory', icon: Factory, en: 'Factory Code', ar: 'كود المصنع' },
     ],
   },
@@ -49,6 +51,7 @@ const navSections: NavSection[] = [
     items: [
       { path: '/trash', icon: Trash2, en: 'Trash', ar: 'سلة المهملات' },
       { path: '/settings', icon: Settings, en: 'Settings', ar: 'الإعدادات' },
+      { path: '/settings/lists', icon: ListChecks, en: 'Config Lists', ar: 'القوائم' },
     ],
   },
 ]
@@ -143,9 +146,9 @@ export default function Sidebar() {
           <div key={section.labelEn} className={sIdx > 0 ? 'mt-4' : ''}>
             {/* Section header */}
             {!collapsed && (
-              <p className="px-2.5 mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              <h3 className="px-2.5 mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                 {t(section.labelEn, section.labelAr)}
-              </p>
+              </h3>
             )}
             {collapsed && sIdx > 0 && (
               <div className="mx-2 my-2 border-t border-gray-100" />

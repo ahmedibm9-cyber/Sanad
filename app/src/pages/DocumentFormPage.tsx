@@ -8,6 +8,7 @@ import { getDocumentService, type CreateDocumentInput, type UpdateDocumentInput 
 import { useAuth } from '../contexts/AuthContext'
 import { getSharedDataService } from '../lib/services/sharedData'
 import FormSection from '../components/common/FormSection'
+import VoiceInputButton from '../components/common/VoiceInputButton'
 import type { DocumentType, ProjectMaterial } from '../types'
 import {
   Save, Printer, ArrowLeft, Plus, Trash2, AlertTriangle, X,
@@ -102,6 +103,8 @@ export default function DocumentFormPage() {
 
   // Commercial terms
   const [validUntil, setValidUntil] = useState('')
+  const [invoiceDate, setInvoiceDate] = useState(today())
+  const [dueDate, setDueDate] = useState('')
   const [subtotal, setSubtotal] = useState(0)
   const [vatRate, setVatRate] = useState<number>(0)
   const [origin, setOrigin] = useState('')
@@ -153,6 +156,8 @@ export default function DocumentFormPage() {
   const [sender, setSender] = useState(currentCompany.nameEn)
   const [receiver, setReceiver] = useState(customer.name)
   const [deliveryAddress, setDeliveryAddress] = useState(customer.address || '')
+  const [deliveryDate, setDeliveryDate] = useState('')
+  const [driverName, setDriverName] = useState('')
   const [relatedInvoice, setRelatedInvoice] = useState('')
 
   // Bill of Lading
@@ -254,6 +259,8 @@ export default function DocumentFormPage() {
         vatAmount,
         total,
         validUntil,
+        invoiceDate,
+        dueDate,
         origin,
         packing,
         deliveryTime,
@@ -278,6 +285,8 @@ export default function DocumentFormPage() {
         sender,
         receiver,
         deliveryAddress,
+        deliveryDate,
+        driverName,
         relatedInvoice,
         shipper,
         consignee,
@@ -893,7 +902,10 @@ export default function DocumentFormPage() {
             </div>
             <div>
               <label className="label-field">{t('Notes', 'ملاحظات')}</label>
-              <textarea className="input-field" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('Additional notes...', 'ملاحظات إضافية...')} />
+              <div className="flex gap-2">
+                <textarea className="input-field flex-1" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('Additional notes...', 'ملاحظات إضافية...')} />
+                <VoiceInputButton onTranscript={(text) => setNotes(prev => prev ? prev + ' ' + text : text)} size="sm" />
+              </div>
             </div>
             <div className="mt-4">
               <label className="label-field">{t('Terms & Conditions', 'الشروط والأحكام')}</label>
@@ -922,6 +934,16 @@ export default function DocumentFormPage() {
                   <div>
                     <label className="label-field">{t('Buyer', 'المشتري')}</label>
                     <input type="text" className="input-field" value={customer.name} readOnly />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label-field">{t('Invoice Date', 'تاريخ الفاتورة')}</label>
+                    <input type="date" className="input-field" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="label-field">{t('Due Date', 'تاريخ الاستحقاق')}</label>
+                    <input type="date" className="input-field" value={dueDate} onChange={e => setDueDate(e.target.value)} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -974,7 +996,10 @@ export default function DocumentFormPage() {
             </div>
             <div className="mt-4">
               <label className="label-field">{t('Notes', 'ملاحظات')}</label>
-              <textarea className="input-field" rows={2} value={notes} onChange={e => setNotes(e.target.value)} />
+              <div className="flex gap-2">
+                <textarea className="input-field flex-1" rows={2} value={notes} onChange={e => setNotes(e.target.value)} />
+                <VoiceInputButton onTranscript={(text) => setNotes(prev => prev ? prev + ' ' + text : text)} size="sm" />
+              </div>
             </div>
           </FormSection>
 
@@ -1016,6 +1041,16 @@ export default function DocumentFormPage() {
                 <div>
                   <label className="label-field">{t('TINV Number', 'رقم الفاتورة الضريبية')}</label>
                   <input type="text" className="input-field" value={docNumber} readOnly />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label-field">{t('Invoice Date', 'تاريخ الفاتورة')}</label>
+                    <input type="date" className="input-field" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="label-field">{t('Due Date', 'تاريخ الاستحقاق')}</label>
+                    <input type="date" className="input-field" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                  </div>
                 </div>
                 <div className="border border-gray-200 rounded-lg p-4">
                   <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('Seller Tax Details', 'البيانات الضريبية للبائع')}</h4>
@@ -1073,6 +1108,36 @@ export default function DocumentFormPage() {
               </div>
             </div>
           </FormSection>
+
+          {/* Payment & Bank Details */}
+          <FormSection title="Payment & Bank Details" titleAr="تفاصيل الدفع والحساب البنكي" defaultOpen={false}>
+            <div className="space-y-3">
+              <div>
+                <label className="label-field">{t('Payment Terms', 'شروط الدفع')}</label>
+                <input type="text" className="input-field" value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label-field">{t('Bank Name', 'اسم البنك')}</label>
+                  <input type="text" className="input-field" value={bankName} onChange={e => setBankName(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label-field">{t('Account Name', 'اسم الحساب')}</label>
+                  <input type="text" className="input-field" value={accountName} onChange={e => setAccountName(e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label-field">{t('IBAN', 'آيبان')}</label>
+                  <input type="text" className="input-field" value={iban} onChange={e => setIban(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label-field">{t('SWIFT', 'سويلفت')}</label>
+                  <input type="text" className="input-field" value={swift} onChange={e => setSwift(e.target.value)} />
+                </div>
+              </div>
+            </div>
+          </FormSection>
         </>
       )
 
@@ -1095,6 +1160,16 @@ export default function DocumentFormPage() {
                   <div>
                     <label className="label-field">{t('Buyer', 'المشتري')}</label>
                     <input type="text" className="input-field" value={customer.name} readOnly />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label-field">{t('Invoice Date', 'تاريخ الفاتورة')}</label>
+                    <input type="date" className="input-field" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="label-field">{t('Due Date', 'تاريخ الاستحقاق')}</label>
+                    <input type="date" className="input-field" value={dueDate} onChange={e => setDueDate(e.target.value)} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -1132,6 +1207,32 @@ export default function DocumentFormPage() {
                 <div>
                   <label className="label-field">{t('Payment Terms', 'شروط الدفع')}</label>
                   <input type="text" className="input-field" value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)} />
+                </div>
+              </div>
+            </div>
+          </FormSection>
+
+          {/* Bank Details */}
+          <FormSection title="Bank Details" titleAr="التفاصيل المصرفية" defaultOpen={false}>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label-field">{t('Bank Name', 'اسم البنك')}</label>
+                  <input type="text" className="input-field" value={bankName} onChange={e => setBankName(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label-field">{t('Account Name', 'اسم الحساب')}</label>
+                  <input type="text" className="input-field" value={accountName} onChange={e => setAccountName(e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label-field">{t('IBAN', 'آيبان')}</label>
+                  <input type="text" className="input-field" value={iban} onChange={e => setIban(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label-field">{t('SWIFT', 'سويلفت')}</label>
+                  <input type="text" className="input-field" value={swift} onChange={e => setSwift(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -1220,6 +1321,16 @@ export default function DocumentFormPage() {
                 <div>
                   <label className="label-field">{t('Delivery Address', 'عنوان التسليم')}</label>
                   <textarea className="input-field" rows={2} value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label-field">{t('Delivery Date', 'تاريخ التسليم')}</label>
+                    <input type="date" className="input-field" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="label-field">{t('Driver Name', 'اسم السائق')}</label>
+                    <input type="text" className="input-field" value={driverName} onChange={e => setDriverName(e.target.value)} />
+                  </div>
                 </div>
                 <div>
                   <label className="label-field">{t('Related Invoice', 'الفاتورة المرتبطة')}</label>

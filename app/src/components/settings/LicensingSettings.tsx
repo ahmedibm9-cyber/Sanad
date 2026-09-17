@@ -8,26 +8,26 @@ import { useAuth } from '../../contexts/AuthContext'
 import { Shield, RefreshCw, AlertTriangle, CheckCircle, Clock, Key } from 'lucide-react'
 
 export function LicensingSettings() {
-  const { licenseInfo, isLicenseValid, isLicenseLoading, verifyLicense } = useAuth()
+  const { licenseInfo, isLicenseValid, isLicenseExpiringSoon, isLicenseLoading, verifyLicense } = useAuth()
 
   const getStatusIcon = () => {
     if (isLicenseLoading) return <RefreshCw size={20} className="text-gray-400 animate-spin" />
+    if (isLicenseExpiringSoon) return <Clock size={20} className="text-amber-500" />
     if (isLicenseValid) return <CheckCircle size={20} className="text-green-500" />
-    if (licenseInfo?.status === 'expiring') return <Clock size={20} className="text-amber-500" />
     return <AlertTriangle size={20} className="text-red-500" />
   }
 
   const getStatusText = () => {
     if (isLicenseLoading) return 'Verifying...'
+    if (isLicenseExpiringSoon) return 'Expiring Soon'
     if (isLicenseValid) return 'Active'
-    if (licenseInfo?.status === 'expiring') return 'Expiring Soon'
     return 'Invalid'
   }
 
   const getStatusColor = () => {
     if (isLicenseLoading) return 'bg-gray-100 text-gray-700'
+    if (isLicenseExpiringSoon) return 'bg-amber-100 text-amber-700'
     if (isLicenseValid) return 'bg-green-100 text-green-700'
-    if (licenseInfo?.status === 'expiring') return 'bg-amber-100 text-amber-700'
     return 'bg-red-100 text-red-700'
   }
 
@@ -35,13 +35,13 @@ export function LicensingSettings() {
     <div className="space-y-6">
       {/* License Status Card */}
       <div className={`rounded-xl border p-5 ${
-        isLicenseValid ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'
+        isLicenseExpiringSoon ? 'bg-amber-50 border-amber-200' : isLicenseValid ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'
       }`}>
         <div className="flex items-start gap-3">
           <div className={`p-2.5 rounded-xl ${
-            isLicenseValid ? 'bg-emerald-100' : 'bg-amber-100'
+            isLicenseExpiringSoon ? 'bg-amber-100' : isLicenseValid ? 'bg-emerald-100' : 'bg-red-100'
           }`}>
-            <Shield className={`w-5 h-5 ${isLicenseValid ? 'text-emerald-600' : 'text-amber-600'}`} />
+            <Shield className={`w-5 h-5 ${isLicenseExpiringSoon ? 'text-amber-600' : isLicenseValid ? 'text-emerald-600' : 'text-red-600'}`} />
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">

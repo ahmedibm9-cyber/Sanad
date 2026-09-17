@@ -18,6 +18,7 @@ function toUICustomer(c: DbCustomer): Customer {
     nameAr: c.name_ar ?? undefined,
     legalName: c.legal_name ?? undefined,
     contactPerson: c.contact_person ?? undefined,
+    contacts: (c.contacts as any) ?? undefined,
     phone: c.phone ?? undefined,
     phoneSecondary: c.phone_secondary ?? undefined,
     email: c.email ?? undefined,
@@ -60,6 +61,7 @@ function toDbUpdates(data: Partial<Customer>): Record<string, unknown> {
   if (data.nameAr !== undefined) r.name_ar = data.nameAr
   if (data.legalName !== undefined) r.legal_name = data.legalName
   if (data.contactPerson !== undefined) r.contact_person = data.contactPerson
+  if (data.contacts !== undefined) r.contacts = JSON.stringify(data.contacts)
   if (data.phone !== undefined) r.phone = data.phone
   if (data.phoneSecondary !== undefined) r.phone_secondary = data.phoneSecondary
   if (data.email !== undefined) r.email = data.email
@@ -96,12 +98,16 @@ function toDbUpdates(data: Partial<Customer>): Record<string, unknown> {
 
 export default function CustomersPage() {
   const { t } = useLanguage()
-  const { currentCompany } = useCompany()
+  const { currentCompany, hasPermission } = useCompany()
+  const canCreate = hasPermission('customers.create')
+  const canEdit = hasPermission('customers.edit')
+  const canDelete = hasPermission('customers.delete')
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
   const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 10
 
@@ -154,10 +160,16 @@ export default function CustomersPage() {
   }
 
   const handleDelete = async () => {
-    if (deletingCustomer) {
-      await remove(deletingCustomer.id)
-      setDeletingCustomer(null)
-      refetch()
+    if (deleting) return
+    setDeleting(true)
+    try {
+      if (deletingCustomer) {
+        await remove(deletingCustomer.id)
+        setDeletingCustomer(null)
+        refetch()
+      }
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -166,11 +178,13 @@ export default function CustomersPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-brand-900">{t('Customers', 'العملاء')}</h1>
-          <p className="text-sm text-gray-500 mt-1">{t(`${customers.length} customers for ${currentCompany.shortName}`, `${customers.length} عميل لـ ${currentCompany.shortName}`)}</p>
+          <p className="text-sm text-gray-500 mt-1">{t(`${customers.length} customers for ${currentCompany.short_name}`, `${customers.length} عميل لـ ${currentCompany.short_name}`)}</p>
         </div>
-        <button onClick={() => { setEditingCustomer(null); setShowForm(true) }} className="btn-primary">
-          <Plus size={16} className="ms-1.5" />{t('Add Customer', 'إضافة عميل')}
-        </button>
+        {canCreate && (
+          <button onClick={() => { setEditingCustomer(null); setShowForm(true) }} className="btn-primary">
+            <Plus size={16} className="ms-1.5" />{t('Add Customer', 'إضافة عميل')}
+          </button>
+        )}
       </div>
 
       {loading && (
@@ -236,8 +250,8 @@ export default function CustomersPage() {
                         <td className="px-5 py-3.5">
                           <div className="flex items-center justify-end gap-1">
                             <button onClick={() => setViewingCustomer(customer)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600" title={t('View', 'عرض')} aria-label={t('View customer', 'عرض العميل')}><Eye size={15} /></button>
-                            <button onClick={() => { setEditingCustomer(customer); setShowForm(true) }} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600" title={t('Edit', 'تعديل')} aria-label={t('Edit customer', 'تعديل العميل')}><Pencil size={15} /></button>
-                            <button onClick={() => setDeletingCustomer(customer)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-red-600" title={t('Delete', 'حذف')} aria-label={t('Delete customer', 'حذف العميل')}><Trash2 size={15} /></button>
+                            {canEdit && <button onClick={() => { setEditingCustomer(customer); setShowForm(true) }} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600" title={t('Edit', 'تعديل')} aria-label={t('Edit customer', 'تعديل العميل')}><Pencil size={15} /></button>}
+                            {canDelete && <button onClick={() => setDeletingCustomer(customer)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-red-600" title={t('Delete', 'حذف')} aria-label={t('Delete customer', 'حذف العميل')}><Trash2 size={15} /></button>}
                           </div>
                         </td>
                       </tr>
@@ -286,14 +300,14 @@ export default function CustomersPage() {
               {viewingCustomer.notes && <div><p className="text-xs text-gray-400">{t('Notes', 'ملاحظات')}</p><p className="text-sm text-gray-600">{viewingCustomer.notes}</p></div>}
             </div>
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
-              <button onClick={() => { setEditingCustomer(viewingCustomer); setViewingCustomer(null); setShowForm(true) }} className="btn-primary"><Pencil size={14} className="ms-1.5" />{t('Edit', 'تعديل')}</button>
+              {canEdit && <button onClick={() => { setEditingCustomer(viewingCustomer); setViewingCustomer(null); setShowForm(true) }} className="btn-primary"><Pencil size={14} className="ms-1.5" />{t('Edit', 'تعديل')}</button>}
             </div>
           </div>
         </div>
       )}
 
       <CustomerFormModal open={showForm} onClose={() => { setShowForm(false); setEditingCustomer(null) }} onSave={handleSave} customer={editingCustomer} />
-      <ConfirmModal open={!!deletingCustomer} onClose={() => setDeletingCustomer(null)} onConfirm={handleDelete} title={t('Move to Trash', 'نقل إلى سلة المهملات')} message={t(`Are you sure you want to move "${deletingCustomer?.name}" to trash?`, `هل أنت متأكد من نقل "${deletingCustomer?.name}" إلى سلة المهملات؟`)} details={t('This action can be undone from the Trash module.', 'يمكن التراجع عن هذا الإجراء من وحدة سلة المهملات.')} confirmLabel={t('Move to Trash', 'نقل إلى سلة المهملات')} cancelLabel={t('Cancel', 'إلغاء')} variant="danger" />
+      <ConfirmModal open={!!deletingCustomer} onClose={() => setDeletingCustomer(null)} onConfirm={handleDelete} title={t('Move to Trash', 'نقل إلى سلة المهملات')} message={t(`Are you sure you want to move "${deletingCustomer?.name}" to trash?`, `هل أنت متأكد من نقل "${deletingCustomer?.name}" إلى سلة المهملات؟`)} details={t('This action can be undone from the Trash module.', 'يمكن التراجع عن هذا الإجراء من وحدة سلة المهملات.')} confirmLabel={t('Move to Trash', 'نقل إلى سلة المهملات')} cancelLabel={t('Cancel', 'إلغاء')} variant="danger" loading={deleting} />
     </div>
   )
 }

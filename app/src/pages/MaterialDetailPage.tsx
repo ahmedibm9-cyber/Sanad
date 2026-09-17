@@ -387,7 +387,7 @@ export default function MaterialDetailPage() {
         )}
       </div>
     </div>
-    {material && <MaterialFormModal open={showEditForm} onClose={() => setShowEditForm(false)} onSave={() => setShowEditForm(false)} material={uiMaterial} />}
+    {material && <MaterialFormModal open={showEditForm} onClose={() => setShowEditForm(false)} onSave={async () => setShowEditForm(false)} material={uiMaterial} />}
     </>
   )
 }

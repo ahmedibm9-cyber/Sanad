@@ -60,7 +60,11 @@ export class NoteService {
       throw handleSupabaseError(error)
     }
 
-    return data || []
+    return (data || []).map((row: any) => ({
+      ...row,
+      created_by: row.author_user_id,
+      content: row.body,
+    })) as Note[]
   }
 
   /**
@@ -79,7 +83,7 @@ export class NoteService {
       throw new NotFoundError('Note', id)
     }
 
-    return data
+    return { ...data, created_by: data.author_user_id, content: data.body } as Note
   }
 
   /**
@@ -106,8 +110,8 @@ export class NoteService {
       .insert({
         company_id: workItem.company_id,
         work_item_id: workItemId,
-        created_by: context.userId,
-        content: input.content,
+        author_user_id: context.userId,
+        body: input.content,
       })
       .select()
       .single()
@@ -118,7 +122,7 @@ export class NoteService {
     }
 
     appLogger.info('Note created', { noteId: data.id, workItemId })
-    return data
+    return { ...data, created_by: data.author_user_id, content: data.body } as Note
   }
 
   /**
@@ -134,7 +138,7 @@ export class NoteService {
 
     const { data, error } = await (this.supabase as any)
       .from('notes')
-      .update({ content: input.content })
+      .update({ body: input.content })
       .eq('id', id)
       .eq('company_id', context.companyId)
       .select()
@@ -146,7 +150,7 @@ export class NoteService {
     }
 
     appLogger.info('Note updated', { noteId: id })
-    return data
+    return { ...data, created_by: data.author_user_id, content: data.body } as Note
   }
 
   /**
@@ -206,7 +210,7 @@ export class NoteService {
     }
 
     appLogger.info('Note restored', { noteId: id })
-    return data
+    return { ...data, created_by: data.author_user_id, content: data.body } as Note
   }
 
   /**

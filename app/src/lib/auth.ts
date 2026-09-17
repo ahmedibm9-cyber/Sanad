@@ -256,6 +256,12 @@ export class AuthService {
 
     const profile = await this.getUserProfile(data.user.id)
 
+    // Check if user was disabled since login
+    if (!profile.active) {
+      await this.supabase.auth.signOut()
+      return null
+    }
+
     return {
       user: {
         id: data.user.id,

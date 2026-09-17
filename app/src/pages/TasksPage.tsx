@@ -36,7 +36,9 @@ function getStatusBadge(status: string) {
 
 export default function TasksPage() {
   const { t } = useLanguage()
-  const { currentCompany } = useCompany()
+  const { currentCompany, hasPermission } = useCompany()
+  const canCreate = hasPermission('tasks.create')
+  const canConvert = hasPermission('tasks.convert_to_project')
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatuses, setSelectedStatuses] = useState<WorkItemStatus[]>([])
@@ -45,6 +47,7 @@ export default function TasksPage() {
   const [archivedExpanded, setArchivedExpanded] = useState(false)
   const [showTaskForm, setShowTaskForm] = useState(false)
   const [convertingTask, setConvertingTask] = useState<DataWorkItem | null>(null)
+  const [converting, setConverting] = useState(false)
 
   const { data: tasksData, loading, refetch } = useWorkItems(currentCompany.id, 'task')
   const { data: customersData } = useCustomers(currentCompany.id)
@@ -106,10 +109,14 @@ export default function TasksPage() {
   }
 
   async function handleConvertToProject() {
-    if (convertingTask) {
+    if (converting || !convertingTask) return
+    setConverting(true)
+    try {
       await updateWorkItem(convertingTask.id, { type: 'project' } as Partial<DataWorkItem>)
       refetch()
       setConvertingTask(null)
+    } finally {
+      setConverting(false)
     }
   }
 
@@ -136,14 +143,18 @@ export default function TasksPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => { if (allTasks.length > 0) setConvertingTask(allTasks[0]) }} className="btn-secondary">
-            <ArrowRightLeft className="w-4 h-4 ms-1.5" />
-            {t('Convert to Project', 'تحويل إلى مشروع')}
-          </button>
-          <button onClick={() => setShowTaskForm(true)} className="btn-primary">
-            <Plus className="w-4 h-4 ms-1.5" />
-            {t('New Task', 'مهمة جديدة')}
-          </button>
+          {canConvert && (
+            <button onClick={() => { if (allTasks.length > 0) setConvertingTask(allTasks[0]) }} className="btn-secondary">
+              <ArrowRightLeft className="w-4 h-4 ms-1.5" />
+              {t('Convert to Project', 'تحويل إلى مشروع')}
+            </button>
+          )}
+          {canCreate && (
+            <button onClick={() => setShowTaskForm(true)} className="btn-primary">
+              <Plus className="w-4 h-4 ms-1.5" />
+              {t('New Task', 'مهمة جديدة')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -329,6 +340,11 @@ export default function TasksPage() {
                         </td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center justify-end gap-1">
+                            {canConvert && (
+                              <button onClick={() => setConvertingTask(task)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600" title={t('Convert to Project', 'تحويل إلى مشروع')} aria-label={t('Convert task to project', 'تحويل المهمة إلى مشروع')}>
+                                <ArrowRightLeft className="w-4 h-4" />
+                              </button>
+                            )}
                             <button onClick={() => handleTogglePin(task)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-amber-500" title={task.pinned ? t('Unpin', 'إلغاء التثبيت') : t('Pin', 'تثبيت')} aria-label={task.pinned ? t('Unpin task', 'إلغاء تثبيت المهمة') : t('Pin task', 'تثبيت المهمة')}>
                               <Pin className={`w-4 h-4 ${task.pinned ? 'fill-amber-400 text-amber-500' : ''}`} />
                             </button>
@@ -427,7 +443,7 @@ export default function TasksPage() {
       )}
     </div>
     <ProjectFormModal open={showTaskForm} onClose={() => setShowTaskForm(false)} onSave={handleCreateTask} mode="task" />
-    <ConfirmModal open={!!convertingTask} onClose={() => setConvertingTask(null)} onConfirm={handleConvertToProject} title={t('Convert Task to Project', 'تحويل المهمة إلى مشروع')} message={t(`Convert "${convertingTask?.name}" from a Task to a Project?`, `تحويل "${convertingTask?.name}" من مهمة إلى مشروع؟`)} details={t('All data, documents, and attachments will be preserved.', 'جميع البيانات والمستندات والمرفقات ستبقى محفوظة.')} confirmLabel={t('Convert to Project', 'تحويل إلى مشروع')} cancelLabel={t('Cancel', 'إلغاء')} variant="info" />
+    <ConfirmModal open={!!convertingTask} onClose={() => setConvertingTask(null)} onConfirm={handleConvertToProject} title={t('Convert Task to Project', 'تحويل المهمة إلى مشروع')} message={t(`Convert "${convertingTask?.name}" from a Task to a Project?`, `تحويل "${convertingTask?.name}" من مهمة إلى مشروع؟`)} details={t('All data, documents, and attachments will be preserved.', 'جميع البيانات والمستندات والمرفقات ستبقى محفوظة.')} confirmLabel={t('Convert to Project', 'تحويل إلى مشروع')} cancelLabel={t('Cancel', 'إلغاء')} variant="info" loading={converting} />
     </>
   )
 }

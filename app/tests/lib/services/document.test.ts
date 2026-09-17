@@ -1,228 +1,281 @@
 /**
- * Tests for document service.
+ * Behavioral tests for DocumentService.
+ * Tests actual service methods against mocked Supabase.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Document } from '@/lib/services/document'
+import type { RequestContext } from '@/lib/api'
+
+// ── Queue-based Supabase Mock ────────────────────────
+// The service chains .from().select().eq()...single() synchronously,
+// so we can't set up mocks after calling the service. Instead, we use
+// a queue: each from() call pops the next queued result.
+
+const singleQueue: Array<{ data: any; error: any }> = []
+
+function createChain() {
+  const chain: any = {}
+
+  chain.select = vi.fn(() => chain)
+  chain.insert = vi.fn(() => chain)
+  chain.update = vi.fn(() => chain)
+  chain.delete = vi.fn(() => chain)
+  chain.eq = vi.fn(() => chain)
+  chain.neq = vi.fn(() => chain)
+  chain.is = vi.fn(() => chain)
+  chain.order = vi.fn(() => chain)
+  chain.range = vi.fn(() => chain)
+  chain.single = vi.fn(() => {
+    const next = singleQueue.shift()
+    return Promise.resolve(next ?? { data: null, error: null })
+  })
+  // Make chain thenable so `await query` works (for getDocuments/getCompanyDocuments)
+  chain.then = (onFulfilled: any, onRejected: any) => {
+    const next = singleQueue.shift()
+    return Promise.resolve(next ?? { data: null, error: null }).then(onFulfilled, onRejected)
+  }
+  return chain
+}
+
+vi.mock('@/lib/supabase', () => ({
+  getSupabase: vi.fn(() => ({
+    from: vi.fn(() => createChain()),
+  })),
+}))
 
 vi.mock('@/lib/logger', () => ({
   appLogger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },
 }))
 
-vi.mock('@/lib/supabase', () => ({
-  getSupabase: vi.fn(() => ({
-    from: vi.fn(() => ({
-      select: vi.fn().mockReturnThis(),
-      insert: vi.fn().mockReturnThis(),
-      update: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      single: vi.fn(),
-      range: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-    })),
-  })),
-}))
+// ── Import after mocks ────────────────────────────────
+import { DocumentService } from '@/lib/services/document'
 
-describe('DocumentService', () => {
+// ── Fixtures ──────────────────────────────────────────
+const companyCtx: RequestContext = {
+  userId: 'user-1',
+  companyId: 'comp-1',
+  permissions: { 'documents.create': true, 'documents.edit': true, 'documents.view': true, 'documents.delete': true },
+  isSystemAdmin: false,
+}
+
+const existingDoc: Document = {
+  id: 'doc-1',
+  company_id: 'comp-1',
+  work_item_id: 'wi-1',
+  document_type: 'TINV',
+  document_number: 'TINV-2024-001',
+  created_date: '2024-01-01',
+  language: 'en',
+  template_key: 'fulla-tax-invoice-a-680',
+  prepared_by: 'Test User',
+  show_signature: true,
+  show_stamp: true,
+  status: 'draft',
+  document_data: {},
+  latest_render_object_key: null,
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+  created_by: 'user-1',
+  updated_by: 'user-1',
+  deleted_at: null,
+  version: 1,
+}
+
+function enqueue(...results: Array<{ data: any; error: any }>) {
+  singleQueue.push(...results)
+}
+
+// ── Tests ─────────────────────────────────────────────
+describe('DocumentService — Behavioral Tests', () => {
+  let service: DocumentService
+
   beforeEach(() => {
     vi.clearAllMocks()
+    singleQueue.length = 0
+    service = new DocumentService()
   })
 
-  it('should define document type correctly', async () => {
-    const doc: Document = {
-      id: '1',
-      company_id: 'comp-1',
-      work_item_id: 'wi-1',
-      document_type: 'TINV',
-      document_number: 'TINV-2024-001',
-      created_date: '2024-11-01',
-      language: 'en',
-      template_key: 'template-a',
-      prepared_by: 'Mohamed Al-Hassan',
-      show_signature: true,
-      show_stamp: true,
-      status: 'draft',
-      document_data: {},
-      latest_render_object_key: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      created_by: null,
-      updated_by: null,
-      deleted_at: null,
-      version: 1,
-    }
+  // ── createDocument ─────────────────────────────────
+  describe('createDocument', () => {
+    it('should create document when number is unique', async () => {
+      // Queue: uniqueness check (null = no duplicate), then insert result
+      enqueue(
+        { data: null, error: null },
+        { data: { ...existingDoc, id: 'doc-new' }, error: null }
+      )
 
-    expect(doc.document_type).toBe('TINV')
-    expect(doc.document_number).toBe('TINV-2024-001')
-    expect(doc.language).toBe('en')
-    expect(doc.template_key).toBe('template-a')
-  })
+      const result = await service.createDocument(
+        { document_type: 'TINV', document_number: 'TINV-2024-001', work_item_id: 'wi-1' },
+        companyCtx
+      )
 
-  it('should include version field with default value 1', async () => {
-    const doc: Document = {
-      id: '1',
-      company_id: 'comp-1',
-      work_item_id: 'wi-1',
-      document_type: 'QUOT',
-      document_number: 'QUOT-001',
-      created_date: '2024-01-01',
-      language: 'en',
-      template_key: 'template-a',
-      prepared_by: null,
-      show_signature: true,
-      show_stamp: true,
-      status: 'draft',
-      document_data: {},
-      latest_render_object_key: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      created_by: null,
-      updated_by: null,
-      deleted_at: null,
-      version: 1,
-    }
-
-    expect(doc.version).toBe(1)
-    expect(typeof doc.version).toBe('number')
-  })
-
-  describe('optimistic locking', () => {
-    it('should increment version on successful update', async () => {
-      const existing: Document = {
-        id: '1',
-        company_id: 'comp-1',
-        work_item_id: 'wi-1',
-        document_type: 'TINV',
-        document_number: 'TINV-001',
-        created_date: '2024-01-01',
-        language: 'en',
-        template_key: 'template-a',
-        prepared_by: null,
-        show_signature: true,
-        show_stamp: true,
-        status: 'draft',
-        document_data: {},
-        latest_render_object_key: null,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
-        created_by: null,
-        updated_by: null,
-        deleted_at: null,
-        version: 5,
-      }
-
-      const currentVersion = (existing as any).version ?? 1
-      const newVersion = currentVersion + 1
-
-      expect(currentVersion).toBe(5)
-      expect(newVersion).toBe(6)
+      expect(result.id).toBe('doc-new')
     })
 
-    it('should detect version mismatch for conflict', async () => {
-      const existing: Document = {
-        id: '1',
-        company_id: 'comp-1',
-        work_item_id: 'wi-1',
-        document_type: 'TINV',
-        document_number: 'TINV-001',
-        created_date: '2024-01-01',
-        language: 'en',
-        template_key: 'template-a',
-        prepared_by: null,
-        show_signature: true,
-        show_stamp: true,
-        status: 'draft',
-        document_data: {},
-        latest_render_object_key: null,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
-        created_by: null,
-        updated_by: null,
-        deleted_at: null,
-        version: 5,
-      }
+    it('should reject duplicate document number within same company', async () => {
+      enqueue({ data: { id: 'existing-doc' }, error: null })
 
-      // Simulate concurrent update (version bumped by another user)
-      const concurrentVersion = 6
-      const currentVersion = (existing as any).version ?? 1
+      await expect(
+        service.createDocument(
+          { document_type: 'TINV', document_number: 'TINV-2024-001', work_item_id: 'wi-1' },
+          companyCtx
+        )
+      ).rejects.toThrow('already exists')
+    })
 
-      expect(currentVersion).not.toBe(concurrentVersion)
+    it('should allow same number in different company', async () => {
+      const ctx2: RequestContext = { ...companyCtx, companyId: 'comp-2' }
+      enqueue(
+        { data: null, error: null },
+        { data: { ...existingDoc, company_id: 'comp-2', id: 'doc-new' }, error: null }
+      )
+
+      const result = await service.createDocument(
+        { document_type: 'TINV', document_number: 'TINV-2024-001', work_item_id: 'wi-1' },
+        ctx2
+      )
+
+      expect(result.id).toBe('doc-new')
+    })
+
+    it('should require documents.create permission', async () => {
+      const noPermCtx: RequestContext = { ...companyCtx, permissions: {} }
+      await expect(
+        service.createDocument({ document_type: 'QUOT', document_number: 'QUOT-001' }, noPermCtx)
+      ).rejects.toThrow('Permission denied')
     })
   })
 
-  it('should handle all 7 document types', async () => {
-    const types: Array<import('@/lib/services/document').DocumentType> = [
-      'QUOT', 'PINV', 'TINV', 'CINV', 'PKL', 'DN', 'BL'
-    ]
+  // ── updateDocument ─────────────────────────────────
+  describe('updateDocument', () => {
+    it('should update document successfully', async () => {
+      enqueue(
+        { data: existingDoc, error: null },
+        { data: { ...existingDoc, version: 2 }, error: null }
+      )
 
-    expect(types).toHaveLength(7)
-    expect(types).toContain('QUOT')
-    expect(types).toContain('PINV')
-    expect(types).toContain('TINV')
-    expect(types).toContain('CINV')
-    expect(types).toContain('PKL')
-    expect(types).toContain('DN')
-    expect(types).toContain('BL')
+      const result = await service.updateDocument('doc-1', { status: 'final' }, companyCtx)
+      expect(result.version).toBe(2)
+    })
+
+    it('should reject duplicate number when changing document number', async () => {
+      enqueue(
+        { data: existingDoc, error: null },
+        { data: { id: 'other-doc' }, error: null }
+      )
+
+      await expect(
+        service.updateDocument('doc-1', { document_number: 'TINV-2024-999' }, companyCtx)
+      ).rejects.toThrow('already exists')
+    })
+
+    it('should allow keeping same document number', async () => {
+      enqueue(
+        { data: existingDoc, error: null },
+        { data: { ...existingDoc, version: 2 }, error: null }
+      )
+
+      const result = await service.updateDocument('doc-1', { document_number: 'TINV-2024-001' }, companyCtx)
+      expect(result.version).toBe(2)
+    })
+
+    it('should require documents.edit permission', async () => {
+      const noPermCtx: RequestContext = { ...companyCtx, permissions: {} }
+      await expect(service.updateDocument('doc-1', { status: 'final' }, noPermCtx)).rejects.toThrow('Permission denied')
+    })
   })
 
-  it('should handle document data as JSON', async () => {
-    const docData = {
-      items: [
-        { material: 'HDPE 952', quantity: 50, unit: 'MT', price: 1050, currency: 'SAR' }
-      ],
-      subtotal: 52500,
-      vat_rate: 0,
-      total: 52500,
-    }
+  // ── deleteDocument ─────────────────────────────────
+  describe('deleteDocument', () => {
+    it('should soft-delete document', async () => {
+      enqueue({ data: existingDoc, error: null })
 
-    expect(docData.items).toHaveLength(1)
-    expect(docData.subtotal).toBe(52500)
+      await expect(service.deleteDocument('doc-1', companyCtx)).resolves.not.toThrow()
+    })
+
+    it('should require documents.delete permission', async () => {
+      const noPermCtx: RequestContext = { ...companyCtx, permissions: {} }
+      await expect(service.deleteDocument('doc-1', noPermCtx)).rejects.toThrow('Permission denied')
+    })
   })
 
-  it('should validate document number uniqueness per company', async () => {
-    // Document numbers must be unique within a company
-    const company1Docs = ['TINV-001', 'TINV-002']
-    const company2Docs = ['TINV-001'] // Same number in different company is OK
+  // ── getDocuments ───────────────────────────────────
+  describe('getDocuments', () => {
+    it('should return documents for a work item', async () => {
+      enqueue({ data: [existingDoc], error: null })
 
-    expect(company1Docs).toContain('TINV-001')
-    expect(company2Docs).toContain('TINV-001')
-    // Cross-company duplication is allowed
+      const result = await service.getDocuments('wi-1', companyCtx)
+      expect(result).toHaveLength(1)
+      expect(result[0].work_item_id).toBe('wi-1')
+    })
+
+    it('should require documents.view permission', async () => {
+      const noPermCtx: RequestContext = { ...companyCtx, permissions: {} }
+      await expect(service.getDocuments('wi-1', noPermCtx)).rejects.toThrow('Permission denied')
+    })
   })
 
-  it('should handle VAT calculations with rounding', async () => {
-    const subtotal = 52500
-    const vatRate = 15
-    // Matches production rounding in DocumentFormPage.tsx
-    const vatAmount = Math.round(subtotal * (vatRate / 100) * 100) / 100
-    const total = subtotal + vatAmount
+  // ── getCompanyDocuments ────────────────────────────
+  describe('getCompanyDocuments', () => {
+    it('should return paginated company documents', async () => {
+      enqueue({ data: [existingDoc], error: null, count: 1 })
 
-    expect(vatAmount).toBe(7875)
-    expect(total).toBe(60375)
+      const result = await service.getCompanyDocuments(companyCtx, { page: 1, pageSize: 20 })
+      expect(result.data).toHaveLength(1)
+    })
+
+    it('should require documents.view permission', async () => {
+      const noPermCtx: RequestContext = { ...companyCtx, permissions: {} }
+      await expect(service.getCompanyDocuments(noPermCtx)).rejects.toThrow('Permission denied')
+    })
   })
 
-  it('should round fractional VAT correctly', async () => {
-    const subtotal = 100.01
-    const vatRate = 15
-    const vatAmount = Math.round(subtotal * (vatRate / 100) * 100) / 100
-    // 100.01 * 0.15 = 15.0015 -> rounds to 15.00
-    expect(vatAmount).toBe(15)
-  })
+  // ── UAT #48: Document Number Uniqueness ───────────
+  describe('Document Number Uniqueness (UAT #48)', () => {
+    it('Company A → CINV-100 succeeds', async () => {
+      enqueue(
+        { data: null, error: null },
+        { data: { ...existingDoc, document_number: 'CINV-100' }, error: null }
+      )
 
-  it('should handle document statuses', async () => {
-    const statuses = ['draft', 'final']
-    expect(statuses).toContain('draft')
-    expect(statuses).toContain('final')
-  })
+      const result = await service.createDocument(
+        { document_type: 'CINV', document_number: 'CINV-100' },
+        companyCtx
+      )
+      expect(result.document_number).toBe('CINV-100')
+    })
 
-  it('should handle language options', async () => {
-    const languages = ['en', 'ar']
-    expect(languages).toContain('en')
-    expect(languages).toContain('ar')
-  })
+    it('Company A → CINV-100 again is rejected', async () => {
+      enqueue({ data: { id: 'existing' }, error: null })
 
-  it('should handle template options', async () => {
-    const templates = ['template-a', 'template-b']
-    expect(templates).toContain('template-a')
-    expect(templates).toContain('template-b')
+      await expect(
+        service.createDocument({ document_type: 'CINV', document_number: 'CINV-100' }, companyCtx)
+      ).rejects.toThrow('already exists')
+    })
+
+    it('Company B → CINV-100 succeeds (different company)', async () => {
+      const ctxB: RequestContext = { ...companyCtx, companyId: 'comp-B' }
+      enqueue(
+        { data: null, error: null },
+        { data: { ...existingDoc, company_id: 'comp-B', document_number: 'CINV-100' }, error: null }
+      )
+
+      const result = await service.createDocument(
+        { document_type: 'CINV', document_number: 'CINV-100' },
+        ctxB
+      )
+      expect(result.document_number).toBe('CINV-100')
+    })
+
+    it('Edit same document with same number succeeds', async () => {
+      enqueue(
+        { data: existingDoc, error: null },
+        { data: { ...existingDoc, version: 2 }, error: null }
+      )
+
+      const result = await service.updateDocument('doc-1', { document_number: 'TINV-2024-001' }, companyCtx)
+      expect(result.version).toBe(2)
+    })
   })
 })

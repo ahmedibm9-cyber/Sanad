@@ -6,7 +6,7 @@ test.describe('Tasks', () => {
   })
 
   test('D1: tasks page loads with heading', async ({ authenticatedPage: page }) => {
-    await expect(page.getByRole('heading', { name: 'Tasks' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Tasks', exact: true })).toBeVisible()
   })
 
   test('D2: New Task button is present', async ({ authenticatedPage: page }) => {
@@ -34,80 +34,93 @@ test.describe('Tasks', () => {
 
   test('D6: status filter exists', async ({ authenticatedPage: page }) => {
     const filter = page.locator('select, [role="combobox"]').first()
-    if (await filter.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await expect(filter).toBeVisible()
-    }
+    await expect(filter).toBeVisible({ timeout: 5000 })
   })
 
   test('D7: clicking a task navigates to detail', async ({ authenticatedPage: page }) => {
     const taskLink = page.locator('a[href*="/tasks/"]').first()
-    if (await taskLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await taskLink.click()
-      await page.waitForURL(/\/tasks\/[\w-]+/, { timeout: 10_000 })
+    const linkCount = await page.locator('a[href*="/tasks/"]').count()
+    if (linkCount === 0) {
+      test.skip()
+      return
     }
+    await expect(taskLink).toBeVisible({ timeout: 5000 })
+    await taskLink.click()
+    await page.waitForURL(/\/tasks\/[\w-]+/, { timeout: 10_000 })
   })
 
   test('D8: task detail has tabs (Overview, Documents, Notes)', async ({ authenticatedPage: page }) => {
-    const taskLink = page.locator('a[href*="/tasks/"]').first()
-    if (await taskLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await taskLink.click()
-      await page.waitForURL(/\/tasks\/[\w-]+/, { timeout: 10_000 })
-      const tabs = page.locator('button, [role="tab"]').filter({ hasText: /Overview|Documents|Notes|Issues/i })
-      expect(await tabs.count()).toBeGreaterThan(0)
+    const linkCount = await page.locator('a[href*="/tasks/"]').count()
+    if (linkCount === 0) {
+      test.skip()
+      return
     }
+    const taskLink = page.locator('a[href*="/tasks/"]').first()
+    await expect(taskLink).toBeVisible({ timeout: 5000 })
+    await taskLink.click()
+    await page.waitForURL(/\/tasks\/[\w-]+/, { timeout: 10_000 })
+    const tabs = page.locator('button, [role="tab"]').filter({ hasText: /Overview|Documents|Notes|Issues/i })
+    expect(await tabs.count()).toBeGreaterThan(0)
   })
 
   test('D9: task detail has Convert to Project option', async ({ authenticatedPage: page }) => {
-    const taskLink = page.locator('a[href*="/tasks/"]').first()
-    if (await taskLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await taskLink.click()
-      await page.waitForURL(/\/tasks\/[\w-]+/, { timeout: 10_000 })
-      const convertBtn = page.getByRole('button', { name: /Convert|to Project|تحويل/i })
-      if (await convertBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await expect(convertBtn).toBeVisible()
-      }
+    const linkCount = await page.locator('a[href*="/tasks/"]').count()
+    if (linkCount === 0) {
+      test.skip()
+      return
     }
+    const taskLink = page.locator('a[href*="/tasks/"]').first()
+    await expect(taskLink).toBeVisible({ timeout: 5000 })
+    await taskLink.click()
+    await page.waitForURL(/\/tasks\/[\w-]+/, { timeout: 10_000 })
+    const convertBtn = page.getByRole('button', { name: /Convert|to Project|تحويل/i })
+    await expect(convertBtn).toBeVisible({ timeout: 5000 })
   })
 
   test('D10: task detail has New Document button', async ({ authenticatedPage: page }) => {
-    const taskLink = page.locator('a[href*="/tasks/"]').first()
-    if (await taskLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await taskLink.click()
-      await page.waitForURL(/\/tasks\/[\w-]+/, { timeout: 10_000 })
-      const docBtn = page.getByRole('button', { name: /New Document|مستند جديد/i })
-      if (await docBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await expect(docBtn).toBeVisible()
-      }
+    const linkCount = await page.locator('a[href*="/tasks/"]').count()
+    if (linkCount === 0) {
+      test.skip()
+      return
     }
+    const taskLink = page.locator('a[href*="/tasks/"]').first()
+    await expect(taskLink).toBeVisible({ timeout: 5000 })
+    await taskLink.click()
+    await page.waitForURL(/\/tasks\/[\w-]+/, { timeout: 10_000 })
+    const docBtn = page.getByRole('button', { name: /New Document|مستند جديد/i })
+    await expect(docBtn).toBeVisible({ timeout: 5000 })
   })
 
   test('D11: task detail has Add Note and Report Issue buttons', async ({ authenticatedPage: page }) => {
-    const taskLink = page.locator('a[href*="/tasks/"]').first()
-    if (await taskLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await taskLink.click()
-      await page.waitForURL(/\/tasks\/[\w-]+/, { timeout: 10_000 })
-      const noteBtn = page.getByRole('button', { name: /Add Note|note|ملاحظة/i })
-      const issueBtn = page.getByRole('button', { name: /Report Issue|ISSUE|إبلاغ/i })
-      if (await noteBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await expect(noteBtn).toBeVisible()
-      }
-      if (await issueBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await expect(issueBtn).toBeVisible()
-      }
+    const linkCount = await page.locator('a[href*="/tasks/"]').count()
+    if (linkCount === 0) {
+      test.skip()
+      return
     }
+    const taskLink = page.locator('a[href*="/tasks/"]').first()
+    await expect(taskLink).toBeVisible({ timeout: 5000 })
+    await taskLink.click()
+    await page.waitForURL(/\/tasks\/[\w-]+/, { timeout: 10_000 })
+    const noteBtn = page.getByRole('button', { name: /Add Note|note|ملاحظة/i })
+    const issueBtn = page.getByRole('button', { name: /Report Issue|ISSUE|إبلاغ/i })
+    await expect(noteBtn).toBeVisible({ timeout: 5000 })
+    await expect(issueBtn).toBeVisible({ timeout: 5000 })
   })
 
   test('D12: task actions dropdown has Edit, Delete options', async ({ authenticatedPage: page }) => {
-    const taskLink = page.locator('a[href*="/tasks/"]').first()
-    if (await taskLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await taskLink.click()
-      await page.waitForURL(/\/tasks\/[\w-]+/, { timeout: 10_000 })
-      const actionsBtn = page.locator('button').filter({ hasText: /actions|⋮|⋯|\.\.\./i }).first()
-      if (await actionsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await actionsBtn.click()
-        const dropdown = page.locator('[role="menu"], .dropdown, [class*="absolute"]').first()
-        await expect(dropdown).toBeVisible({ timeout: 3_000 })
-      }
+    const linkCount = await page.locator('a[href*="/tasks/"]').count()
+    if (linkCount === 0) {
+      test.skip()
+      return
     }
+    const taskLink = page.locator('a[href*="/tasks/"]').first()
+    await expect(taskLink).toBeVisible({ timeout: 5000 })
+    await taskLink.click()
+    await page.waitForURL(/\/tasks\/[\w-]+/, { timeout: 10_000 })
+    const actionsBtn = page.locator('button').filter({ hasText: /actions|⋮|⋯|\.\.\./i }).first()
+    await expect(actionsBtn).toBeVisible({ timeout: 5000 })
+    await actionsBtn.click()
+    const dropdown = page.locator('[role="menu"], .dropdown, [class*="absolute"]').first()
+    await expect(dropdown).toBeVisible({ timeout: 3_000 })
   })
 })

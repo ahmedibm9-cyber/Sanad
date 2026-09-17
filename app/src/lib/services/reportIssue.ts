@@ -71,7 +71,11 @@ export class ReportIssueService {
       throw handleSupabaseError(error)
     }
 
-    return data || []
+    return (data || []).map((row: any) => ({
+      ...row,
+      reported_by: row.reporter_user_id,
+      description: row.body,
+    })) as ReportIssue[]
   }
 
   /**
@@ -90,7 +94,7 @@ export class ReportIssueService {
       throw new NotFoundError('Report Issue', id)
     }
 
-    return data
+    return { ...data, reported_by: data.reporter_user_id, description: data.body } as ReportIssue
   }
 
   /**
@@ -116,8 +120,8 @@ export class ReportIssueService {
       .insert({
         company_id: workItem.company_id,
         work_item_id: workItemId,
-        reported_by: context.userId,
-        description: input.description,
+        reporter_user_id: context.userId,
+        body: input.description,
         severity: input.severity || 'medium',
         status: 'open',
       })
@@ -130,7 +134,7 @@ export class ReportIssueService {
     }
 
     appLogger.info('Report issue created', { issueId: data.id, workItemId })
-    return data
+    return { ...data, reported_by: data.reporter_user_id, description: data.body } as ReportIssue
   }
 
   /**
@@ -140,7 +144,7 @@ export class ReportIssueService {
     const existing = await this.getIssueById(id, context)
 
     const updateData: Record<string, unknown> = {}
-    if (input.description !== undefined) updateData.description = input.description
+    if (input.description !== undefined) updateData.body = input.description
     if (input.severity !== undefined) updateData.severity = input.severity
     if (input.status !== undefined) {
       updateData.status = input.status
@@ -164,7 +168,7 @@ export class ReportIssueService {
     }
 
     appLogger.info('Report issue updated', { issueId: id, changes: input })
-    return data
+    return { ...data, reported_by: data.reporter_user_id, description: data.body } as ReportIssue
   }
 
   /**

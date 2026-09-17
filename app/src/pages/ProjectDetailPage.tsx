@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -52,7 +52,11 @@ import type {
 import type { WorkItemStatus } from '../types'
 import AttachmentUploadModal from '../components/common/AttachmentUploadModal'
 import ConfirmModal from '../components/common/ConfirmModal'
+import VoiceInputButton from '../components/common/VoiceInputButton'
 import ProjectFormModal from '../components/projects/ProjectFormModal'
+import ConflictResolutionPanel from '../components/projects/ConflictResolutionPanel'
+import type { ResolvedConflict } from '../components/projects/ConflictResolutionPanel'
+import { getSharedDataService, type SharedDataConflict } from '../lib/services/sharedData'
 
 const STATUS_OPTIONS: { value: WorkItemStatus; label: string; colorClass: string; labelAr: string }[] = [
   { value: 'in_progress', label: 'In Progress', labelAr: 'قيد التنفيذ', colorClass: 'bg-blue-50 text-blue-700' },
@@ -145,6 +149,40 @@ export default function ProjectDetailPage() {
   const [mutationError, setMutationError] = useState<string | null>(null)
   const [savingNote, setSavingNote] = useState(false)
   const [savingIssue, setSavingIssue] = useState(false)
+  const [conflicts, setConflicts] = useState<SharedDataConflict[]>([])
+  const [conflictResolved, setConflictResolved] = useState(false)
+
+  // ── Detect shared data conflicts ────────────────────
+  useEffect(() => {
+    if (!workItem || hookDocs.length === 0 || conflictResolved) return
+    const service = getSharedDataService()
+    const projectData: Record<string, unknown> = {
+      incoterm: workItem.incoterm,
+      payment_terms: workItem.payment_terms,
+      delivery_terms: (workItem as any).delivery_terms,
+      currency: workItem.currency,
+    }
+    const allConflicts: SharedDataConflict[] = []
+    const seenKeys = new Set<string>()
+    for (const doc of hookDocs) {
+      const docData = (doc as any).document_data || {}
+      const docConflicts = service.detectConflicts(projectData, docData)
+      for (const c of docConflicts) {
+        if (!seenKeys.has(c.fieldKey)) {
+          seenKeys.add(c.fieldKey)
+          allConflicts.push(c)
+        }
+      }
+    }
+    setConflicts(allConflicts)
+  }, [workItem, hookDocs, conflictResolved])
+
+  const handleConflictResolve = useCallback((_resolved: ResolvedConflict[]) => {
+    // In production, this would call SharedDataService.synchronizeData()
+    // For now, mark as resolved and clear the conflict state
+    setConflictResolved(true)
+    setConflicts([])
+  }, [])
 
   const updateIssue = async (issueId: string, field: 'severity' | 'status', value: string) => {
     if (!user) return
@@ -246,6 +284,14 @@ export default function ProjectDetailPage() {
     <>
     <div className="space-y-6" onClick={() => setShowInvoiceDropdown(false)}>
       {mutationError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{mutationError}</div>}
+      {/* Shared Data Conflict Resolution */}
+      {conflicts.length > 0 && (
+        <ConflictResolutionPanel
+          conflicts={conflicts}
+          onResolve={handleConflictResolve}
+          onCancel={() => setConflicts([])}
+        />
+      )}
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3">
@@ -828,7 +874,10 @@ export default function ProjectDetailPage() {
             <div className="card p-4 space-y-3">
               <div>
                 <label className="label-field">{t('Note', 'ملاحظة')} *</label>
-                <textarea className="input-field" rows={3} value={newNote} onChange={e => setNewNote(e.target.value)} placeholder={t('Write your note...', 'اكتب ملاحظتك...')} />
+                <div className="flex gap-2">
+                  <textarea className="input-field flex-1" rows={3} value={newNote} onChange={e => setNewNote(e.target.value)} placeholder={t('Write your note...', 'اكتب ملاحظتك...')} />
+                  <VoiceInputButton onTranscript={(text) => setNewNote(prev => prev ? prev + ' ' + text : text)} size="sm" />
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowNoteForm(false)} className="btn-ghost">{t('Cancel', 'إلغاء')}</button>
