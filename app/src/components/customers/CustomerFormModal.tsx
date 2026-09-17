@@ -128,8 +128,9 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
 
   const field = (label: string, fieldKey: string, opts?: { type?: string; placeholder?: string; required?: boolean; half?: boolean }) => (
     <div className={opts?.half ? 'grid grid-cols-2 gap-4' : ''}>
-      <label className="label-field">{label}{opts?.required && ' *'}</label>
+      <label htmlFor={`customer-${fieldKey}`} className="label-field">{label}{opts?.required && ' *'}</label>
       <input
+        id={`customer-${fieldKey}`}
         type={opts?.type || 'text'}
         className="input-field"
         value={(form as any)[fieldKey] || ''}
@@ -141,8 +142,8 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
 
   const select = (label: string, fieldKey: string, options: { value: string; label: string }[], required?: boolean) => (
     <div>
-      <label className="label-field">{label}{required && ' *'}</label>
-      <select className="select-field" value={(form as any)[fieldKey] || ''} onChange={e => update(fieldKey, e.target.value)}>
+      <label htmlFor={`customer-${fieldKey}`} className="label-field">{label}{required && ' *'}</label>
+      <select id={`customer-${fieldKey}`} className="select-field" value={(form as any)[fieldKey] || ''} onChange={e => update(fieldKey, e.target.value)}>
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </div>
@@ -150,8 +151,8 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
 
   const textarea = (label: string, fieldKey: string, rows = 3) => (
     <div>
-      <label className="label-field">{label}</label>
-      <textarea className="input-field" rows={rows} value={(form as any)[fieldKey] || ''} onChange={e => update(fieldKey, e.target.value)} />
+      <label htmlFor={`customer-${fieldKey}`} className="label-field">{label}</label>
+      <textarea id={`customer-${fieldKey}`} className="input-field" rows={rows} value={(form as any)[fieldKey] || ''} onChange={e => update(fieldKey, e.target.value)} />
     </div>
   )
 
@@ -209,27 +210,27 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
                       />
                       {t('Primary', 'أساسي')}
                     </label>
-                    <button type="button" onClick={() => removeContact(idx)} className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-600" title={t('Remove contact', 'حذف جهة الاتصال')}>
+                    <button type="button" onClick={() => removeContact(idx)} className="p-1 hover:bg-red-50 rounded text-gray-600 hover:text-red-600" title={t('Remove contact', 'حذف جهة الاتصال')} aria-label={t('Remove contact', 'حذف جهة الاتصال')}>
                       <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="label-field">{t('Name', 'الاسم')} *</label>
-                    <input className="input-field" value={contact.name} onChange={e => updateContact(idx, 'name', e.target.value)} placeholder={t('Contact name', 'اسم جهة الاتصال')} />
+                    <label htmlFor={`customer-contact-${idx}-name`} className="label-field">{t('Name', 'الاسم')} *</label>
+                    <input id={`customer-contact-${idx}-name`} className="input-field" value={contact.name} onChange={e => updateContact(idx, 'name', e.target.value)} placeholder={t('Contact name', 'اسم جهة الاتصال')} />
                   </div>
                   <div>
-                    <label className="label-field">{t('Title / Role', 'المنصب / الدور')}</label>
-                    <input className="input-field" value={contact.title} onChange={e => updateContact(idx, 'title', e.target.value)} placeholder={t('e.g. Procurement Manager', 'مثال: مدير المشتريات')} />
+                    <label htmlFor={`customer-contact-${idx}-title`} className="label-field">{t('Title / Role', 'المنصب / الدور')}</label>
+                    <input id={`customer-contact-${idx}-title`} className="input-field" value={contact.title} onChange={e => updateContact(idx, 'title', e.target.value)} placeholder={t('e.g. Procurement Manager', 'مثال: مدير المشتريات')} />
                   </div>
                   <div>
-                    <label className="label-field">{t('Email', 'البريد الإلكتروني')}</label>
-                    <input type="email" className="input-field" value={contact.email} onChange={e => updateContact(idx, 'email', e.target.value)} placeholder={t('email@example.com', 'email@example.com')} />
+                    <label htmlFor={`customer-contact-${idx}-email`} className="label-field">{t('Email', 'البريد الإلكتروني')}</label>
+                    <input id={`customer-contact-${idx}-email`} type="email" className="input-field" value={contact.email} onChange={e => updateContact(idx, 'email', e.target.value)} placeholder={t('email@example.com', 'email@example.com')} />
                   </div>
                   <div>
-                    <label className="label-field">{t('Phone', 'الهاتف')}</label>
-                    <input className="input-field" value={contact.phone} onChange={e => updateContact(idx, 'phone', e.target.value)} placeholder={t('+966 5XX XXX XXXX', '+966 5XX XXX XXXX')} />
+                    <label htmlFor={`customer-contact-${idx}-phone`} className="label-field">{t('Phone', 'الهاتف')}</label>
+                    <input id={`customer-contact-${idx}-phone`} className="input-field" value={contact.phone} onChange={e => updateContact(idx, 'phone', e.target.value)} placeholder={t('+966 5XX XXX XXXX', '+966 5XX XXX XXXX')} />
                   </div>
                 </div>
               </div>

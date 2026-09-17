@@ -172,15 +172,21 @@ export default function DocumentsPage() {
         </div>
 
         {/* Status filter */}
-        <select
-          className="select-field text-sm"
-          value={statusFilter}
-          onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
-        >
-          <option value="">{t('All Statuses', 'كل الحالات')}</option>
-          <option value="draft">{t('Draft', 'مسودة')}</option>
-          <option value="final">{t('Final', 'نهائي')}</option>
-        </select>
+        <div>
+          <label htmlFor="document-status-filter" className="sr-only">
+            {t('Filter by status', 'تصفية حسب الحالة')}
+          </label>
+          <select
+            id="document-status-filter"
+            className="select-field text-sm"
+            value={statusFilter}
+            onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
+          >
+            <option value="">{t('All Statuses', 'كل الحالات')}</option>
+            <option value="draft">{t('Draft', 'مسودة')}</option>
+            <option value="final">{t('Final', 'نهائي')}</option>
+          </select>
+        </div>
       </div>
 
       {/* Documents Table */}
@@ -191,10 +197,10 @@ export default function DocumentsPage() {
       ) : paginated.length === 0 ? (
         <div className="text-center py-12">
           <FileText size={48} className="mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500 text-lg">
+          <p className="text-gray-700 text-lg">
             {t('No documents found', 'لم يتم العثور على مستندات')}
           </p>
-          <p className="text-gray-400 text-sm mt-1">
+          <p className="text-gray-600 text-sm mt-1">
             {t('Create documents from within a Project or Task', 'أنشئ المستندات من داخل مشروع أو مهمة')}
           </p>
         </div>

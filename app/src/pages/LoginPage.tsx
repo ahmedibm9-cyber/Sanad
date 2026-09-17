@@ -35,7 +35,7 @@ export default function LoginPage() {
       navigate('/dashboard', { replace: true })
     } catch (err: unknown) {
       const error = err as { message?: string }
-      setError(error.message || 'Login failed. Please check your credentials.')
+      setError(error.message || t('Login failed. Please check your credentials.', 'فشل تسجيل الدخول. يرجى التحقق من بيانات الاعتماد.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -69,11 +69,11 @@ export default function LoginPage() {
             <div>
               <label htmlFor="email" className="label-field">{t('Email', 'البريد الإلكتروني')}</label>
               <div className="relative">
-                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Mail size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input
                   id="email"
                   type="email"
-                  className="input-field pl-10"
+                  className="input-field pl-10 placeholder:text-gray-500"
                   placeholder={t('Enter your email', 'أدخل بريدك الإلكتروني')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -90,11 +90,11 @@ export default function LoginPage() {
             <div>
               <label htmlFor="password" className="label-field">{t('Password', 'كلمة المرور')}</label>
               <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Lock size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  className="input-field pl-10 pr-10"
+                  className="input-field pl-10 pr-10 placeholder:text-gray-500"
                   placeholder={t('Enter your password', 'أدخل كلمة المرور')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -106,11 +106,10 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  tabIndex={-1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded text-gray-600 hover:text-gray-800"
                   aria-label={showPassword ? t('Hide password', 'إخفاء كلمة المرور') : t('Show password', 'إظهار كلمة المرور')}
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
                 </button>
               </div>
             </div>
@@ -135,7 +134,7 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-gray-400 mt-6">
+        <p className="text-center text-xs text-gray-600 mt-6">
           SANAD v{import.meta.env.VITE_APP_VERSION || '0.1.0'}
         </p>
       </div>

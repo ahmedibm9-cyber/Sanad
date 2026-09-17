@@ -55,23 +55,27 @@ export default function TopBar() {
 
   return (
     <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0" role="banner">
-      {/* Left: Search */}
-      <div className="flex items-center gap-3">
-        {/* Company Indicator */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-brand-50 border border-brand-200 rounded-md">
-          <div className="w-5 h-5 bg-brand-600 rounded flex items-center justify-center">
-            <span className="text-white text-[10px] font-bold">{currentCompany?.short_name?.charAt(0) || '?'}</span>
-          </div>
-          <span className="text-sm font-semibold text-brand-700 hidden sm:inline">{currentCompany?.short_name || 'Select'}</span>
-        </div>
-        <div className="hidden md:flex items-center bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 w-72 transition-colors focus-within:border-brand-400 focus-within:bg-white focus-within:ring-1 focus-within:ring-brand-400 cursor-pointer" onClick={() => setSearchOpen(true)}>
-          <Search size={15} className="text-gray-400 shrink-0" aria-hidden="true" />
-          <span className={`${isRtl ? 'mr-2' : 'ml-2'} bg-transparent text-sm w-full text-gray-400`}>
-            {t('Search...', 'بحث...')}
-          </span>
-          <kbd className="text-[10px] text-gray-400 bg-white border border-gray-200 px-1.5 py-0.5 rounded shrink-0" aria-hidden="true">⌘K</kbd>
-        </div>
-      </div>
+{/* Left: Search */}
+       <div className="flex items-center gap-3">
+         {/* Company Indicator */}
+         <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-brand-50 border border-brand-200 rounded-md">
+           <div className="w-5 h-5 bg-brand-600 rounded flex items-center justify-center">
+             <span className="text-white text-[10px] font-bold">{currentCompany?.short_name?.charAt(0) || '?'}</span>
+           </div>
+           <span className="text-sm font-semibold text-brand-700 hidden sm:inline">{currentCompany?.short_name || 'Select'}</span>
+         </div>
+         <button
+           onClick={() => setSearchOpen(true)}
+           className="hidden md:flex items-center bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 w-72 transition-colors focus-within:border-brand-400 focus-within:bg-white focus-within:ring-1 focus-within:ring-brand-400 cursor-pointer"
+           aria-label={t('Search...', 'بحث...')}
+         >
+           <Search size={15} className="text-gray-400 shrink-0" aria-hidden="true" />
+           <span className={`${isRtl ? 'mr-2' : 'ml-2'} bg-transparent text-sm w-full text-gray-400`}>
+             {t('Search...', 'بحث...')}
+           </span>
+           <kbd className="text-[10px] text-gray-400 bg-white border border-gray-200 px-1.5 py-0.5 rounded shrink-0" aria-hidden="true">⌘K</kbd>
+         </button>
+       </div>
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1">

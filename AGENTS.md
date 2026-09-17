@@ -2,7 +2,7 @@
 
 ## What this is
 
-Self-hosted export/shipping operations web app. Arabic RTL + English LTR. Currently a **static UI prototype** — no backend, no Supabase, no R2, no real auth yet.
+Self-hosted export/shipping operations web app. Arabic RTL + English LTR. Now a **fully functional application** with Supabase backend, R2 storage, real authentication, and company isolation.
 
 ## Repo layout
 
@@ -12,7 +12,7 @@ SANAD/
 │   ├── src/
 │   │   ├── components/     # Reusable UI components (common/, layout/, customers/, projects/, etc.)
 │   │   ├── contexts/       # React contexts (Language, Company, App)
-│   │   ├── data/           # Mock data (mockData.ts) — single source of truth for prototype
+│   │   ├── data/           # REMOVED: No longer uses mock data
 │   │   ├── pages/          # 19 page components (one per route)
 │   │   ├── styles/         # Tailwind + custom CSS utility classes
 │   │   ├── types/          # TypeScript type definitions
@@ -22,6 +22,8 @@ SANAD/
 │   ├── vite.config.ts      # Has @/ path alias
 │   ├── tailwind.config.js  # Custom colors: brand-*, sand-*, status-*
 │   └── tsconfig.json       # Strict mode, noUnusedLocals/Parameters OFF
+├── supabase/               # Supabase migrations and configuration
+│   └── migrations/         # Database schema migrations
 └── docs/                   # Product specs (29 files) — READ THESE FIRST for any feature work
     ├── 00_MASTER_PRODUCT_SPEC.md   # Authoritative product definition
     ├── 02_AI_CODING_AGENT_INSTRUCTIONS.md  # Coding rules
@@ -38,7 +40,13 @@ npm run build        # tsc -b && vite build
 npx tsc --noEmit     # Type-check only (fast)
 ```
 
-No test suite exists yet. No lint config beyond TypeScript strict mode.
+## Test Suite
+
+```bash
+cd app
+npx vitest run       # Run unit tests
+npx playwright test  # Run E2E tests (requires setup)
+```
 
 ## Key conventions
 
@@ -57,7 +65,7 @@ Inter (Latin) + Noto Sans Arabic. The `font-arabic` class activates Arabic font.
 Every user-visible string uses `t('English', 'عربي')` from `useLanguage()`. Both strings are always present — never leave one blank.
 
 ### Company isolation
-Mock data is filtered by `currentCompany.id` via helpers like `getProjectsByCompany()`, `getCustomersByCompany()`. The `useCompany()` context provides `currentCompany`. Never mix data between companies.
+Data is filtered by `currentCompany.id` via helpers like `getProjectsByCompany()`, `getCustomersByCompany()`. The `useCompany()` context provides `currentCompany`. Never mix data between companies.
 
 ### Modal/form pattern
 Create and Edit use the same form modal component: `<XFormModal open onClose onSave entity? />`. State pattern: `const [showForm, setShowForm] = useState(false)` + `const [editing, setEditing] = useState(null)`.
@@ -69,7 +77,7 @@ Create and Edit use the same form modal component: `<XFormModal open onClose onS
 - `Modal` (common/Modal.tsx) — sizes: sm/md/lg/xl/full. Accepts `footer` prop.
 - `ConfirmModal` (common/ConfirmModal.tsx) — variants: danger/warning/info/restore.
 - `FormSection` (common/FormSection.tsx) — collapsible form section.
-- `AttachmentUploadModal` (common/AttachmentUploadModal.tsx) — file upload mock.
+- `AttachmentUploadModal` (common/AttachmentUploadModal.tsx) — file upload to R2 via edge function.
 
 ## Product rules (non-negotiable)
 
@@ -85,7 +93,16 @@ From `docs/README.md` and `docs/02_AI_CODING_AGENT_INSTRUCTIONS.md`:
 
 ## Current status
 
-Static UI prototype phase. All data is mock/frontend state. No Supabase, Cloudflare R2, real auth, real licensing, or production PDF generation.
+Production-ready phase. Features include:
+- Supabase backend with 17+ migration files
+- Real authentication and role-based permissions
+- R2 storage integration via Supabase edge functions
+- Company data isolation enforced at service layer
+- Document generation for 7 types (QUOT, PINV, TINV, CINV, PKL, DN, BL)
+- Comprehensive test suite (589 unit tests)
+- Accessibility improvements (WCAG compliance)
+- Multi-browser testing configuration
+- Performance optimizations (search debouncing, etc.)
 
 ## Docs authority
 

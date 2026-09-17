@@ -35,7 +35,7 @@ const DOC_TYPE_LABELS: Record<string, { en: string; ar: string }> = {
 
 const PRIORITY_CONFIG: Record<string, { bg: string; text: string; labelEn: string; labelAr: string }> = {
   high:   { bg: 'bg-red-50', text: 'text-red-600', labelEn: 'High', labelAr: 'عالية' },
-  medium: { bg: 'bg-amber-50', text: 'text-amber-600', labelEn: 'Medium', labelAr: 'متوسطة' },
+  medium: { bg: 'bg-amber-50', text: 'text-amber-700', labelEn: 'Medium', labelAr: 'متوسطة' },
   low:    { bg: 'bg-gray-50', text: 'text-gray-500', labelEn: 'Low', labelAr: 'منخفضة' },
 }
 
@@ -144,7 +144,7 @@ export default function Dashboard() {
       value: activeTasks.length,
       icon: ClipboardList,
       iconBg: 'bg-amber-50',
-      iconColor: 'text-amber-600',
+      iconColor: 'text-amber-700',
       link: '/tasks',
       urgent: false,
     },
@@ -162,7 +162,7 @@ export default function Dashboard() {
       value: openIssues.length,
       icon: AlertTriangle,
       iconBg: 'bg-orange-50',
-      iconColor: 'text-orange-600',
+      iconColor: 'text-orange-700',
       link: '/projects',
       urgent: openIssues.length > 0,
     },
@@ -199,7 +199,7 @@ export default function Dashboard() {
                 <div className={`p-2.5 rounded-lg ${stat.iconBg}`}>
                   <Icon className={`w-5 h-5 ${stat.iconColor}`} />
                 </div>
-                <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-brand-500 transition-colors" />
+                <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-brand-500 transition-colors" />
               </div>
               <div className="mt-3">
                 <p className="text-sm font-medium text-gray-500">{stat.label}</p>
@@ -227,8 +227,8 @@ export default function Dashboard() {
         </div>
         {myTodos.length === 0 ? (
           <div className="empty-state py-6">
-            <CheckCircle2 className="w-8 h-8 text-green-400 mb-2" />
-            <p className="text-sm text-gray-400">
+            <CheckCircle2 className="w-8 h-8 text-green-600 mb-2" />
+            <p className="text-sm text-gray-600">
               {t('All caught up!', 'لقد أنهيت كل شيء!')}
             </p>
           </div>
@@ -245,14 +245,14 @@ export default function Dashboard() {
                   }`}
                 >
                   <Circle className={`w-4 h-4 shrink-0 ${
-                    isOverdue ? 'text-red-400' : 'text-gray-300'
+                    isOverdue ? 'text-red-600' : 'text-gray-500'
                   }`} />
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium ${isOverdue ? 'text-red-700' : 'text-gray-800'}`}>
                       {todo.title}
                     </p>
                     {todo.description && (
-                      <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{todo.description}</p>
+                      <p className="text-xs text-gray-600 line-clamp-2 mt-0.5">{todo.description}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -260,7 +260,7 @@ export default function Dashboard() {
                       {t(pConfig.labelEn, pConfig.labelAr)}
                     </span>
                     {todo.due_date && (
-                      <span className={`text-xs ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+                      <span className={`text-xs ${isOverdue ? 'text-red-700 font-medium' : 'text-gray-600'}`}>
                         {new Date(todo.due_date).toLocaleDateString(dir === 'rtl' ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' })}
                       </span>
                     )}
@@ -289,8 +289,8 @@ export default function Dashboard() {
           </div>
           {recentDocuments.length === 0 ? (
             <div className="empty-state py-6">
-              <FileText className="w-8 h-8 text-gray-300 mb-2" />
-              <p className="text-sm text-gray-400">
+              <FileText className="w-8 h-8 text-gray-500 mb-2" />
+              <p className="text-sm text-gray-600">
                 {t('No documents yet', 'لا توجد مستندات بعد')}
               </p>
             </div>
@@ -311,18 +311,18 @@ export default function Dashboard() {
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium text-brand-900 truncate">{doc.document_number}</p>
                         {isDraft && (
-                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 shrink-0">
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 shrink-0">
                             {t('Draft', 'مسودة')}
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-400 truncate">
+                      <p className="text-xs text-gray-600 truncate">
                         {typeLabel ? t(typeLabel.en, typeLabel.ar) : doc.document_type}
                         {' · '}
                         {doc.projectName}
                       </p>
                     </div>
-                    <span className="text-xs text-gray-400 shrink-0">
+                    <span className="text-xs text-gray-600 shrink-0">
                       {new Date(doc.updated_at).toLocaleDateString(dir === 'rtl' ? 'ar-SA' : 'en-US', {
                         month: 'short',
                         day: 'numeric',
@@ -348,7 +348,7 @@ export default function Dashboard() {
           </div>
           {recentActivity.length === 0 ? (
             <div className="empty-state py-6">
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-gray-600">
                 {t('No recent activity', 'لا يوجد نشاط حديث')}
               </p>
             </div>
@@ -395,7 +395,7 @@ export default function Dashboard() {
                         {' '}
                         <span className="font-medium">{entry.entity_reference || entry.entity_type}</span>
                       </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
+                      <p className="text-xs text-gray-600 mt-0.5">
                         {new Date(entry.created_at).toLocaleDateString(dir === 'rtl' ? 'ar-SA' : 'en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -418,10 +418,10 @@ export default function Dashboard() {
           </h2>
           <div className="space-y-3">
             {[
-              { label: t('In Progress', 'قيد التنفيذ'), count: inProgressProjects.length, color: 'bg-blue-500', textColor: 'text-blue-700', bgColor: 'bg-blue-50' },
-              { label: t('Completed', 'مكتملة'), count: completedProjects.length, color: 'bg-green-500', textColor: 'text-green-700', bgColor: 'bg-green-50' },
-              { label: t('Cancelled', 'ملغاة'), count: allProjects.filter((p) => p.status === 'cancelled').length, color: 'bg-red-500', textColor: 'text-red-700', bgColor: 'bg-red-50' },
-              { label: t('Archived', 'مؤرشفة'), count: allProjects.filter((p) => p.status === 'archived').length, color: 'bg-gray-400', textColor: 'text-gray-600', bgColor: 'bg-gray-100' },
+              { label: t('In Progress', 'قيد التنفيذ'), count: inProgressProjects.length, color: 'bg-blue-600', textColor: 'text-blue-700', bgColor: 'bg-blue-50' },
+              { label: t('Completed', 'مكتملة'), count: completedProjects.length, color: 'bg-green-600', textColor: 'text-green-700', bgColor: 'bg-green-50' },
+              { label: t('Cancelled', 'ملغاة'), count: allProjects.filter((p) => p.status === 'cancelled').length, color: 'bg-red-600', textColor: 'text-red-700', bgColor: 'bg-red-50' },
+              { label: t('Archived', 'مؤرشفة'), count: allProjects.filter((p) => p.status === 'archived').length, color: 'bg-gray-600', textColor: 'text-gray-700', bgColor: 'bg-gray-100' },
             ].map((item) => {
               const pct = allProjects.length > 0 ? (item.count / allProjects.length) * 100 : 0
               return (

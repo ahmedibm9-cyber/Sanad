@@ -68,7 +68,8 @@ export default function ProjectsPage() {
   const [trashConfirmId, setTrashConfirmId] = useState<string | null>(null)
   const [archiving, setArchiving] = useState(false)
   const [trashing, setTrashing] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null);
+	const statusFilterButtonRef = useRef<HTMLButtonElement | null>(null);
   const PAGE_SIZE = 10
 
   // ── Real data from Supabase ──
@@ -243,17 +244,19 @@ export default function ProjectsPage() {
       {/* Search & Filters */}
       <div className="card p-4">
         <div className="flex flex-col sm:flex-row gap-3">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('Search projects...', 'بحث في المشاريع...')}
-              className="input-field pl-10"
-            />
-          </div>
+{/* Search */}
+           <div className="relative flex-1">
+             <label htmlFor="project-search" className="sr-only">{t('Search projects', 'بحث في المشاريع')}</label>
+             <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden="true" />
+             <input
+               id="project-search"
+               type="text"
+               value={searchQuery}
+               onChange={(e) => setSearchQuery(e.target.value)}
+               placeholder={t('Search projects...', 'بحث في المشاريع...')}
+               className="input-field pl-10"
+             />
+           </div>
 
           {/* Status Filter Button */}
           <div className="relative">
@@ -296,6 +299,7 @@ export default function ProjectsPage() {
             value={selectedCustomerId}
             onChange={(e) => setSelectedCustomerId(e.target.value)}
             className="select-field sm:w-56"
+            aria-label={t('Filter by customer', 'تصفية حسب العميل')}
           >
             <option value="">{t('All Customers', 'جميع العملاء')}</option>
             {rawCustomers.map((c) => (
@@ -309,7 +313,7 @@ export default function ProjectsPage() {
         {/* Active Filters */}
         {activeFilterCount > 0 && (
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-500">
               {t('Active filters:', 'المرشحات النشطة:')}
             </span>
             {selectedStatuses.map((s) => {
@@ -369,13 +373,13 @@ export default function ProjectsPage() {
           <div className="px-5 py-3 border-b border-gray-100">
             <h2 className="text-sm font-semibold text-brand-900">
               {t('All Projects', 'جميع المشاريع')}
-              <span className="ms-2 text-gray-400 font-normal">({filteredProjects.length})</span>
+              <span className="ms-2 text-gray-500 font-normal">({filteredProjects.length})</span>
             </h2>
           </div>
           {filteredProjects.length === 0 && archivedProjects.length === 0 ? (
             <div className="empty-state">
               <FolderOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-400">{t('No projects found', 'لم يتم العثور على مشاريع')}</p>
+              <p className="text-gray-500">{t('No projects found', 'لم يتم العثور على مشاريع')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -430,7 +434,7 @@ export default function ProjectsPage() {
                                 : project.destination_country}
                             </div>
                           ) : (
-                            <span className="text-sm text-gray-400">—</span>
+                            <span className="text-sm text-gray-500">—</span>
                           )}
                         </td>
                         <td className="px-5 py-3.5">
@@ -448,7 +452,7 @@ export default function ProjectsPage() {
                           </span>
                         </td>
                         <td className="px-5 py-3.5 hidden lg:table-cell">
-                          <div className="flex items-center gap-1 text-xs text-gray-400">
+                          <div className="flex items-center gap-1 text-xs text-gray-500">
                             <Calendar className="w-3.5 h-3.5" />
                             {new Date(project.created_at).toLocaleDateString('en-US', {
                               month: 'short',
@@ -551,16 +555,16 @@ export default function ProjectsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100 bg-sand-50/30">
-                    <th className="text-start text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
                       {t('Project', 'المشروع')}
                     </th>
-                    <th className="text-start text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
                       {t('Customer', 'العميل')}
                     </th>
-                    <th className="text-start text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5">
                       {t('Destination', 'الوجهة')}
                     </th>
-                    <th className="text-start text-xs font-medium text-gray-400 uppercase tracking-wider px-5 py-2.5 hidden lg:table-cell">
+                    <th className="text-start text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-2.5 hidden lg:table-cell">
                       {t('Date', 'التاريخ')}
                     </th>
                     <th className="w-10 px-5 py-2.5" />
@@ -575,18 +579,18 @@ export default function ProjectsPage() {
                       <td className="px-5 py-3">
                         <Link
                           to={`/projects/${project.id}`}
-                          className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors"
+                          className="text-sm font-medium text-gray-800 hover:text-brand-600 transition-colors"
                         >
                           {project.name}
                         </Link>
                       </td>
-                      <td className="px-5 py-3 text-sm text-gray-500">
+                      <td className="px-5 py-3 text-sm text-gray-800">
                         {project.customer_name || '—'}
                       </td>
-                      <td className="px-5 py-3 text-sm text-gray-500">
+                      <td className="px-5 py-3 text-sm text-gray-800">
                         {project.destination_country || '—'}
                       </td>
-                      <td className="px-5 py-3 text-xs text-gray-400 hidden lg:table-cell">
+                      <td className="px-5 py-3 text-xs text-gray-800 hidden lg:table-cell">
                         {new Date(project.created_at).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -666,7 +670,7 @@ function ProjectCard({ project, t }: { project: WorkItem & { status: WorkItemSta
         {project.customer_name || t('No customer', 'بدون عميل')}
       </p>
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-        <div className="flex items-center gap-1 text-xs text-gray-400">
+        <div className="flex items-center gap-1 text-xs text-gray-500">
           <MapPin className="w-3 h-3" />
           {project.destination_country || '—'}
         </div>

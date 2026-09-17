@@ -177,24 +177,27 @@ export class NoteService {
     appLogger.info('Note deleted', { noteId: id })
   }
 
-  /**
-   * Restore a soft-deleted note. Only author or admin can restore.
-   */
-  async restoreNote(id: string, context: RequestContext): Promise<Note> {
-    const { data: existing, error: fetchError } = await (this.supabase as any)
-      .from('notes')
-      .select('*')
-      .eq('id', id)
-      .eq('company_id', context.companyId)
-      .single()
+/**
+    * Restore a soft-deleted note. Only author or admin can restore.
+    */
+   async restoreNote(id: string, context: RequestContext): Promise<Note> {
+     const { data: existing, error: fetchError } = await (this.supabase as any)
+       .from('notes')
+       .select('*')
+       .eq('id', id)
+       .eq('company_id', context.companyId)
+       .single()
 
-    if (fetchError || !existing) {
-      throw new NotFoundError('Note', id)
-    }
+     if (fetchError || !existing) {
+       throw new NotFoundError('Note', id)
+     }
 
-    if (existing.created_by !== context.userId && !context.isSystemAdmin) {
-      throw new Error('Not authorized to restore this note')
-    }
+     // Map the existing note to check authorization properly
+     const mappedExisting = { ...existing, created_by: existing.author_user_id, content: existing.body } as Note
+
+     if (mappedExisting.created_by !== context.userId && !context.isSystemAdmin) {
+       throw new Error('Not authorized to restore this note')
+     }
 
     const { data, error } = await (this.supabase as any)
       .from('notes')

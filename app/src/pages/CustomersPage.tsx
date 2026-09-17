@@ -6,6 +6,7 @@ import type { Customer } from '../types'
 import { type Customer as DbCustomer } from '../hooks/useData'
 import CustomerFormModal from '../components/customers/CustomerFormModal'
 import ConfirmModal from '../components/common/ConfirmModal'
+import Modal from '../components/common/Modal'
 import Pagination from '../components/common/Pagination'
 import { Users, Search, Plus, Phone, Mail, MapPin, Eye, Pencil, Trash2 } from 'lucide-react'
 
@@ -206,8 +207,9 @@ export default function CustomersPage() {
           </div>
 
           <div className="relative mb-4">
-            <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input type="text" className="input-field ps-9" placeholder={t('Search by name, contact, phone, email, country...', 'بحث بالاسم، جهة الاتصال، الهاتف، البريد، الدولة...')} value={search} onChange={e => setSearch(e.target.value)} />
+            <label htmlFor="customer-search" className="sr-only">{t('Search customers', 'البحث عن العملاء')}</label>
+            <Search aria-hidden="true" size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input id="customer-search" type="text" className="input-field ps-9" placeholder={t('Search by name, contact, phone, email, country...', 'بحث بالاسم، جهة الاتصال، الهاتف، البريد، الدولة...')} value={search} onChange={e => setSearch(e.target.value)} />
           </div>
 
           <div className="card overflow-hidden">
@@ -266,48 +268,33 @@ export default function CustomersPage() {
             <p className="text-xs text-gray-400 mt-3 text-end">{t(`Showing ${Math.min(page * PAGE_SIZE, filteredCustomers.length)} of ${filteredCustomers.length} customers`, `عرض ${Math.min(page * PAGE_SIZE, filteredCustomers.length)} من ${filteredCustomers.length} عميل`)}</p>
           )}
 
-          {/* Pagination */}
-          {filteredCustomers.length > 0 && (
-            <div className="mt-2">
-              <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
-            </div>
-          )}
-        </>
-      )}
+{/* Pagination */}
+           {filteredCustomers.length > 0 && (
+             <div className="mt-2">
+               <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+             </div>
+           )}
+         </>
+       )}
 
-      {/* View Customer Detail Modal */}
-      {viewingCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setViewingCustomer(null)} />
-          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div className="flex items-start justify-between px-6 py-4 border-b border-gray-100">
-              <div>
-                <h2 className="text-lg font-semibold text-brand-900">{viewingCustomer.name}</h2>
-                <p className="text-sm text-gray-500">{t('Customer Details', 'تفاصيل العميل')}</p>
-              </div>
-              <button onClick={() => setViewingCustomer(null)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400">✕</button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div><p className="text-xs text-gray-400">{t('Contact Person', 'جهة الاتصال')}</p><p className="text-sm font-medium">{viewingCustomer.contactPerson || '—'}</p></div>
-                <div><p className="text-xs text-gray-400">{t('Phone', 'الهاتف')}</p><p className="text-sm font-medium">{viewingCustomer.phone || '—'}</p></div>
-                <div><p className="text-xs text-gray-400">{t('Email', 'البريد')}</p><p className="text-sm font-medium">{viewingCustomer.email || '—'}</p></div>
-                <div><p className="text-xs text-gray-400">{t('Country', 'الدولة')}</p><p className="text-sm font-medium">{viewingCustomer.country || '—'}</p></div>
-                <div><p className="text-xs text-gray-400">{t('City', 'المدينة')}</p><p className="text-sm font-medium">{viewingCustomer.city || '—'}</p></div>
-                <div><p className="text-xs text-gray-400">{t('VAT Number', 'الرقم الضريبي')}</p><p className="text-sm font-medium">{viewingCustomer.vatNumber || '—'}</p></div>
-              </div>
-              {viewingCustomer.address && <div><p className="text-xs text-gray-400">{t('Address', 'العنوان')}</p><p className="text-sm font-medium">{viewingCustomer.address}</p></div>}
-              {viewingCustomer.notes && <div><p className="text-xs text-gray-400">{t('Notes', 'ملاحظات')}</p><p className="text-sm text-gray-600">{viewingCustomer.notes}</p></div>}
-            </div>
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
-              {canEdit && <button onClick={() => { setEditingCustomer(viewingCustomer); setViewingCustomer(null); setShowForm(true) }} className="btn-primary"><Pencil size={14} className="ms-1.5" />{t('Edit', 'تعديل')}</button>}
-            </div>
-          </div>
-        </div>
-      )}
+       {/* View Customer Detail Modal */}
+       <Modal open={viewingCustomer !== null} onClose={() => setViewingCustomer(null)} title={viewingCustomer?.name} subtitle={t('Customer Details', 'تفاصيل العميل')} size="lg">
+         <div className="space-y-4">
+           <div className="grid grid-cols-2 gap-4">
+             <div><p className="text-xs text-gray-400">{t('Contact Person', 'جهة الاتصال')}</p><p className="text-sm font-medium">{viewingCustomer?.contactPerson || '—'}</p></div>
+             <div><p className="text-xs text-gray-400">{t('Phone', 'الهاتف')}</p><p className="text-sm font-medium">{viewingCustomer?.phone || '—'}</p></div>
+             <div><p className="text-xs text-gray-400">{t('Email', 'البريد')}</p><p className="text-sm font-medium">{viewingCustomer?.email || '—'}</p></div>
+             <div><p className="text-xs text-gray-400">{t('Country', 'الدولة')}</p><p className="text-sm font-medium">{viewingCustomer?.country || '—'}</p></div>
+             <div><p className="text-xs text-gray-400">{t('City', 'المدينة')}</p><p className="text-sm font-medium">{viewingCustomer?.city || '—'}</p></div>
+             <div><p className="text-xs text-gray-400">{t('VAT Number', 'الرقم الضريبي')}</p><p className="text-sm font-medium">{viewingCustomer?.vatNumber || '—'}</p></div>
+           </div>
+           {viewingCustomer?.address && <div><p className="text-xs text-gray-400">{t('Address', 'العنوان')}</p><p className="text-sm font-medium">{viewingCustomer?.address}</p></div>}
+           {viewingCustomer?.notes && <div><p className="text-xs text-gray-400">{t('Notes', 'ملاحظات')}</p><p className="text-sm text-gray-600">{viewingCustomer?.notes}</p></div>}
+         </div>
+       </Modal>
 
-      <CustomerFormModal open={showForm} onClose={() => { setShowForm(false); setEditingCustomer(null) }} onSave={handleSave} customer={editingCustomer} />
-      <ConfirmModal open={!!deletingCustomer} onClose={() => setDeletingCustomer(null)} onConfirm={handleDelete} title={t('Move to Trash', 'نقل إلى سلة المهملات')} message={t(`Are you sure you want to move "${deletingCustomer?.name}" to trash?`, `هل أنت متأكد من نقل "${deletingCustomer?.name}" إلى سلة المهملات؟`)} details={t('This action can be undone from the Trash module.', 'يمكن التراجع عن هذا الإجراء من وحدة سلة المهملات.')} confirmLabel={t('Move to Trash', 'نقل إلى سلة المهملات')} cancelLabel={t('Cancel', 'إلغاء')} variant="danger" loading={deleting} />
-    </div>
-  )
+       <CustomerFormModal open={showForm} onClose={() => { setShowForm(false); setEditingCustomer(null) }} onSave={handleSave} customer={editingCustomer} />
+       <ConfirmModal open={!!deletingCustomer} onClose={() => setDeletingCustomer(null)} onConfirm={handleDelete} title={t('Move to Trash', 'نقل إلى سلة المهملات')} message={t(`Are you sure you want to move "${deletingCustomer?.name}" to trash?`, `هل أنت متأكد من نقل "${deletingCustomer?.name}" إلى سلة المهملات؟`)} details={t('This action can be undone from the Trash module.', 'يمكن التراجع عن هذا الإجراء من وحدة سلة المهملات。')} confirmLabel={t('Move to Trash', 'نقل إلى سلة المهملات')} cancelLabel={t('Cancel', 'إلغاء')} variant="danger" loading={deleting} />
+     </div>
+   )
 }
