@@ -1,15 +1,16 @@
 // SANAD k6 Load Test Configuration
 // ==================================
-// All shared constants, thresholds, and environment variables.
+// All secrets MUST be provided via environment variables.
+// Never hardcode credentials in this file.
 
-export const SUPABASE_URL = __ENV.SUPABASE_URL || 'https://vtzyexmafcfcorufkcuz.supabase.co';
-export const SUPABASE_ANON_KEY = __ENV.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0enlleG1hZmNmY29ydWZrY3V6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4NTM2MjgsImV4cCI6MjEwNDQyOTYyOH0.kQrunnmFpGl09BUb7swdj2e_awEu2UppCotxN_kd-KA';
-export const SUPABASE_SERVICE_KEY = __ENV.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0enlleG1hZmNmY29ydWZrY3V6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODg1MzYyOCwiZXhwIjoyMTA0NDI5NjI4fQ.0ZvY6j7r3Yk36LxrpgjFXa8qZ9fg0urceXVro0SKJ94';
+export const SUPABASE_URL = __ENV.SUPABASE_URL;
+export const SUPABASE_ANON_KEY = __ENV.SUPABASE_ANON_KEY;
+export const SUPABASE_SERVICE_KEY = __ENV.SUPABASE_SERVICE_KEY;
 
 // Test user credentials pattern: k6test{VU_ID padded to 2 digits}@sanad-load.test
 export const TEST_EMAIL_PREFIX = __ENV.TEST_EMAIL_PREFIX || 'k6test';
 export const TEST_EMAIL_DOMAIN = __ENV.TEST_EMAIL_DOMAIN || 'sanad-load.test';
-export const TEST_PASSWORD = __ENV.TEST_PASSWORD || 'SanadK6Test2026!';
+export const TEST_PASSWORD = __ENV.TEST_PASSWORD;
 
 // API endpoints
 export const AUTH_URL = `${SUPABASE_URL}/auth/v1`;

@@ -1,25 +1,6 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import { useAuth } from './AuthContext'
-
-interface AppContextType {
-  currentUser: { id: string; name: string; email: string; role: string }
-  notificationsPanelOpen: boolean
-  setNotificationsPanelOpen: (open: boolean) => void
-  searchOpen: boolean
-  setSearchOpen: (open: boolean) => void
-  commandPaletteOpen: boolean
-  setCommandPaletteOpen: (open: boolean) => void
-}
-
-const AppContext = createContext<AppContextType>({
-  currentUser: { id: '', name: '', email: '', role: 'admin' },
-  notificationsPanelOpen: false,
-  setNotificationsPanelOpen: () => {},
-  searchOpen: false,
-  setSearchOpen: () => {},
-  commandPaletteOpen: false,
-  setCommandPaletteOpen: () => {},
-})
+import { useState, useEffect, type ReactNode } from 'react'
+import { useAuth } from './useAuth'
+import { AppContext } from './AppContextValue'
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user: authUser } = useAuth()
@@ -55,8 +36,4 @@ export function AppProvider({ children }: { children: ReactNode }) {
       {children}
     </AppContext.Provider>
   )
-}
-
-export function useApp() {
-  return useContext(AppContext)
 }

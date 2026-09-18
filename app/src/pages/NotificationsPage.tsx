@@ -1,12 +1,12 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import {
   Bell, CheckCheck, Filter, Clock, AlertTriangle, FileText,
   CheckCircle, AlertCircle, Upload, Shield, Archive, Users,
   Calendar, Package
 } from 'lucide-react'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useApp } from '../contexts/AppContext'
-import { useCompany } from '../contexts/CompanyContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useApp } from '../contexts/useApp'
+import { useCompany } from '../contexts/useCompany'
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../hooks/useData'
 import { getSettingsService } from '../lib/services/settings'
 import type { Notification } from '../types'
@@ -61,13 +61,14 @@ const notificationTypes = [
 ]
 
 function formatTimeAgo(dateStr: string): string {
-  const now = new Date('2024-11-25T12:00:00Z')
+  const now = new Date()
   const date = new Date(dateStr)
   const diffMs = now.getTime() - date.getTime()
   const diffMin = Math.floor(diffMs / 60000)
   const diffHr = Math.floor(diffMs / 3600000)
   const diffDay = Math.floor(diffMs / 86400000)
 
+  if (diffMs < 0) return '0m ago'
   if (diffMin < 60) return `${diffMin}m ago`
   if (diffHr < 24) return `${diffHr}h ago`
   if (diffDay < 7) return `${diffDay}d ago`
@@ -77,7 +78,7 @@ function formatTimeAgo(dateStr: string): string {
 export default function NotificationsPage() {
   const { t } = useLanguage()
   const { currentUser } = useApp()
-  const { currentCompany } = useCompany()
+  const { currentCompany, permissions } = useCompany()
 
   const { data: dbNotifications = [], loading, refetch } = useNotifications(currentUser.id)
   const { markRead: markReadDb } = useMarkNotificationRead()
@@ -90,7 +91,7 @@ export default function NotificationsPage() {
     const ctx = {
       userId: currentUser.id,
       companyId: currentCompany.id,
-      permissions: {},
+      permissions: permissions?.permissions || {},
       isSystemAdmin: currentUser.role === 'admin',
     }
     getSettingsService().getCompanySettings(currentCompany.id, ctx)
@@ -101,10 +102,10 @@ export default function NotificationsPage() {
         }
       })
       .catch(() => { /* no preferences, show all */ })
-  }, [currentCompany?.id, currentUser.id])
+  }, [currentCompany?.id, currentUser.id, currentUser.role, permissions])
 
   /** Returns true if a notification type should be shown based on preferences */
-  const isTypeEnabled = (type: string): boolean => {
+  const isTypeEnabled = useCallback((type: string): boolean => {
     // Check direct key match first
     if (type in prefs) return prefs[type]
     // Check category-level: if any type in a category is disabled, check
@@ -114,7 +115,7 @@ export default function NotificationsPage() {
       }
     }
     return true
-  }
+  }, [prefs])
 
   // Map Supabase Notification to UI Notification type
   const mappedNotifications = useMemo<Notification[]>(() => {
@@ -130,7 +131,7 @@ export default function NotificationsPage() {
         entityId: n.entity_id ?? undefined,
         entityType: n.entity_type ?? undefined,
       }))
-  }, [dbNotifications, prefs])
+  }, [dbNotifications, isTypeEnabled])
 
   const [notifs, setNotifs] = useState<Notification[]>(mappedNotifications)
   const [typeFilter, setTypeFilter] = useState('')

@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
 import { useCompanyDocuments } from '../hooks/useData'
-import { useAuth } from '../contexts/AuthContext'
-import { useApp } from '../contexts/AppContext'
+import { useAuth } from '../contexts/useAuth'
+import { useApp } from '../contexts/useApp'
 import { getDocumentService } from '../lib/services/document'
 import ConfirmModal from '../components/common/ConfirmModal'
 import Pagination from '../components/common/Pagination'
@@ -53,7 +53,7 @@ export default function DocumentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; number: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
 
-  const documents = documentsRaw || []
+  const documents = useMemo(() => documentsRaw || [], [documentsRaw])
 
   const filtered = useMemo(() => {
     let result = documents
@@ -125,17 +125,19 @@ export default function DocumentsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            className="input-field ps-9"
-            placeholder={t('Search by number or prepared by...', 'بحث بالرقم أو المُعدّ...')}
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1) }}
-          />
-        </div>
+{/* Search */}
+         <div className="relative flex-1 min-w-[200px] max-w-md">
+           <label htmlFor="document-search" className="sr-only">{t('Search documents', 'بحث في المستندات')}</label>
+           <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+           <input
+             id="document-search"
+             type="text"
+             className="input-field ps-9"
+             placeholder={t('Search by number or prepared by...', 'بحث بالرقم أو المُعدّ...')}
+             value={search}
+             onChange={e => { setSearch(e.target.value); setPage(1) }}
+           />
+         </div>
 
         {/* Type filter */}
         <div className="relative">
@@ -171,17 +173,18 @@ export default function DocumentsPage() {
           )}
         </div>
 
-        {/* Status filter */}
+{/* Status filter */}
         <div>
           <label htmlFor="document-status-filter" className="sr-only">
-            {t('Filter by status', 'تصفية حسب الحالة')}
-          </label>
-          <select
-            id="document-status-filter"
-            className="select-field text-sm"
-            value={statusFilter}
-            onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
-          >
+              {t('Filter by status', 'تصفية حسب الحالة')}
+            </label>
+            <select
+              id="document-status-filter"
+              className="select-field text-sm"
+              value={statusFilter}
+              onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
+              aria-label={t('Filter by status', 'تصفية حسب الحالة')}
+            >
             <option value="">{t('All Statuses', 'كل الحالات')}</option>
             <option value="draft">{t('Draft', 'مسودة')}</option>
             <option value="final">{t('Final', 'نهائي')}</option>

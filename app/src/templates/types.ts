@@ -9,6 +9,7 @@ export type FullaTemplateKey =
   | 'fulla-commercial-invoice-680'
   | 'fulla-tax-invoice-b-680'
   | 'fulla-proforma-invoice-680'
+  | 'fulla-bill-of-lading-680'
 
 /* ── Template Definition ────────────────────────────────── */
 export interface FullaTemplateDefinition {

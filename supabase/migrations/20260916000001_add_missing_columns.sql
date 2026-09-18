@@ -111,6 +111,7 @@ END $$;
 -- ── 9. attachments: add category, description, checksum, deleted_at, deleted_by ──
 ALTER TABLE public.attachments
   ADD COLUMN IF NOT EXISTS category text,
+  ADD COLUMN IF NOT EXISTS document_id uuid,
   ADD COLUMN IF NOT EXISTS description text,
   ADD COLUMN IF NOT EXISTS checksum text,
   ADD COLUMN IF NOT EXISTS deleted_at timestamptz,
@@ -122,6 +123,15 @@ BEGIN
     ALTER TABLE public.attachments
       ADD CONSTRAINT attachments_deleted_by_fkey
       FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'attachments_document_id_fkey') THEN
+    ALTER TABLE public.attachments
+      ADD CONSTRAINT attachments_document_id_fkey
+      FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE;
   END IF;
 END $$;
 
@@ -219,7 +229,8 @@ END $$;
 ALTER TABLE public.company_config_lists
   ADD COLUMN IF NOT EXISTS label_ar text,
   ADD COLUMN IF NOT EXISTS label_en text,
-  ADD COLUMN IF NOT EXISTS value text;
+  ADD COLUMN IF NOT EXISTS value text,
+  ADD COLUMN IF NOT EXISTS code text;
 
 -- Add unique constraint on (company_id, category, code)
 DO $$

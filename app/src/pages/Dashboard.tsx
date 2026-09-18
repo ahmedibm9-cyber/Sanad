@@ -11,9 +11,9 @@ import {
   CheckCircle2,
   ChevronRight,
 } from 'lucide-react'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
-import { useAuth } from '../contexts/AuthContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
+import { useAuth } from '../contexts/useAuth'
 import {
   useWorkItems,
   useTodos,
@@ -34,9 +34,9 @@ const DOC_TYPE_LABELS: Record<string, { en: string; ar: string }> = {
 }
 
 const PRIORITY_CONFIG: Record<string, { bg: string; text: string; labelEn: string; labelAr: string }> = {
-  high:   { bg: 'bg-red-50', text: 'text-red-600', labelEn: 'High', labelAr: 'عالية' },
+  high:   { bg: 'bg-red-50', text: 'text-red-700', labelEn: 'High', labelAr: 'عالية' },
   medium: { bg: 'bg-amber-50', text: 'text-amber-700', labelEn: 'Medium', labelAr: 'متوسطة' },
-  low:    { bg: 'bg-gray-50', text: 'text-gray-500', labelEn: 'Low', labelAr: 'منخفضة' },
+  low:    { bg: 'bg-gray-50', text: 'text-gray-600', labelEn: 'Low', labelAr: 'منخفضة' },
 }
 
 export default function Dashboard() {
@@ -50,11 +50,11 @@ export default function Dashboard() {
   const { data: rawDocuments } = useCompanyDocuments(currentCompany.id)
   const { data: rawReportIssues } = useCompanyReportIssues(currentCompany.id)
 
-  const workItems = rawWorkItems ?? []
-  const todos = rawTodos ?? []
-  const auditEvents = rawAuditEvents ?? []
-  const documents = rawDocuments ?? []
-  const reportIssues: ReportIssue[] = rawReportIssues ?? []
+  const workItems = useMemo(() => rawWorkItems ?? [], [rawWorkItems])
+  const todos = useMemo(() => rawTodos ?? [], [rawTodos])
+  const auditEvents = useMemo(() => rawAuditEvents ?? [], [rawAuditEvents])
+  const documents = useMemo(() => rawDocuments ?? [], [rawDocuments])
+  const reportIssues = useMemo<ReportIssue[]>(() => rawReportIssues ?? [], [rawReportIssues])
 
   // ── Derived data via useMemo ─────────────────────
   const allProjects = useMemo(() => workItems.filter((wi) => wi.type === 'project'), [workItems])
@@ -175,7 +175,7 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold text-brand-900">
           {t('Dashboard', 'لوحة التحكم')}
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-gray-600 mt-1">
           {t(
             `Welcome back, ${user?.displayName ?? ''}`,
             `مرحبًا بعودتك، ${user?.displayName ?? ''}`
@@ -199,10 +199,10 @@ export default function Dashboard() {
                 <div className={`p-2.5 rounded-lg ${stat.iconBg}`}>
                   <Icon className={`w-5 h-5 ${stat.iconColor}`} />
                 </div>
-                <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-brand-500 transition-colors" />
+                <ArrowRight className="w-4 h-4 text-gray-600 group-hover:text-brand-500 transition-colors" />
               </div>
               <div className="mt-3">
-                <p className="text-sm font-medium text-gray-500">{stat.label}</p>
+                <p className="text-sm font-medium text-gray-600">{stat.label}</p>
                 <p className={`text-2xl font-bold mt-0.5 ${
                   stat.urgent && stat.value > 0 ? 'text-red-600' : 'text-brand-900'
                 }`}>
@@ -245,7 +245,7 @@ export default function Dashboard() {
                   }`}
                 >
                   <Circle className={`w-4 h-4 shrink-0 ${
-                    isOverdue ? 'text-red-600' : 'text-gray-500'
+                    isOverdue ? 'text-red-600' : 'text-gray-600'
                   }`} />
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium ${isOverdue ? 'text-red-700' : 'text-gray-800'}`}>
@@ -256,7 +256,7 @@ export default function Dashboard() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${pConfig.bg} ${pConfig.text}`}>
+                     <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${pConfig.bg} ${pConfig.text}`}>
                       {t(pConfig.labelEn, pConfig.labelAr)}
                     </span>
                     {todo.due_date && (
@@ -289,7 +289,7 @@ export default function Dashboard() {
           </div>
           {recentDocuments.length === 0 ? (
             <div className="empty-state py-6">
-              <FileText className="w-8 h-8 text-gray-500 mb-2" />
+              <FileText className="w-8 h-8 text-gray-600 mb-2" />
               <p className="text-sm text-gray-600">
                 {t('No documents yet', 'لا توجد مستندات بعد')}
               </p>
@@ -391,7 +391,7 @@ export default function Dashboard() {
                       <p className="text-sm text-gray-700">
                         <span className="font-medium">{user?.displayName || entry.actor_user_id.slice(0, 8)}</span>
                         {' '}
-                        <span className="text-gray-500">{t(actionLabel.en, actionLabel.ar)}</span>
+                        <span className="text-gray-600">{t(actionLabel.en, actionLabel.ar)}</span>
                         {' '}
                         <span className="font-medium">{entry.entity_reference || entry.entity_type}</span>
                       </p>

@@ -1,13 +1,13 @@
-import { useLanguage } from '../../contexts/LanguageContext'
-import { useCompany } from '../../contexts/CompanyContext'
-import { useApp } from '../../contexts/AppContext'
+import { useLanguage } from '../../contexts/useLanguage'
+import { useCompany } from '../../contexts/useCompany'
+import { useApp } from '../../contexts/useApp'
 import { useNavigate } from 'react-router-dom'
 import { Search, Bell, Globe, ChevronDown, LogOut } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNotifications } from '../../hooks/useData'
 import GlobalSearch from '../common/GlobalSearch'
 import NotificationPanel from '../common/NotificationPanel'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '../../contexts/useAuth'
 
 export default function TopBar() {
   const { language, setLanguage, t, dir } = useLanguage()
@@ -44,7 +44,7 @@ export default function TopBar() {
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [])
+  }, [setSearchOpen])
 
   // Sync unread count from hook data
   useEffect(() => {
@@ -69,11 +69,11 @@ export default function TopBar() {
            className="hidden md:flex items-center bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 w-72 transition-colors focus-within:border-brand-400 focus-within:bg-white focus-within:ring-1 focus-within:ring-brand-400 cursor-pointer"
            aria-label={t('Search...', 'بحث...')}
          >
-           <Search size={15} className="text-gray-400 shrink-0" aria-hidden="true" />
-           <span className={`${isRtl ? 'mr-2' : 'ml-2'} bg-transparent text-sm w-full text-gray-400`}>
+            <Search size={15} className="text-gray-600 shrink-0" aria-hidden="true" />
+            <span className={`${isRtl ? 'mr-2' : 'ml-2'} bg-transparent text-sm w-full text-gray-700`}>
              {t('Search...', 'بحث...')}
            </span>
-           <kbd className="text-[10px] text-gray-400 bg-white border border-gray-200 px-1.5 py-0.5 rounded shrink-0" aria-hidden="true">⌘K</kbd>
+            <kbd className="text-xs text-gray-700 bg-white border border-gray-200 px-1.5 py-0.5 rounded shrink-0" aria-hidden="true">⌘K</kbd>
          </button>
        </div>
 
@@ -141,14 +141,14 @@ export default function TopBar() {
             </div>
             <div className="hidden md:block text-left">
               <p className="text-sm font-medium text-gray-800 leading-tight">{currentUser.name}</p>
-              <p className="text-[11px] text-gray-400 leading-tight capitalize">{currentUser.role}</p>
+              <p className="text-xs text-gray-700 leading-tight capitalize">{currentUser.role}</p>
             </div>
-            <ChevronDown size={14} className={`text-gray-400 hidden md:block transition-transform duration-150 ${userMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+            <ChevronDown size={14} className={`text-gray-600 hidden md:block transition-transform duration-150 ${userMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
           </button>
           {userMenuOpen && (
             <div className="absolute top-full mt-1 dropdown-panel w-56" role="menu">
               <div className="px-3 py-2 border-b border-gray-100">
-                <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wider">{currentUser.email}</p>
+                <p className="text-xs text-gray-700 font-medium uppercase tracking-wider">{currentUser.email}</p>
               </div>
               <div className="border-t border-gray-100">
                 <button

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer } from '../hooks/useData'
 import type { Customer } from '../types'
 import { type Customer as DbCustomer } from '../hooks/useData'
@@ -188,12 +188,14 @@ export default function CustomersPage() {
         )}
       </div>
 
-      {loading && (
-        <div className="card p-8 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600 mx-auto mb-3" />
-          <p className="text-sm text-gray-500">{t('Loading customers...', 'جاري تحميل العملاء...')}</p>
-        </div>
-      )}
+{loading && (
+         <div className="card p-8 text-center">
+           <div role="status" aria-label={t('Loading customers...', 'جاري تحميل العملاء...')}>
+             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600 mx-auto mb-3" />
+           </div>
+           <p className="text-sm text-gray-500">{t('Loading customers...', 'جاري تحميل العملاء...')}</p>
+         </div>
+       )}
 
       {!loading && (
         <>

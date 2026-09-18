@@ -5,7 +5,7 @@
 -- 1. Customers
 -- ===========================================
 CREATE TABLE IF NOT EXISTS customers (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   
   -- Basic information
@@ -76,7 +76,7 @@ CREATE INDEX IF NOT EXISTS idx_customers_deleted ON customers(company_id, delete
 -- 2. Materials
 -- ===========================================
 CREATE TABLE IF NOT EXISTS materials (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   
   -- Basic information
@@ -111,7 +111,7 @@ CREATE INDEX IF NOT EXISTS idx_materials_deleted ON materials(company_id, delete
 -- 3. Material Files (TDS, MSDS, COA)
 -- ===========================================
 CREATE TABLE IF NOT EXISTS material_files (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   material_id UUID NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
   file_type TEXT NOT NULL CHECK (file_type IN ('TDS', 'MSDS', 'COA', 'other')),
@@ -134,7 +134,7 @@ CREATE INDEX IF NOT EXISTS idx_material_files_type ON material_files(file_type);
 -- 4. Material Price Events
 -- ===========================================
 CREATE TABLE IF NOT EXISTS material_price_events (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   material_id UUID NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
   work_item_id UUID,

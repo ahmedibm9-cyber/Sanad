@@ -1,7 +1,7 @@
 import { Fragment, useState, useMemo } from 'react'
 import { Search, ChevronDown, ChevronRight, Clock, User, FileText, Edit3, Trash2, Archive, Download, Upload, RotateCcw, Shield, Database, Key, ArrowRight, ChevronDown as ChevronDownSmall } from 'lucide-react'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
 import { useAuditEvents } from '../hooks/useData'
 import type { AuditEvent } from '../hooks/useData'
 
@@ -100,12 +100,12 @@ export default function ActivityPage() {
   const entityTypes = useMemo(() => {
     const types = new Set(activityLog.map(a => a.entityType))
     return Array.from(types).sort()
-  }, [])
+  }, [activityLog])
 
   const actionTypes = useMemo(() => {
     const actions = new Set(activityLog.map(a => a.action))
     return Array.from(actions).sort()
-  }, [])
+  }, [activityLog])
 
   const filtered = useMemo(() => {
     return activityLog.filter(entry => {
@@ -138,7 +138,7 @@ export default function ActivityPage() {
 
       return true
     }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-  }, [userSearch, entitySearch, entityTypeFilter, actionFilter, dateFrom, dateTo, currentCompany.id])
+  }, [activityLog, userSearch, entitySearch, entityTypeFilter, actionFilter, dateFrom, dateTo, currentCompany.id])
 
   const toggleExpand = (id: string) => {
     setExpandedRow(prev => prev === id ? null : id)

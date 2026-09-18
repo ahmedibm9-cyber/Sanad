@@ -15,9 +15,18 @@ for (const { name, path, authenticated } of PAGES_TO_CHECK) {
     test.beforeEach(async ({ page }) => {
       if (authenticated) {
         await login(page)
+      } else {
+        // The shared Playwright storage state is authenticated by default.
+        // Clear it before asserting the unauthenticated login screen.
+        await page.context().clearCookies()
+        await page.goto(path)
+        await page.evaluate(() => window.localStorage.clear())
+        await page.reload()
+        await page.waitForLoadState('networkidle', { timeout: 20000 })
+        return
       }
       await page.goto(path)
-      await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('networkidle', { timeout: 20000 })
     })
 
     test(`has no critical or serious a11y violations on ${name}`, async ({ page }) => {

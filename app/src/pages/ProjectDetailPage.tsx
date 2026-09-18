@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -21,10 +21,10 @@ import {
   Check,
   X,
 } from 'lucide-react'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
-import { useApp } from '../contexts/AppContext'
-import { useAuth } from '../contexts/AuthContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
+import { useApp } from '../contexts/useApp'
+import { useAuth } from '../contexts/useAuth'
 import { downloadWorkItemPdf } from '../lib/pdfExport'
 import { downloadAttachment } from '../lib/r2Client'
 import { getAttachmentService } from '../lib/services/attachment'
@@ -117,10 +117,10 @@ export default function ProjectDetailPage() {
 
   // Resolve nullable hook data to always be arrays
   const hookMaterials = rawMaterials ?? []
-  const hookDocs = rawDocs ?? []
-  const hookNotes = rawNotes ?? []
-  const hookIssues = rawIssues ?? []
-  const hookAttachments = rawAttachments ?? []
+  const hookDocs = useMemo(() => rawDocs ?? [], [rawDocs])
+  const hookNotes = useMemo(() => rawNotes ?? [], [rawNotes])
+  const hookIssues = useMemo(() => rawIssues ?? [], [rawIssues])
+  const hookAttachments = useMemo(() => rawAttachments ?? [], [rawAttachments])
 
   // ── Local state for optimistic updates ────────────
   const [attachments, setAttachments] = useState<Attachment[]>([])

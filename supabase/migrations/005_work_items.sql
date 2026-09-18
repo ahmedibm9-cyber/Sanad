@@ -5,7 +5,7 @@
 -- 1. Work Items (Tasks & Projects)
 -- ===========================================
 CREATE TABLE IF NOT EXISTS work_items (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   
   -- Type
@@ -58,7 +58,7 @@ CREATE INDEX IF NOT EXISTS idx_work_items_deleted ON work_items(company_id, dele
 -- 2. Work Item Materials
 -- ===========================================
 CREATE TABLE IF NOT EXISTS work_item_materials (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   work_item_id UUID NOT NULL REFERENCES work_items(id) ON DELETE CASCADE,
   material_id UUID REFERENCES materials(id) ON DELETE SET NULL,

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useLanguage } from '../../contexts/LanguageContext'
+import { useLanguage } from '../../contexts/useLanguage'
 import Modal from '../common/Modal'
 import FormSection from '../common/FormSection'
 import type { Customer } from '../../types'

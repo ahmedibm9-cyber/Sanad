@@ -254,15 +254,21 @@ export class MaterialService {
       throw handleSupabaseError(error)
     }
 
-    await (this.supabase as any)
+    const { error: trashError } = await (this.supabase as any)
       .from('trash_entries')
       .insert({
         entity_type: 'material',
         entity_id: id,
+        entity_name: material.name,
         company_id: material.company_id,
         deleted_by: context.userId,
         deleted_at: new Date().toISOString(),
       })
+
+    if (trashError) {
+      await (this.supabase as any).from('materials').update({ deleted_at: null }).eq('id', id).eq('company_id', material.company_id)
+      throw handleSupabaseError(trashError)
+    }
 
     appLogger.info('Material moved to trash', { materialId: id })
   }

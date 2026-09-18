@@ -193,6 +193,9 @@ const TITLE_OVERRIDES: Record<string, { pageClass?: string; titleHtml?: string }
   'quotation': {
     titleHtml: 'QUOTATION / <span class="title-ar" dir="rtl">عرض سعر</span>',
   },
+  'bill-of-lading': {
+    titleHtml: 'BILL OF LADING',
+  },
 }
 
 /* ── Data-field fill logic (mirrors fulla-template.js) ── */
@@ -313,6 +316,7 @@ export type FullaTemplateId =
   | 'invoice-proforma'
   | 'invoice-commercial'
   | 'quotation'
+  | 'bill-of-lading'
   | 'packing-list'
   | 'delivery-note'
 
@@ -328,7 +332,7 @@ export function renderFullaTemplate(
   data: Record<string, unknown>,
 ): string {
   // Pick base template
-  const isInvoiceFamily = templateId.startsWith('invoice') || templateId === 'quotation'
+  const isInvoiceFamily = templateId.startsWith('invoice') || templateId === 'quotation' || templateId === 'bill-of-lading'
   const baseKey = templateId === 'quotation'
     ? 'quotation'
     : templateId === 'packing-list'

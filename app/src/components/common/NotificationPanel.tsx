@@ -4,8 +4,8 @@ import {
   X, Bell, CheckCircle, AlertTriangle, FileText, Paperclip,
   Clock, Shield, Database, ChevronRight, CheckCheck,
 } from 'lucide-react'
-import { useLanguage } from '../../contexts/LanguageContext'
-import { useApp } from '../../contexts/AppContext'
+import { useLanguage } from '../../contexts/useLanguage'
+import { useApp } from '../../contexts/useApp'
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../../hooks/useData'
 import type { Notification } from '../../types'
 

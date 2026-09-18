@@ -278,6 +278,7 @@ export function getTemplateId(templateKey: string): FullaTemplateId {
     case 'fulla-tax-invoice-b-680':     return 'invoice-tax-b'
     case 'fulla-proforma-invoice-680':  return 'invoice-proforma'
     case 'fulla-quotation-680':         return 'quotation'
+    case 'fulla-bill-of-lading-680':    return 'bill-of-lading'
     case 'fulla-packing-list-680':      return 'packing-list'
     case 'fulla-delivery-note-680':     return 'delivery-note'
     default:                            return 'invoice'

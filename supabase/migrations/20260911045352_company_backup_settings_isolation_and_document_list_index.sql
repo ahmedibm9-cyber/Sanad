@@ -1,4 +1,37 @@
 -- Backup settings are company-owned; deployment_id has no valid application contract.
+CREATE OR REPLACE FUNCTION public.user_has_company_access(p_user_id uuid, p_company_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.company_memberships
+    WHERE user_id = p_user_id
+      AND company_id = p_company_id
+      AND active = true
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.user_is_company_admin(p_user_id uuid, p_company_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.company_memberships
+    WHERE user_id = p_user_id
+      AND company_id = p_company_id
+      AND base_role = 'admin'
+      AND active = true
+  );
+$$;
+
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM public.backup_settings) THEN
@@ -7,6 +40,7 @@ BEGIN
 END $$;
 
 ALTER TABLE public.backup_settings
+  ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE,
   DROP CONSTRAINT IF EXISTS backup_settings_deployment_id_key,
   DROP COLUMN IF EXISTS deployment_id,
   ALTER COLUMN company_id SET NOT NULL;

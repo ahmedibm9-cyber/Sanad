@@ -4,7 +4,7 @@
 -- 1. Audit Events
 -- ===========================================
 CREATE TABLE IF NOT EXISTS audit_events (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
   actor_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   action TEXT NOT NULL,
@@ -32,7 +32,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_events_reference ON audit_events
 -- 2. Notifications
 -- ===========================================
 CREATE TABLE IF NOT EXISTS notifications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
   type TEXT NOT NULL,
@@ -54,7 +54,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at
 -- 3. Notification Preferences
 -- ===========================================
 CREATE TABLE IF NOT EXISTS notification_preferences (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   notification_type TEXT NOT NULL,
   enabled BOOLEAN NOT NULL DEFAULT TRUE,

@@ -11,13 +11,12 @@ import {
   Loader2,
 } from 'lucide-react'
 import Modal from '../common/Modal'
-import { useLanguage } from '../../contexts/LanguageContext'
+import { useLanguage } from '../../contexts/useLanguage'
 import { useCompanies } from '../../hooks/useData'
-import { getAuthService } from '../../lib/auth'
-import { getMembershipService } from '../../lib/services/membership'
 import { getAuditService } from '../../lib/services/audit'
-import { useAuth } from '../../contexts/AuthContext'
-import { useCompany } from '../../contexts/CompanyContext'
+import { getSupabase } from '../../lib/supabase'
+import { useAuth } from '../../contexts/useAuth'
+import { useCompany } from '../../contexts/useCompany'
 import type { User, Permission, CompanyId, CompanyMembership } from '../../types'
 import { appLogger } from '../../lib/logger'
 
@@ -369,34 +368,23 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
         }
         onSave(savedUser)
       } else {
-        // Create new user via Supabase Auth
-        const authService = getAuthService()
-        const defaultPassword = crypto.randomUUID().slice(0, 12) + '!A1' // Generated password - user should change on first login
-        const session = await authService.signUp({
-          email: email.trim(),
-          password: defaultPassword,
-          displayName: name.trim(),
+        // Provision through the server so the administrator's session is not replaced.
+        const { data: provisioned, error: provisionError } = await getSupabase().functions.invoke('provision-user', {
+          body: {
+            email: email.trim(),
+            displayName: name.trim(),
+            memberships,
+          },
         })
+        if (provisionError || !provisioned?.userId) {
+          throw new Error(provisionError?.message || provisioned?.error || t('Unable to invite user.', 'تعذر دعوة المستخدم.'))
+        }
 
-        // Create memberships for the new user
-        const membershipService = getMembershipService()
         const ctx = {
           userId: authUser?.id || '',
           companyId: currentCompany?.id || '',
           permissions: {},
           isSystemAdmin: authUser?.isSystemAdmin || false,
-        }
-
-        for (const membership of memberships) {
-          try {
-            await membershipService.createMembership({
-              company_id: membership.companyId,
-              user_id: session.user.id,
-              base_role: membership.role as 'admin' | 'user' | 'viewer',
-            }, ctx)
-          } catch (err) {
-            appLogger.error('Failed to create membership', err)
-          }
         }
 
         // Audit logging
@@ -405,7 +393,7 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
           await auditService.logEvent({
             action: 'CREATE',
             entityType: 'user',
-            entityId: session.user.id,
+          entityId: provisioned.userId,
             entityReference: email.trim(),
             after: { email: email.trim(), name: name.trim(), memberships },
           }, ctx)
@@ -414,7 +402,7 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
         }
 
         const savedUser: User = {
-          id: session.user.id,
+          id: provisioned.userId,
           name: name.trim(),
           nameAr: nameAr.trim() || undefined,
           email: email.trim(),

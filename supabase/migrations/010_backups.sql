@@ -4,7 +4,7 @@
 -- 1. Backups
 -- ===========================================
 CREATE TABLE IF NOT EXISTS backups (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   deployment_id UUID,
   type TEXT NOT NULL CHECK (type IN ('manual', 'automatic')),
   destination TEXT NOT NULL CHECK (destination IN ('r2', 'offline')),
@@ -26,7 +26,7 @@ CREATE INDEX IF NOT EXISTS idx_backups_type ON backups(type);
 -- 2. Backup Settings (per deployment)
 -- ===========================================
 CREATE TABLE IF NOT EXISTS backup_settings (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   deployment_id UUID NOT NULL UNIQUE,
   auto_backup_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   backup_schedule TEXT NOT NULL DEFAULT 'daily',

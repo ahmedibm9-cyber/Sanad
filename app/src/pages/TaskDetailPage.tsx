@@ -16,10 +16,10 @@ import {
   Trash2,
   ChevronDown,
 } from 'lucide-react'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
-import { useApp } from '../contexts/AppContext'
-import { useAuth } from '../contexts/AuthContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
+import { useApp } from '../contexts/useApp'
+import { useAuth } from '../contexts/useAuth'
 import {
   useWorkItemById,
   useDocuments,

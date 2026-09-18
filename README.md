@@ -102,7 +102,7 @@ sanad/
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 22+
 - npm or yarn
 - Supabase account (for backend)
 

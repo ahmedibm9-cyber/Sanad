@@ -327,12 +327,29 @@ export class BackupService {
       throw new Error('Backup manifest is missing or empty — cannot restore')
     }
 
+    if (manifest.version !== '1.0.0' || !manifest.deploymentId || !manifest.timestamp || !manifest.checksum) {
+      throw new Error('Backup manifest is invalid or incomplete — cannot restore')
+    }
+
+    const encoder = new TextEncoder()
+    const expectedHash = await crypto.subtle.digest(
+      'SHA-256',
+      encoder.encode(JSON.stringify({ ...manifest, checksum: '' }))
+    )
+    const expectedChecksum = `sha256-${Array.from(new Uint8Array(expectedHash)).map(b => b.toString(16).padStart(2, '0')).join('')}`
+    if (manifest.checksum !== expectedChecksum) {
+      throw new Error('Backup manifest checksum mismatch — restore aborted')
+    }
+
     // 2. Verify company scope (system admins can restore any)
     if (manifest.deploymentId && manifest.deploymentId !== 'unknown') {
       const isSystemAdmin = await this.isSystemAdmin(context.userId)
       if (!isSystemAdmin && manifest.deploymentId !== context.companyId) {
         throw new Error('Cannot restore backup from a different company')
       }
+    }
+    if (!context.companyId || (backup.company_id && backup.company_id !== context.companyId)) {
+      throw new Error('Backup target company does not match the active company')
     }
 
     appLogger.info('Starting backup restore', {
@@ -381,9 +398,9 @@ export class BackupService {
       .select('*')
       .eq('company_id', context.companyId)
       .limit(1)
-      .single()
+      .maybeSingle()
 
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       return null
     }
 
@@ -543,7 +560,7 @@ export class BackupService {
     context: RequestContext
   ): Promise<{ tables: string; rows: number }> {
     if (!context.companyId) throw new Error('companyId required')
-    const { downloadFromR2 } = await import('../r2')
+    const { downloadFromR2 } = await import('../r2Client')
 
     let totalRows = 0
     const restoredTables: string[] = []
@@ -551,8 +568,8 @@ export class BackupService {
     for (const table of COMPANY_TABLES) {
       const objectKey = `backups/${context.companyId}/${backupId}/data/${table}.json`
       try {
-        const result = await downloadFromR2(objectKey)
-        const text = result.body.toString('utf-8')
+        const result = await downloadFromR2(objectKey, context.companyId)
+        const text = new TextDecoder().decode(result.body)
         const rows = JSON.parse(text) as Record<string, unknown>[]
         if (rows.length === 0) continue
 

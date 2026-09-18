@@ -2,6 +2,8 @@
 -- SANAD V1 — 021: Performance indexes for new tables and gap columns
 -- ============================================================================
 
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
+
 -- ── 1. user_preferences ──
 CREATE INDEX IF NOT EXISTS idx_user_preferences_user ON public.user_preferences(user_id);
 
@@ -31,8 +33,8 @@ CREATE INDEX IF NOT EXISTS idx_saved_report_views_company ON public.saved_report
 CREATE INDEX IF NOT EXISTS idx_saved_report_views_user ON public.saved_report_views(user_id);
 
 -- ── 10. GIN indexes for new text search targets ──
-CREATE INDEX IF NOT EXISTS idx_customer_contacts_name_gin ON public.customer_contacts USING gin(name gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS idx_factory_code_records_name_gin ON public.factory_code_records USING gin(factory_name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_customer_contacts_name_gin ON public.customer_contacts USING gin(name extensions.gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_factory_code_records_name_gin ON public.factory_code_records USING gin(factory_name extensions.gin_trgm_ops);
 
 -- ── 11. Composite indexes for common query patterns ──
 CREATE INDEX IF NOT EXISTS idx_documents_company_type ON public.documents(company_id, document_type) WHERE deleted_at IS NULL;
@@ -45,4 +47,16 @@ CREATE INDEX IF NOT EXISTS idx_customers_company_status ON public.customers(comp
 CREATE INDEX IF NOT EXISTS idx_notes_work_item_active ON public.notes(work_item_id) WHERE active = true;
 CREATE INDEX IF NOT EXISTS idx_report_issues_work_item_active ON public.report_issues(work_item_id) WHERE active = true;
 CREATE INDEX IF NOT EXISTS idx_attachments_work_item_active ON public.attachments(work_item_id) WHERE active = true;
-CREATE INDEX IF NOT EXISTS idx_attachments_document_active ON public.attachments(document_id) WHERE active = true;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'attachments'
+      AND column_name = 'document_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_attachments_document_active
+      ON public.attachments(document_id) WHERE active = true;
+  END IF;
+END $$;

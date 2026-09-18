@@ -4,8 +4,8 @@ import {
   AlertTriangle, Activity, Globe, Package, ShieldCheck,
   FileDown, FileSpreadsheet, CheckCircle
 } from 'lucide-react'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
 import { useWorkItems, useAuditEvents, useCompanyUsers } from '../hooks/useData'
 import type { WorkItem } from '../types'
 import type { WorkItem as ServiceWorkItem } from '../hooks/useData'
@@ -781,16 +781,15 @@ export default function ReportsPage() {
   const { data: companyUsers = [] } = useCompanyUsers(currentCompany.id)
   const companyIds = useMemo(() => new Set(filteredProjects.map(p => p.companyId)), [filteredProjects])
 
-  const statusLabels: Record<string, string> = {
-    in_progress: 'In Progress',
-    completed: 'Completed',
-    cancelled: 'Cancelled',
-    archived: 'Archived',
-  }
-
   const exportData = useMemo(() => {
     const t_ = (en: string, ar: string) => en // Always EN for exports
     const allCompanies_ = allCompanies
+    const statusLabels: Record<string, string> = {
+      in_progress: 'In Progress',
+      completed: 'Completed',
+      cancelled: 'Cancelled',
+      archived: 'Archived',
+    }
 
     switch (activeReport) {
       case 'by-status': {
@@ -918,7 +917,7 @@ export default function ReportsPage() {
       default:
         return { headers: [] as string[], rows: [] as (string | number)[][], sheetName: '', filename: '', pdfTitle: '' }
     }
-  }, [activeReport, filteredProjects, filteredTasks, filteredOverdueTasks, filteredAuditEvents, companyUsers, rawAuditEvents, companyIds])
+  }, [activeReport, filteredProjects, filteredTasks, filteredOverdueTasks, filteredAuditEvents, companyUsers, rawAuditEvents, companyIds, allCompanies])
 
   const reportTitle = reports.find(r => r.id === activeReport)
 

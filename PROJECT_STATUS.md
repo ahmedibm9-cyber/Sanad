@@ -4,9 +4,9 @@
 - Integrate the Fulla_Dynamic_HTML_CSS_Templates.zip package into SANAD as the single source of truth for all 7 document types, using `data-field` attribute-based rendering for preview, print, AND PDF — all from one HTML source.
 
 ## Important Details
-- **Production URL**: `https://sanad-ibmai1979-2318.vercel.app`
+- **Production URL**: `https://sanad-etl.pages.dev`
 - **Admin credentials**: `admin@sanad.com` / `12345679`
-- **Supabase project**: `vtzyexmafcfcorufkcuz`
+- **Supabase project**: `mvhawhcfzujkuyhkejty`
 - **Platform**: Windows (PowerShell) — use `;` not `&&`; git at `C:\Program Files\Git\bin\git.exe`
 - **Vercel team**: `team_gKgGYua6qyl8TSCC9U0Ijuv6`, project: `prj_QMbQnc8AA7mjYESeATUiDD20gMAt`
 - **Vercel PAT**: [REDACTED - stored in Vercel dashboard]

@@ -1,11 +1,11 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useSearchParams, useParams, useNavigate } from 'react-router-dom'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
-import { useApp } from '../contexts/AppContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
+import { useApp } from '../contexts/useApp'
 import { useWorkItems, useCustomers, useMaterials, useUpdateMaterialLastPrice } from '../hooks/useData'
 import { getDocumentService, type CreateDocumentInput, type UpdateDocumentInput } from '../lib/services/document'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../contexts/useAuth'
 import { getSharedDataService } from '../lib/services/sharedData'
 import FormSection from '../components/common/FormSection'
 import VoiceInputButton from '../components/common/VoiceInputButton'
@@ -54,26 +54,47 @@ export default function DocumentFormPage() {
   const { updateLastPrice } = useUpdateMaterialLastPrice()
 
   const documentService = getDocumentService()
-  const requestContext = {
+  const requestContext = useMemo(() => ({
     userId: user?.id || currentUser.id,
     companyId: currentCompany.id,
     permissions: permissions?.permissions || {},
     isSystemAdmin: user?.isSystemAdmin || false,
-  }
+  }), [user?.id, currentUser.id, currentCompany.id, permissions?.permissions, user?.isSystemAdmin])
 
   const workItems = workItemsRaw || []
   const customersList = customersRaw || []
 
-  const project = workItems.find((p: any) => p.id === projectId) || workItems[0]
-  const customer = customersList.find((c: any) => c.id === project?.customer_id) || customersList[0]
+  const project = workItems.find((p: any) => p.id === projectId) || workItems[0] || {
+    id: projectId || '',
+    name: '',
+    customer_id: null,
+    vessel_name: '',
+    voyage_number: '',
+    port_of_loading: '',
+    port_of_discharge: '',
+    container_number: '',
+  }
+  const customer = customersList.find((c: any) => c.id === project.customer_id) || {
+    name: '',
+    address: '',
+    vat_number: '',
+    contact_person: '',
+    country: '',
+  }
 
   /* ── form state ─────────────────────────────────────── */
   const [docType] = useState<DocumentType>(typeFromUrl)
   const [docNumber, setDocNumber] = useState(defaultDocNumber(typeFromUrl))
   const [docDate, setDocDate] = useState(today())
-  const [docLanguage, setDocLanguage] = useState<'en' | 'ar'>(
-    (searchParams.get('lang') as 'en' | 'ar') || language || 'en'
-  )
+const [docLanguage, setDocLanguage] = useState<'en' | 'ar'>(
+  (() => {
+    const langParam = searchParams.get('lang');
+    if (langParam === 'en' || langParam === 'ar') {
+      return langParam;
+    }
+    return language; // From useLanguage() context, guaranteed to be 'en' or 'ar'
+  })()
+)
   const [template, setTemplate] = useState<string>(
     currentCompany.defaultTemplate || 'fulla-commercial-invoice-680'
   )
@@ -134,6 +155,87 @@ export default function DocumentFormPage() {
 
   // Items
   const [items, setItems] = useState<ProjectMaterial[]>([])
+
+  // Existing documents are hydrated from their persisted snapshot before editing.
+  useEffect(() => {
+    if (!id || id === 'new') return
+
+    let cancelled = false
+    const loadDocument = async () => {
+      try {
+        const saved = await documentService.getDocumentById(id, requestContext)
+        if (cancelled) return
+        const data = (saved.document_data || {}) as Record<string, any>
+        const setIfPresent = (setter: (value: any) => void, key: string) => {
+          if (data[key] !== undefined) setter(data[key])
+        }
+
+        setDocNumber(saved.document_number)
+        setDocDate(saved.created_date)
+        setDocLanguage((saved.language === 'ar' ? 'ar' : 'en') as 'en' | 'ar')
+        setTemplate(saved.template_key)
+        setPreparedBy(saved.prepared_by || '')
+        setShowSignature(saved.show_signature)
+        setShowStamp(saved.show_stamp)
+
+        setIfPresent(setItems, 'items')
+        setIfPresent(setSubtotal, 'subtotal')
+        setIfPresent(setValidUntil, 'validUntil')
+        setIfPresent(setInvoiceDate, 'invoiceDate')
+        setIfPresent(setDueDate, 'dueDate')
+        setIfPresent(setVatRate, 'vatRate')
+        setIfPresent(setOrigin, 'origin')
+        setIfPresent(setPacking, 'packing')
+        setIfPresent(setDeliveryTime, 'deliveryTime')
+        setIfPresent(setIncoterm, 'incoterm')
+        setIfPresent(setDeliveryTerms, 'deliveryTerms')
+        setIfPresent(setPaymentTerms, 'paymentTerms')
+        setIfPresent(setNotes, 'notes')
+        setIfPresent(setTerms, 'terms')
+        setIfPresent(setVesselName, 'vesselName')
+        setIfPresent(setVoyageNumber, 'voyageNumber')
+        setIfPresent(setPortOfLoading, 'portOfLoading')
+        setIfPresent(setPortOfDischarge, 'portOfDischarge')
+        setIfPresent(setContainerNumber, 'containerNumber')
+        setIfPresent(setSealNumber, 'sealNumber')
+        setIfPresent(setMarksAndNumbers, 'marksAndNumbers')
+        setIfPresent(setFreightTerms, 'freightTerms')
+        setIfPresent(setBankName, 'bankName')
+        setIfPresent(setAccountName, 'accountName')
+        setIfPresent(setAccountNumber, 'accountNumber')
+        setIfPresent(setIban, 'iban')
+        setIfPresent(setSwift, 'swift')
+        setIfPresent(setSender, 'sender')
+        setIfPresent(setReceiver, 'receiver')
+        setIfPresent(setDeliveryAddress, 'deliveryAddress')
+        setIfPresent(setDeliveryDate, 'deliveryDate')
+        setIfPresent(setDriverName, 'driverName')
+        setIfPresent(setRelatedInvoice, 'relatedInvoice')
+        setIfPresent(setShipper, 'shipper')
+        setIfPresent(setConsignee, 'consignee')
+        setIfPresent(setNotifyParty, 'notifyParty')
+        setIfPresent(setPlaceOfReceipt, 'placeOfReceipt')
+        setIfPresent(setDescriptionOfGoods, 'descriptionOfGoods')
+        setIfPresent(setGrossWeight, 'grossWeight')
+        setIfPresent(setNetWeight, 'netWeight')
+        setIfPresent(setPackages, 'packages')
+        setIfPresent(setContainerNo, 'containerNo')
+        setIfPresent(setSealNo, 'sealNo')
+        setIfPresent(setCbm, 'cbm')
+        setIfPresent(setNetWeightItem, 'netWeightItem')
+        setIfPresent(setGrossWeightItem, 'grossWeightItem')
+        setIfPresent(setSellerVat, 'sellerVat')
+        setIfPresent(setBuyerVat, 'buyerVat')
+        setIfPresent(setHsCode, 'hsCode')
+      } catch (error) {
+        appLogger.error('Failed to load document for editing', error)
+        if (!cancelled) setSaveError(t('The document could not be loaded.', 'تعذر تحميل المستند.'))
+      }
+    }
+
+    void loadDocument()
+    return () => { cancelled = true }
+  }, [id, currentCompany.id, documentService, requestContext, t])
 
   // Shipping
   const [vesselName, setVesselName] = useState(project.vessel_name || '')
@@ -247,6 +349,10 @@ export default function DocumentFormPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const handleSave = async () => {
     if (saving) return
+    if (!project.id && (!id || id === 'new')) {
+      setSaveError(t('Select a project before creating a document.', 'اختر مشروعاً قبل إنشاء المستند.'))
+      return
+    }
     setSaving(true)
     setSaveError(null)
     try {
@@ -379,7 +485,7 @@ export default function DocumentFormPage() {
         const result = await service.synchronizeData(project.id, [], selectedIds as any, {
           userId: currentUser?.id || '',
           companyId: currentCompany?.id || '',
-          permissions: {},
+          permissions: permissions?.permissions || {},
           isSystemAdmin: false,
         })
         if (result.updatedDocuments < selectedIds.length) {
@@ -470,6 +576,7 @@ export default function DocumentFormPage() {
             <option value="fulla-commercial-invoice-680">{t('Commercial Invoice — Fulla Original', 'فاتورة تجارية — فولا الأصلي')}</option>
             <option value="fulla-tax-invoice-b-680">{t('Tax Invoice — Fulla Layout B', 'فاتورة ضريبية — تخطيط فولا ب')}</option>
             <option value="fulla-proforma-invoice-680">{t('Proforma Invoice — Fulla Original', 'فاتورة مبدئية — فولا الأصلي')}</option>
+            <option value="fulla-bill-of-lading-680">{t('Bill of Lading — Fulla Original', 'بوليصة الشحن — فولا الأصلي')}</option>
           </select>
         </div>
         {/* Prepared By */}

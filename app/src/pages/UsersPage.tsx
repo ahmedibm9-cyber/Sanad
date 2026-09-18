@@ -15,10 +15,10 @@ import {
   Building2,
   Loader2,
 } from 'lucide-react'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
-import { useApp } from '../contexts/AppContext'
-import { useAuth } from '../contexts/AuthContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
+import { useApp } from '../contexts/useApp'
+import { useAuth } from '../contexts/useAuth'
 import { useCompanyMemberships, useCompanies } from '../hooks/useData'
 import type { User, Permission, CompanyId } from '../types'
 import UserFormModal from '../components/users/UserFormModal'
@@ -224,7 +224,7 @@ function IndeterminateCheckbox({
 
 export default function UsersPage() {
   const { t } = useLanguage()
-  const { currentCompany } = useCompany()
+  const { currentCompany, permissions } = useCompany()
   const { currentUser } = useApp()
   const { user } = useAuth()
 
@@ -378,7 +378,7 @@ export default function UsersPage() {
       const ctx = {
         userId: user.id,
         companyId: currentCompany.id,
-        permissions: {},
+        permissions: permissions?.permissions || {},
         isSystemAdmin: user.isSystemAdmin || false,
       }
 
@@ -410,7 +410,7 @@ export default function UsersPage() {
     } finally {
       setSavingPermissions(false)
     }
-  }, [editingPermissions, selectedUserId, currentCompany?.id, user, memberships])
+  }, [editingPermissions, selectedUserId, currentCompany?.id, user, memberships, permissions?.permissions])
 
   // ─── Toggle group expansion ─────────────────────────────
   const toggleExpand = (groupKey: string) => {

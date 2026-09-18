@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, X, FolderKanban, CheckSquare, Users, Package, FileText, Factory } from 'lucide-react'
-import { useLanguage } from '../../contexts/LanguageContext'
-import { useCompany } from '../../contexts/CompanyContext'
-import { useApp } from '../../contexts/AppContext'
+import { useLanguage } from '../../contexts/useLanguage'
+import { useCompany } from '../../contexts/useCompany'
+import { useApp } from '../../contexts/useApp'
 import { useWorkItems, useCustomers, useMaterials, useFactoryCodeSearch, useCompanyDocuments } from '../../hooks/useData'
 
 // ─── Types ───────────────────────────────────────────
@@ -178,7 +178,7 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
     ]
 
     return groups.filter(g => g.items.length > 0)
-  }, [query, currentCompany?.id, t, allWorkItems, customers, materials, factoryResults, documents])
+  }, [query, currentCompany, t, allWorkItems, customers, materials, factoryResults, documents])
 
   // Flat list for keyboard navigation
   const flatItems = useMemo(() => results.flatMap(g => g.items), [results])

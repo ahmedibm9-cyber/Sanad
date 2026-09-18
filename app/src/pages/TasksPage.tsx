@@ -13,8 +13,8 @@ import {
   ClipboardList,
   Pin,
 } from 'lucide-react'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
 import { useWorkItems, useCustomers, useCreateWorkItem, useUpdateWorkItem } from '../hooks/useData'
 import ProjectFormModal from '../components/projects/ProjectFormModal'
 import ConfirmModal from '../components/common/ConfirmModal'
@@ -54,8 +54,8 @@ export default function TasksPage() {
   const { create: createWorkItem, loading: creating } = useCreateWorkItem()
   const { update: updateWorkItem } = useUpdateWorkItem()
 
-  const allTasks = tasksData || []
-  const customers = customersData || []
+  const allTasks = useMemo(() => tasksData || [], [tasksData])
+  const customers = useMemo(() => customersData || [], [customersData])
 
   // Filter logic
   const filteredTasks = useMemo(() => {
@@ -209,12 +209,17 @@ export default function TasksPage() {
             )}
           </div>
 
-          {/* Customer Filter */}
-          <select
-            value={selectedCustomerId}
-            onChange={(e) => setSelectedCustomerId(e.target.value)}
-            className="select-field sm:w-56"
-          >
+{/* Customer Filter */}
+            <label htmlFor="tasks-page-customer-filter" className="sr-only">
+              {t('Filter by customer', 'تصفية حسب العميل')}
+            </label>
+            <select
+              id="tasks-page-customer-filter"
+              value={selectedCustomerId}
+              onChange={(e) => setSelectedCustomerId(e.target.value)}
+              className="select-field sm:w-56"
+              aria-label={t('Filter by customer', 'تصفية حسب العميل')}
+            >
             <option value="">{t('All Customers', 'جميع العملاء')}</option>
             {customers.map((c) => (
               <option key={c.id} value={c.id}>
@@ -230,25 +235,28 @@ export default function TasksPage() {
             <span className="text-xs text-gray-400">
               {t('Active filters:', 'المرشحات النشطة:')}
             </span>
-            {selectedStatuses.map((s) => {
-              const opt = STATUS_OPTIONS.find((o) => o.value === s)
-              return (
-                <span
-                  key={s}
-                  className={`status-badge ${opt?.colorClass} cursor-pointer`}
-                  onClick={() => toggleStatus(s)}
-                >
-                  {opt ? t(opt.label, opt.labelAr) : ''}
-                  <X className="w-3 h-3 me-1" />
-                </span>
-              )
-            })}
-            {selectedCustomerId && (
-              <span className="status-badge bg-purple-100 text-purple-700 cursor-pointer" onClick={() => setSelectedCustomerId('')}>
-                {customers.find((c) => c.id === selectedCustomerId)?.name}
-                <X className="w-3 h-3 me-1" />
-              </span>
-            )}
+{selectedStatuses.map((s) => {
+                 const opt = STATUS_OPTIONS.find((o) => o.value === s)
+                 return (
+                   <button
+                     key={s}
+                     className={`status-badge ${opt?.colorClass}`}
+                     onClick={() => toggleStatus(s)}
+                   >
+                     {opt ? t(opt.label, opt.labelAr) : ''}
+                     <X className="w-3 h-3 me-1" />
+                   </button>
+                 )
+               })}
+{selectedCustomerId && (
+                   <button
+                     className="status-badge bg-purple-100 text-purple-700"
+                     onClick={() => setSelectedCustomerId('')}
+                   >
+                     {customers.find((c) => c.id === selectedCustomerId)?.name}
+                     <X className="w-3 h-3 me-1" />
+                   </button>
+                 )}
             <button className="text-xs text-brand-600 hover:text-brand-800 ms-2" onClick={clearFilters}>
               {t('Clear all', 'مسح الكل')}
             </button>

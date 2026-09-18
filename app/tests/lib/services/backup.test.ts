@@ -519,7 +519,7 @@ describe('BackupService', () => {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockSettings, error: null }),
+        maybeSingle: vi.fn().mockResolvedValue({ data: mockSettings, error: null }),
       }
 
       mockSupabase.from.mockReset()
@@ -544,10 +544,7 @@ describe('BackupService', () => {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: null,
-          error: { code: 'PGRST116', message: 'No rows found' },
-        }),
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
       }
 
       mockSupabase.from.mockReset()
@@ -589,12 +586,12 @@ describe('BackupService', () => {
         retention_days: 30,
       }
 
-      // First call: getBackupSettings (select + eq + limit + single)
+      // First call: getBackupSettings (select + eq + limit + maybeSingle)
       const getChain = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: existingSettings, error: null }),
+        maybeSingle: vi.fn().mockResolvedValue({ data: existingSettings, error: null }),
       }
       // Second call: update (update + eq + select + single)
       const updateChain = {
@@ -646,10 +643,7 @@ describe('BackupService', () => {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: null,
-          error: { code: 'PGRST116', message: 'No rows found' },
-        }),
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
       }
       // Second call: insert new settings
       const insertChain = {

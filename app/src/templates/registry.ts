@@ -72,6 +72,16 @@ export const TEMPLATES: Record<FullaTemplateKey, FullaTemplateDefinition> = {
     version: '1.0.0',
     features: ['Proforma layout', 'Expiration/validity', 'Commercial terms', 'Bank details', 'Signature/stamp'],
   },
+  'fulla-bill-of-lading-680': {
+    key: 'fulla-bill-of-lading-680',
+    name: 'Bill of Lading — Fulla Original',
+    nameAr: 'بوليصة الشحن — فولا الأصلي',
+    description: 'Bill of lading layout for shipment and consignee details with cargo lines and approvals.',
+    descriptionAr: 'تصميم بوليصة شحن لبيانات الشحنة والمستلم وبنود الحمولة والموافقات',
+    documentType: 'BL',
+    version: '1.0.0',
+    features: ['Shipment details', 'Consignee block', 'Cargo lines', 'Approval section'],
+  },
 }
 
 /* ── Helpers ─────────────────────────────────────────────── */
@@ -99,4 +109,5 @@ export const DEFAULT_TEMPLATE_FOR_TYPE: Record<string, FullaTemplateKey> = {
   CINV: 'fulla-commercial-invoice-680',
   DN: 'fulla-delivery-note-680',
   PINV: 'fulla-proforma-invoice-680',
+  BL: 'fulla-bill-of-lading-680',
 }

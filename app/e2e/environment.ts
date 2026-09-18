@@ -7,9 +7,9 @@ function env(name: string, fallback?: string): string {
 }
 
 export const e2eEnvironment = {
-  stagingUrl: env('E2E_STAGING_URL', 'https://sanad-h05p2y4un-ibmai1979-2318.vercel.app'),
+  stagingUrl: env('E2E_STAGING_URL', 'http://127.0.0.1:5173'),
   email: env('E2E_TEST_EMAIL', 'admin@sanad.com'),
   password: env('E2E_TEST_PASSWORD', 'admin123'),
-  supabaseUrl: process.env['SUPABASE_URL'] || 'https://vtzyexmafcfcorufkcuz.supabase.co',
+  supabaseUrl: process.env['SUPABASE_URL'] || 'https://mvhawhcfzujkuyhkejty.supabase.co',
   supabaseAnonKey: process.env['SUPABASE_ANON_KEY'] || '',
 }

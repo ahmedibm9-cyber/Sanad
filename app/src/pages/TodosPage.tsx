@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useApp } from '../contexts/AppContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useApp } from '../contexts/useApp'
 import { useTodos, useCreateTodo, useUpdateTodo, useDeleteTodo } from '../hooks/useData'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import {
@@ -27,7 +27,7 @@ export default function TodosPage() {
     resetTranscript,
   } = useSpeechRecognition()
 
-  const todos = todosData || []
+  const todos = useMemo(() => todosData || [], [todosData])
 
   const [showForm, setShowForm] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)

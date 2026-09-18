@@ -5,7 +5,7 @@
 -- 1. Factory Code Records
 -- ===========================================
 CREATE TABLE IF NOT EXISTS factory_code_records (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   
   -- Stable source key for identity matching
   stable_source_key TEXT NOT NULL,
@@ -57,7 +57,7 @@ CREATE INDEX IF NOT EXISTS idx_factory_code_search ON factory_code_records
 -- 2. Factory Code Imports
 -- ===========================================
 CREATE TABLE IF NOT EXISTS factory_code_imports (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   uploaded_by UUID REFERENCES users(id) ON DELETE SET NULL,
   source_filename TEXT NOT NULL,
   r2_object_key TEXT,

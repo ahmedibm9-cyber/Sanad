@@ -4,46 +4,16 @@
  * This provides authentication state and methods to the entire React app.
  */
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import { getAuthService, type AuthUser, type AuthSession, type LoginCredentials } from '../lib/auth'
 import { getLicenseService, type LicenseInfo } from '../lib/licensing'
+import { AuthContext, type AuthContextType } from './AuthContextValue'
 import { appLogger } from '../lib/logger'
 import { backupScheduler } from '../lib/backupScheduler'
 
 // ===========================================
 // Types
 // ===========================================
-
-interface AuthContextType {
-  // Authentication state
-  user: AuthUser | null
-  session: AuthSession | null
-  isAuthenticated: boolean
-  isLoading: boolean
-  
-  // Authentication methods
-  signIn: (credentials: LoginCredentials) => Promise<void>
-  signUp: (credentials: { email: string; password: string; displayName: string }) => Promise<void>
-  signOut: () => Promise<void>
-  refreshSession: () => Promise<void>
-  
-  // License state
-  licenseInfo: LicenseInfo | null
-  isLicenseValid: boolean
-  isLicenseExpiringSoon: boolean
-  isLicenseLoading: boolean
-  verifyLicense: () => Promise<void>
-  
-  // Utility
-  isSystemAdmin: boolean
-  hasPermission: (permission: string) => boolean
-}
-
-// ===========================================
-// Context
-// ===========================================
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 // ===========================================
 // Provider
@@ -52,7 +22,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 interface AuthProviderProps {
   children: ReactNode
 }
-
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [session, setSession] = useState<AuthSession | null>(null)
@@ -116,7 +85,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => {
       subscription.unsubscribe()
     }
-  }, [])
+  }, [authService, licenseService])
 
   // Sign in
   const signIn = useCallback(async (credentials: LoginCredentials) => {
@@ -128,7 +97,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [authService])
 
   // Sign up
   const signUp = useCallback(async (credentials: { email: string; password: string; displayName: string }) => {
@@ -140,7 +109,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [authService])
 
   // Sign out
   const signOut = useCallback(async () => {
@@ -152,7 +121,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [authService])
 
   // Refresh session
   const refreshSession = useCallback(async () => {
@@ -161,7 +130,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setSession(refreshedSession)
       setUser(refreshedSession.user)
     }
-  }, [])
+  }, [authService])
 
   // Verify license
   const verifyLicense = useCallback(async () => {
@@ -172,7 +141,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsLicenseLoading(false)
     }
-  }, [])
+  }, [licenseService])
 
   // Permission checking
   const [permissions, setPermissions] = useState<Record<string, boolean>>({})
@@ -215,17 +184,3 @@ export function AuthProvider({ children }: AuthProviderProps) {
     </AuthContext.Provider>
   )
 }
-
-// ===========================================
-// Hook
-// ===========================================
-
-export function useAuth(): AuthContextType {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
-}
-
-export default AuthContext

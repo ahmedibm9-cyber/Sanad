@@ -1,6 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { appLogger } from '../../lib/logger'
-import { useLanguage } from '../../contexts/LanguageContext'
+import { useLanguage } from '../../contexts/useLanguage'
 
 interface ErrorBoundaryProps {
   children: ReactNode

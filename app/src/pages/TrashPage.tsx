@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Search, RotateCcw, Trash2, AlertTriangle, CheckCircle } from 'lucide-react'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
 import { useTrashEntries, useRestoreTrashEntry } from '../hooks/useData'
 
 export default function TrashPage() {

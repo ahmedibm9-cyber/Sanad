@@ -14,12 +14,13 @@
  * See: services/workItem.ts, document.ts, customer.ts, material.ts — all filter by companyId.
  */
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { useAuth } from './AuthContext'
+import { useState, useEffect, useCallback, type ReactNode } from 'react'
+import { useAuth } from './useAuth'
 import { getCompanyService, type Company } from '../lib/services/company'
 import { getMembershipService } from '../lib/services/membership'
 import { getPermissionService, type UserPermissions } from '../lib/services/permission'
 import { appLogger } from '../lib/logger'
+import { CompanyContext, type CompanyContextType } from './CompanyContextValue'
 
 // ===========================================
 // Types
@@ -67,36 +68,6 @@ const DEFAULT_COMPANY: Company = {
   showStamp: undefined,
   crNumber: undefined,
 }
-
-interface CompanyContextType {
-  // Company state
-  currentCompany: Company
-  companies: Company[]
-  isLoading: boolean
-  
-  // Company selection
-  setCurrentCompany: (companyId: string) => void
-  
-  // Permissions
-  permissions: UserPermissions | null
-  hasPermission: (permission: string) => boolean
-  
-  // Methods
-  refreshCompanies: () => Promise<void>
-  createCompany: (data: {
-    name_en: string
-    name_ar: string
-    short_name: string
-    company_code: string
-  }) => Promise<Company>
-}
-
-// ===========================================
-// Context
-// ===========================================
-
-const CompanyContext = createContext<CompanyContextType | undefined>(undefined)
-
 // ===========================================
 // Provider
 // ===========================================
@@ -159,7 +130,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     }
 
     loadCompanies()
-  }, [isAuthenticated, user])
+  }, [isAuthenticated, user, companyService, permissionService])
 
   // Load permissions when company changes
   useEffect(() => {
@@ -178,7 +149,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     }
 
     loadPermissions()
-  }, [user, currentCompany])
+  }, [user, currentCompany, permissionService])
 
   // Set current company (with localStorage persistence)
   const setCurrentCompany = useCallback((companyId: string) => {
@@ -213,7 +184,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [user])
+  }, [user, companyService])
 
   // Create company
   const createCompany = useCallback(async (data: {
@@ -232,7 +203,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
 
     setCompanies(prev => [...prev, newCompany])
     return newCompany
-  }, [user])
+  }, [user, companyService])
 
   const value: CompanyContextType = {
     currentCompany: currentCompany || DEFAULT_COMPANY,
@@ -251,17 +222,3 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     </CompanyContext.Provider>
   )
 }
-
-// ===========================================
-// Hook
-// ===========================================
-
-export function useCompany(): CompanyContextType {
-  const context = useContext(CompanyContext)
-  if (context === undefined) {
-    throw new Error('useCompany must be used within a CompanyProvider')
-  }
-  return context
-}
-
-export default CompanyContext

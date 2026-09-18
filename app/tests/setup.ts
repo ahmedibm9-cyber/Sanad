@@ -7,17 +7,20 @@
 
 import '@testing-library/jest-dom'
 
-Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
-  value: vi.fn(() => ({
-    textBaseline: '',
-    font: '',
-    fillText: vi.fn(),
-  })),
-})
+// Only mock canvas globals if they are undefined (to support node environment)
+if (typeof HTMLCanvasElement !== 'undefined') {
+  Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+    value: vi.fn(() => ({
+      textBaseline: '',
+      font: '',
+      fillText: vi.fn(),
+    })),
+  })
 
-Object.defineProperty(HTMLCanvasElement.prototype, 'toDataURL', {
-  value: vi.fn(() => 'data:image/png;base64,test'),
-})
+  Object.defineProperty(HTMLCanvasElement.prototype, 'toDataURL', {
+    value: vi.fn(() => 'data:image/png;base64,test'),
+  })
+}
 
 // Mock Supabase client
 vi.mock('@/lib/supabase', () => ({

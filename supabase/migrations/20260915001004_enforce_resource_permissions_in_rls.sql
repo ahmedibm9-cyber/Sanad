@@ -22,6 +22,9 @@ create policy documents_update on public.documents for update using (public.chec
 create policy documents_delete on public.documents for delete using (public.check_user_permission(auth.uid(), company_id, 'documents.delete'));
 
 drop policy if exists "Company members can manage attachments" on public.attachments;
+drop policy if exists attachments_insert on public.attachments;
+drop policy if exists attachments_update on public.attachments;
+drop policy if exists attachments_delete on public.attachments;
 create policy attachments_insert on public.attachments for insert with check (public.check_user_permission(auth.uid(), company_id, 'files.upload'));
 create policy attachments_update on public.attachments for update using (public.check_user_permission(auth.uid(), company_id, 'files.upload')) with check (public.check_user_permission(auth.uid(), company_id, 'files.upload'));
 create policy attachments_delete on public.attachments for delete using (public.check_user_permission(auth.uid(), company_id, 'files.delete'));

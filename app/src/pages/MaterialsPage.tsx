@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
 import { useMaterials, useCreateMaterial, useUpdateMaterial, useDeleteMaterial } from '../hooks/useData'
 import type { Material } from '../types'
 import { type Material as DbMaterial } from '../hooks/useData'

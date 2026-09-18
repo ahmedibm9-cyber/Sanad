@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { useLanguage } from '../../contexts/LanguageContext'
-import { useCompany } from '../../contexts/CompanyContext'
-import { useApp } from '../../contexts/AppContext'
+import { useLanguage } from '../../contexts/useLanguage'
+import { useCompany } from '../../contexts/useCompany'
+import { useApp } from '../../contexts/useApp'
 import {
   LayoutDashboard, FolderOpen, ListTodo, CheckSquare, Users, Package,
   Factory, BarChart3, Activity, Trash2, Settings, ChevronDown, ChevronLeft, ChevronRight,
@@ -86,13 +86,13 @@ export default function Sidebar() {
             </div>
             <div>
               <h1 className="text-sm font-bold text-gray-900 leading-tight tracking-tight">SANAD</h1>
-              <p className="text-[10px] text-gray-400 leading-none">سند</p>
+              <p className="text-[10px] text-gray-600 leading-none">سند</p>
             </div>
           </div>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-600 transition-colors"
+          className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500 hover:text-gray-600 transition-colors"
           aria-label={collapsed ? t('Expand sidebar', 'توسيع الشريط') : t('Collapse sidebar', 'طي الشريط')}
         >
           {collapsed ? <ChevronRight size={16} className={isRtl ? 'rotate-180' : ''} /> : <ChevronLeft size={16} className={isRtl ? 'rotate-180' : ''} />}
@@ -114,7 +114,7 @@ export default function Sidebar() {
               </div>
               <span className="truncate font-medium text-gray-800">{currentCompany?.short_name || currentCompany?.name_en || 'Select Company'}</span>
             </div>
-            <ChevronDown size={14} className={`text-gray-400 transition-transform duration-150 ${companyOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown size={14} className={`text-gray-500 transition-transform duration-150 ${companyOpen ? 'rotate-180' : ''}`} />
           </button>
           {companyOpen && (
             <div className="mt-1 dropdown-panel" role="listbox">
@@ -131,7 +131,7 @@ export default function Sidebar() {
                   </div>
                   <div className={isRtl ? 'text-right' : 'text-left'}>
                     <div className="font-medium">{company.short_name || company.name_en}</div>
-                    <div className="text-xs text-gray-400">{company.company_code}</div>
+                    <div className="text-xs text-gray-600">{company.company_code}</div>
                   </div>
                 </button>
               ))}
@@ -145,11 +145,11 @@ export default function Sidebar() {
         {navSections.map((section, sIdx) => (
           <div key={section.labelEn} className={sIdx > 0 ? 'mt-4' : ''}>
             {/* Section header */}
-            {!collapsed && (
-              <h3 className="px-2.5 mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                {t(section.labelEn, section.labelAr)}
-              </h3>
-            )}
+{!collapsed && (
+  <h3 className="px-2.5 mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+    {t(section.labelEn, section.labelAr)}
+  </h3>
+)}
             {collapsed && sIdx > 0 && (
               <div className="mx-2 my-2 border-t border-gray-100" />
             )}
@@ -186,7 +186,7 @@ export default function Sidebar() {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-gray-800 truncate">{currentUser.name}</p>
-              <p className="text-xs text-gray-400 capitalize">{currentUser.role}</p>
+              <p className="text-xs text-gray-600 capitalize">{currentUser.role}</p>
             </div>
           </div>
         </div>

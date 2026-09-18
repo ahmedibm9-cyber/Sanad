@@ -34,6 +34,7 @@ export type TemplateKey =
   | 'fulla-commercial-invoice-680'
   | 'fulla-tax-invoice-b-680'
   | 'fulla-proforma-invoice-680'
+  | 'fulla-bill-of-lading-680'
 
 export interface TemplateDefinition {
   key: TemplateKey
@@ -213,6 +214,14 @@ export const TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
     description: 'Fulla Trading Company proforma invoice with commercial terms, bank details, and validity.',
     descriptionAr: 'فاتورة مبدئية شركة فولا مع شروط تجارية وتفاصيل بنكية وصلاحية',
     features: ['Proforma layout', 'Expiration/validity', 'Commercial terms', 'Bank details', 'Signature/stamp'],
+  },
+  'fulla-bill-of-lading-680': {
+    key: 'fulla-bill-of-lading-680',
+    name: 'Bill of Lading — Fulla Original',
+    nameAr: 'بوليصة الشحن — فولا الأصلي',
+    description: 'Bill of lading layout for shipment, consignee, cargo, and approvals.',
+    descriptionAr: 'تصميم بوليصة شحن للشحنة والمستلم والحمولة والموافقات',
+    features: ['Shipment details', 'Consignee block', 'Cargo lines', 'Approval section'],
   },
 }
 

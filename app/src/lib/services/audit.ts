@@ -140,11 +140,10 @@ export class AuditService {
     return {
       data: (data || []).map((event: any) => ({
         ...event,
-        actor_user_id: event.user_id,
-        entity_reference: event.changes?.entityReference || null,
-        before_json: event.changes?.before || null,
-        after_json: event.changes?.after || null,
-        metadata_json: event.changes?.metadata || null,
+        entity_reference: event.entity_reference || null,
+        before_json: event.before_json || null,
+        after_json: event.after_json || null,
+        metadata_json: event.metadata_json || null,
       })),
       total: count || 0,
     }
@@ -175,11 +174,10 @@ export class AuditService {
 
     return (data || []).map((event: any) => ({
       ...event,
-      actor_user_id: event.user_id,
-      entity_reference: event.changes?.entityReference || null,
-      before_json: event.changes?.before || null,
-      after_json: event.changes?.after || null,
-      metadata_json: event.changes?.metadata || null,
+      entity_reference: event.entity_reference || null,
+      before_json: event.before_json || null,
+      after_json: event.after_json || null,
+      metadata_json: event.metadata_json || null,
     }))
   }
 

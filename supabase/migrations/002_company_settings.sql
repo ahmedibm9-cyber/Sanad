@@ -5,7 +5,7 @@
 -- 1. Company Settings (JSON-based for flexibility)
 -- ===========================================
 CREATE TABLE IF NOT EXISTS company_settings (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   
   -- Identity settings
@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_company_settings_company ON company_settings(comp
 -- 2. Company Assets (Logo, Stamp, Signature)
 -- ===========================================
 CREATE TABLE IF NOT EXISTS company_assets (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   asset_type TEXT NOT NULL CHECK (asset_type IN ('logo', 'stamp', 'signature')),
   object_key TEXT NOT NULL,
@@ -44,7 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_company_assets_type ON company_assets(asset_type)
 -- 3. Bank Accounts (normalized for multiple accounts)
 -- ===========================================
 CREATE TABLE IF NOT EXISTS company_bank_accounts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   bank_name TEXT NOT NULL,
   account_name TEXT NOT NULL,
@@ -66,7 +66,7 @@ CREATE INDEX IF NOT EXISTS idx_bank_accounts_company ON company_bank_accounts(co
 -- 4. Document Defaults (normalized for structured access)
 -- ===========================================
 CREATE TABLE IF NOT EXISTS company_document_defaults (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   
   default_language TEXT NOT NULL DEFAULT 'en',
@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS company_document_defaults (
 -- 5. Configurable Lists (currencies, VAT rates, etc.)
 -- ===========================================
 CREATE TABLE IF NOT EXISTS company_config_lists (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   list_name TEXT NOT NULL, -- 'currencies', 'vat_rates', 'weight_units', etc.
   item_value TEXT NOT NULL,

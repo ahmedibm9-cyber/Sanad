@@ -5,6 +5,7 @@
 export interface ClientEnvironment {
   supabaseUrl: string
   supabaseAnonKey: string
+  r2ProxyUrl?: string
   appName: string
   appVersion: string
   appEnv: 'development' | 'staging' | 'production'
@@ -59,9 +60,10 @@ function getValidatedClientEnv(): ClientEnvironment {
   _clientEnv = {
     supabaseUrl,
     supabaseAnonKey,
+    r2ProxyUrl: validateOptional(import.meta.env.VITE_R2_PROXY_URL),
     appName: import.meta.env.VITE_APP_NAME || 'SANAD',
     appVersion: import.meta.env.VITE_APP_VERSION || '0.1.0',
-    appEnv: (import.meta.env.VITE_APP_ENV || 'development') as 'development' | 'staging' | 'production',
+    appEnv: (import.meta.env.VITE_APP_ENV || (import.meta.env.PROD ? 'production' : 'development')) as 'development' | 'staging' | 'production',
     devMode: import.meta.env.VITE_DEV_MODE === 'true',
   }
 
@@ -100,6 +102,7 @@ export function getServerEnv(): ServerEnvironment {
 export const env = {
   get supabaseUrl(): string { return getClientEnv().supabaseUrl },
   get supabaseAnonKey(): string { return getClientEnv().supabaseAnonKey },
+  get r2ProxyUrl(): string | undefined { return getClientEnv().r2ProxyUrl },
   get isDevelopment(): boolean { return getClientEnv().appEnv === 'development' },
   get isStaging(): boolean { return getClientEnv().appEnv === 'staging' },
   get isProduction(): boolean { return getClientEnv().appEnv === 'production' },

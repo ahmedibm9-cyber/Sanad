@@ -20,8 +20,8 @@ import {
   Trash2,
   Loader2,
 } from 'lucide-react'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
 import { useWorkItems, useCustomers, useUpdateWorkItem, useDeleteWorkItem, useCreateWorkItem } from '../hooks/useData'
 import type { WorkItem } from '../hooks/useData'
 import ProjectFormModal from '../components/projects/ProjectFormModal'
@@ -78,8 +78,8 @@ export default function ProjectsPage() {
   const { update: updateWorkItem } = useUpdateWorkItem()
   const { remove: deleteWorkItem } = useDeleteWorkItem()
   const { create: createWorkItem } = useCreateWorkItem()
-  const rawProjects = projectsData ?? []
-  const rawCustomers = customersData ?? []
+  const rawProjects = useMemo(() => projectsData ?? [], [projectsData])
+  const rawCustomers = useMemo(() => customersData ?? [], [customersData])
 
   // Cast status to WorkItemStatus for downstream type safety
   const projects: (WorkItem & { status: WorkItemStatus })[] = useMemo(
@@ -210,6 +210,21 @@ export default function ProjectsPage() {
     refetch()
   }
 
+  // Handle Escape key for status filter
+  const handleStatusFilterKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape' && showStatusFilter) {
+      e.preventDefault()
+      setShowStatusFilter(false)
+      statusFilterButtonRef.current?.focus()
+    }
+  }, [showStatusFilter])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => handleStatusFilterKeyDown(e)
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [handleStatusFilterKeyDown])
+
   return (
     <>
     <div className="space-y-6">
@@ -316,25 +331,28 @@ export default function ProjectsPage() {
             <span className="text-xs text-gray-500">
               {t('Active filters:', 'المرشحات النشطة:')}
             </span>
-            {selectedStatuses.map((s) => {
-              const opt = STATUS_OPTIONS.find((o) => o.value === s)
-              return (
-                <span
-                  key={s}
-                  className={`status-badge ${opt?.colorClass} cursor-pointer`}
-                  onClick={() => toggleStatus(s)}
-                >
-                  {opt?.label}
-                  <X className="w-3 h-3 ms-1" />
-                </span>
-              )
-            })}
-            {selectedCustomerId && (
-              <span className="status-badge bg-purple-100 text-purple-700 cursor-pointer" onClick={() => setSelectedCustomerId('')}>
-                {rawCustomers.find((c) => c.id === selectedCustomerId)?.name}
-                <X className="w-3 h-3 ms-1" />
-              </span>
-            )}
+{selectedStatuses.map((s) => {
+                 const opt = STATUS_OPTIONS.find((o) => o.value === s)
+                 return (
+                   <button
+                     key={s}
+                     className={`status-badge ${opt?.colorClass}`}
+                     onClick={() => toggleStatus(s)}
+                   >
+                     {opt?.label}
+                     <X className="w-3 h-3 ms-1" />
+                   </button>
+                 )
+               })}
+{selectedCustomerId && (
+                   <button
+                     className="status-badge bg-purple-100 text-purple-700"
+                     onClick={() => setSelectedCustomerId('')}
+                   >
+                     {rawCustomers.find((c) => c.id === selectedCustomerId)?.name}
+                     <X className="w-3 h-3 ms-1" />
+                   </button>
+                 )}
             <button className="text-xs text-brand-600 hover:text-brand-800 ms-2" onClick={clearFilters}>
               {t('Clear all', 'مسح الكل')}
             </button>

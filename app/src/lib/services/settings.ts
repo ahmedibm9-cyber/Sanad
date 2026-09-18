@@ -130,9 +130,9 @@ export class SettingsService {
       .from('company_settings')
       .select('*')
       .eq('company_id', companyId)
-      .single()
+      .maybeSingle()
 
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       appLogger.error('Error fetching company settings', error)
       throw handleSupabaseError(error)
     }

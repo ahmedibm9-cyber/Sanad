@@ -3,13 +3,13 @@
 -- Run this against your Supabase PostgreSQL database.
 
 -- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
 
 -- ===========================================
 -- 1. Deployments
 -- ===========================================
 CREATE TABLE IF NOT EXISTS deployments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   name TEXT NOT NULL,
   installation_id TEXT NOT NULL UNIQUE,
   license_status TEXT NOT NULL DEFAULT 'inactive',
@@ -41,7 +41,7 @@ CREATE INDEX IF NOT EXISTS idx_users_active ON users(active);
 -- 3. Companies
 -- ===========================================
 CREATE TABLE IF NOT EXISTS companies (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   name_en TEXT NOT NULL,
   name_ar TEXT NOT NULL,
   legal_name_en TEXT,
@@ -63,7 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_companies_code ON companies(company_code);
 -- 4. Company Memberships
 -- ===========================================
 CREATE TABLE IF NOT EXISTS company_memberships (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   base_role TEXT NOT NULL DEFAULT 'user' CHECK (base_role IN ('admin', 'user', 'viewer')),
@@ -82,7 +82,7 @@ CREATE INDEX IF NOT EXISTS idx_memberships_active ON company_memberships(active)
 -- 5. Permission Catalog
 -- ===========================================
 CREATE TABLE IF NOT EXISTS permission_catalog (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   permission_key TEXT NOT NULL UNIQUE,
   group_name TEXT NOT NULL,
   description_en TEXT NOT NULL,
@@ -98,7 +98,7 @@ CREATE INDEX IF NOT EXISTS idx_permission_catalog_group ON permission_catalog(gr
 -- 6. Membership Permissions
 -- ===========================================
 CREATE TABLE IF NOT EXISTS membership_permissions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   membership_id UUID NOT NULL REFERENCES company_memberships(id) ON DELETE CASCADE,
   permission_key TEXT NOT NULL REFERENCES permission_catalog(permission_key) ON DELETE CASCADE,
   allowed BOOLEAN NOT NULL DEFAULT FALSE,

@@ -4,7 +4,7 @@
 -- 1. Notes
 -- ===========================================
 CREATE TABLE IF NOT EXISTS notes (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   work_item_id UUID NOT NULL REFERENCES work_items(id) ON DELETE CASCADE,
   author_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -21,7 +21,7 @@ CREATE INDEX IF NOT EXISTS idx_notes_author ON notes(author_user_id);
 -- 2. Report Issues
 -- ===========================================
 CREATE TABLE IF NOT EXISTS report_issues (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   work_item_id UUID NOT NULL REFERENCES work_items(id) ON DELETE CASCADE,
   reporter_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -44,7 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_report_issues_severity ON report_issues(severity)
 -- 3. Attachments
 -- ===========================================
 CREATE TABLE IF NOT EXISTS attachments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   work_item_id UUID NOT NULL REFERENCES work_items(id) ON DELETE CASCADE,
   category TEXT DEFAULT 'general',

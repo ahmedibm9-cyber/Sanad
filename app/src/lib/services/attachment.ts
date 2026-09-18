@@ -213,15 +213,33 @@ export class AttachmentService {
       throw handleSupabaseError(fetchError)
     }
 
-    const { error } = await (this.supabase as any)
+    const { data: trashAttachment, error } = await (this.supabase as any)
       .from('attachments')
       .update({ active: false })
       .eq('id', id)
       .eq('company_id', context.companyId)
+      .select('original_name')
+      .single()
 
     if (error) {
       appLogger.error('Error deleting attachment', error)
       throw handleSupabaseError(error)
+    }
+
+    const { error: trashError } = await (this.supabase as any)
+      .from('trash_entries')
+      .insert({
+        entity_type: 'attachment',
+        entity_id: id,
+        entity_name: trashAttachment?.original_name || id,
+        company_id: context.companyId,
+        deleted_by: context.userId,
+        deleted_at: new Date().toISOString(),
+      })
+
+    if (trashError) {
+      await (this.supabase as any).from('attachments').update({ active: true }).eq('id', id).eq('company_id', context.companyId)
+      throw handleSupabaseError(trashError)
     }
 
     try {

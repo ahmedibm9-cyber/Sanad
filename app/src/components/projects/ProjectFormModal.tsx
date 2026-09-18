@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useLanguage } from '../../contexts/LanguageContext'
-import { useCompany } from '../../contexts/CompanyContext'
+import { useLanguage } from '../../contexts/useLanguage'
+import { useCompany } from '../../contexts/useCompany'
 import Modal from '../common/Modal'
 import FormSection from '../common/FormSection'
 import type { WorkItem, Customer, Material, ProjectMaterial } from '../../types'

@@ -1,9 +1,12 @@
-import { useState, useMemo, useCallback, lazy, Suspense } from 'react'
+import { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
 import { useWorkItems, useCustomers, useWorkItemMaterials } from '../hooks/useData'
 import { downloadDocumentPdf } from '../lib/pdfExport'
+import { getDocumentService, type Document } from '../lib/services/document'
+import { useAuth } from '../contexts/useAuth'
+import { useApp } from '../contexts/useApp'
 import type { DocumentType } from '../types'
 import {
   ArrowLeft, Printer, Download, FileText, Languages,
@@ -18,6 +21,7 @@ const FullaDeliveryNote = lazy(() => import('../templates/fulla-delivery-note-68
 const FullaCommercialInvoice = lazy(() => import('../templates/fulla-commercial-invoice-680/Template'))
 const FullaTaxInvoiceB = lazy(() => import('../templates/fulla-tax-invoice-b-680/Template'))
 const FullaProformaInvoice = lazy(() => import('../templates/fulla-proforma-invoice-680/Template'))
+const FullaBillOfLading = lazy(() => import('../templates/fulla-bill-of-lading-680/Template'))
 
 /* ── helpers ──────────────────────────────────────────── */
 const docTypeLabels: Record<DocumentType, { en: string; ar: string; enFull: string; arFull: string }> = {
@@ -39,6 +43,7 @@ const TEMPLATE_OPTIONS = [
   { value: 'fulla-commercial-invoice-680', label: 'Commercial Invoice — Fulla Original', labelAr: 'فاتورة تجارية — فولا الأصلي', docType: 'CINV' },
   { value: 'fulla-tax-invoice-b-680', label: 'Tax Invoice — Fulla Layout B', labelAr: 'فاتورة ضريبية — تخطيط فولا ب', docType: 'TINV' },
   { value: 'fulla-proforma-invoice-680', label: 'Proforma Invoice — Fulla Original', labelAr: 'فاتورة مبدئية — فولا الأصلي', docType: 'PINV' },
+  { value: 'fulla-bill-of-lading-680', label: 'Bill of Lading — Fulla Original', labelAr: 'بوليصة الشحن — فولا الأصلي', docType: 'BL' },
 ]
 
 /* ── shared doc data type ─────────────────────────────── */
@@ -99,6 +104,7 @@ function TemplateRenderer({ template, data, lang }: { template: string; data: Do
     case 'fulla-commercial-invoice-680': return <Suspense fallback={LOADER}><FullaCommercialInvoice {...p} /></Suspense>
     case 'fulla-tax-invoice-b-680':     return <Suspense fallback={LOADER}><FullaTaxInvoiceB {...p} /></Suspense>
     case 'fulla-proforma-invoice-680':  return <Suspense fallback={LOADER}><FullaProformaInvoice {...p} /></Suspense>
+    case 'fulla-bill-of-lading-680':     return <Suspense fallback={LOADER}><FullaBillOfLading {...p} /></Suspense>
     default:                            return <Suspense fallback={LOADER}><FullaCommercialInvoice {...p} /></Suspense>
   }
 }
@@ -108,20 +114,39 @@ function TemplateRenderer({ template, data, lang }: { template: string; data: Do
 /* ══════════════════════════════════════════════════════ */
 export default function DocumentPreviewPage() {
   const { t } = useLanguage()
-  const { currentCompany } = useCompany()
+  const { currentCompany, permissions } = useCompany()
+  const { user } = useAuth()
+  const { currentUser } = useApp()
   const navigate = useNavigate()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
 
   const { data: workItems } = useWorkItems(currentCompany.id)
   const { data: customers } = useCustomers(currentCompany.id)
-  const workItemsList = workItems ?? []
-  const customersList = customers ?? []
+  const workItemsList = useMemo(() => workItems ?? [], [workItems])
+  const customersList = useMemo(() => customers ?? [], [customers])
 
   const typeFromUrl = (searchParams.get('type') || 'CINV') as DocumentType
   const projectId = searchParams.get('projectId') || 'proj-1'
   const project = workItemsList.find(p => p.id === projectId) || workItemsList[0]
   const { data: workItemMaterials } = useWorkItemMaterials(project?.id)
+  const [savedDocument, setSavedDocument] = useState<Document | null>(null)
+
+  useEffect(() => {
+    if (!id || id === 'doc-preview') return
+    let cancelled = false
+    getDocumentService().getDocumentById(id, {
+      userId: user?.id || currentUser.id,
+      companyId: currentCompany.id,
+      permissions: permissions?.permissions || {},
+      isSystemAdmin: user?.isSystemAdmin || false,
+    }).then(document => {
+      if (!cancelled) setSavedDocument(document)
+    }).catch(error => {
+      appLogger.error('Failed to load document preview', error)
+    })
+    return () => { cancelled = true }
+  }, [id, currentCompany.id, permissions, user?.id, user?.isSystemAdmin, currentUser.id])
 
   const [template, setTemplate] = useState<string>(
     (currentCompany as any).defaultTemplate || (currentCompany as any).default_template || 'fulla-commercial-invoice-680'
@@ -131,7 +156,27 @@ export default function DocumentPreviewPage() {
   const docData: DocPreviewData = useMemo(() => {
     if (!project) return emptyDoc
     const dbMaterials = workItemMaterials ?? []
-    const items: DocPreviewItem[] = dbMaterials.length > 0
+    const savedData = (savedDocument?.document_data || {}) as Record<string, any>
+    const savedItems = Array.isArray(savedData.items) ? savedData.items : []
+    const items: DocPreviewItem[] = savedItems.length > 0
+      ? savedItems.map((item: any) => ({
+          material: item.materialName || item.material || '',
+          description: item.description || item.grade || item.materialName || '',
+          grade: item.grade || '',
+          hsCode: item.hsCode || item.hs_code || '',
+          origin: item.origin || '',
+          packing: item.packing || '',
+          quantity: Number(item.quantity) || 0,
+          unit: item.weightUnit || item.unit || 'MT',
+          unitPrice: Number(item.unitPrice || item.unit_price) || 0,
+          currency: item.currency || 'SAR',
+          total: (Number(item.quantity) || 0) * (Number(item.unitPrice || item.unit_price) || 0),
+          packages: Number(item.packages) || 0,
+          netWeight: Number(item.netWeight || item.net_weight) || 0,
+          grossWeight: Number(item.grossWeight || item.gross_weight) || 0,
+          cbm: Number(item.cbm) || 0,
+        }))
+      : dbMaterials.length > 0
       ? dbMaterials.map((m: any) => {
           const mat = m.materials || {}
           return {
@@ -162,21 +207,21 @@ export default function DocumentPreviewPage() {
     return {
       id: id || 'doc-preview',
       type: typeFromUrl,
-      number: `${typeFromUrl}-${new Date().getFullYear()}-013`,
-      date: new Date().toISOString().split('T')[0],
-      language: previewLang,
-      template,
-      preparedBy: (currentCompany as any).defaultPreparedBy || (currentCompany as any).default_prepared_by || '',
-      showSignature: (currentCompany as any).showSignature ?? (currentCompany as any).show_signature ?? true,
-      showStamp: (currentCompany as any).showStamp ?? (currentCompany as any).show_stamp ?? true,
-      vatRate,
-      status: 'draft' as const,
-      notes: '',
-      terms: (project as any).payment_terms || (project as any).paymentTerms || (currentCompany as any).defaultPaymentTerms || (currentCompany as any).default_payment_terms || '',
+       number: savedDocument?.document_number || `${typeFromUrl}-${new Date().getFullYear()}-013`,
+       date: savedDocument?.created_date || new Date().toISOString().split('T')[0],
+       language: (savedDocument?.language === 'ar' ? 'ar' : savedDocument ? 'en' : previewLang),
+       template: savedDocument?.template_key || template,
+       preparedBy: savedDocument?.prepared_by || (currentCompany as any).defaultPreparedBy || (currentCompany as any).default_prepared_by || '',
+       showSignature: savedDocument?.show_signature ?? (currentCompany as any).showSignature ?? (currentCompany as any).show_signature ?? true,
+       showStamp: savedDocument?.show_stamp ?? (currentCompany as any).showStamp ?? (currentCompany as any).show_stamp ?? true,
+       vatRate: savedData.vatRate ?? vatRate,
+       status: savedDocument?.status === 'final' ? 'final' as const : 'draft' as const,
+       notes: savedData.notes || '',
+       terms: savedData.terms || (project as any).payment_terms || (project as any).paymentTerms || (currentCompany as any).defaultPaymentTerms || (currentCompany as any).default_payment_terms || '',
       items,
-      subtotal,
-      vatAmount,
-      total: subtotal + vatAmount,
+       subtotal: savedData.subtotal ?? subtotal,
+       vatAmount: savedData.vatAmount ?? vatAmount,
+       total: savedData.total ?? subtotal + vatAmount,
       currency: items[0]?.currency || 'SAR',
       company: {
         nameEn: (currentCompany as any).nameEn || currentCompany.name_en || '',
@@ -211,16 +256,17 @@ export default function DocumentPreviewPage() {
       portOfLoading: (project as any).port_of_loading || (project as any).portOfLoading || '',
       portOfDischarge: (project as any).port_of_discharge || (project as any).portOfDischarge || '',
       shipping: {
-        vessel: (project as any).vessel_name || (project as any).vesselName || '',
-        voyage: (project as any).voyage_number || (project as any).voyageNumber || '',
-        containerNumber: (project as any).container_number || (project as any).containerNumber || '',
-        sealNumber: (project as any).seal_number || (project as any).sealNumber || '',
-        shippingMethod: (project as any).shipping_method || (project as any).shippingMethod || '',
-        destination: (project as any).destination_country || (project as any).destinationCountry || '',
-        deliverBefore: (project as any).deliver_before || (project as any).deliverBefore || '',
-      },
-    }
-  }, [id, typeFromUrl, project, currentCompany, template, customersList, previewLang, workItemMaterials])
+         vessel: savedData.vesselName || (project as any).vessel_name || (project as any).vesselName || '',
+         voyage: savedData.voyageNumber || (project as any).voyage_number || (project as any).voyageNumber || '',
+         containerNumber: savedData.containerNumber || (project as any).container_number || (project as any).containerNumber || '',
+         sealNumber: savedData.sealNumber || (project as any).seal_number || (project as any).sealNumber || '',
+         shippingMethod: savedData.shippingMethod || (project as any).shipping_method || (project as any).shippingMethod || '',
+         destination: savedData.destination || (project as any).destination_country || (project as any).destinationCountry || '',
+         deliverBefore: savedData.deliverBefore || (project as any).deliver_before || (project as any).deliverBefore || '',
+       },
+       invoiceReference: savedData.relatedInvoice || savedData.invoiceReference || '',
+     }
+  }, [id, typeFromUrl, project, currentCompany, template, customersList, previewLang, workItemMaterials, savedDocument])
 
   const handlePrint = useCallback(() => { window.print() }, [])
   const handleDownload = useCallback(() => { downloadDocumentPdf(docData).catch((e) => appLogger.error('PDF download failed', e)) }, [docData])

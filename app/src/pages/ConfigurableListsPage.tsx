@@ -8,9 +8,9 @@ import {
   Loader2,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
-import { useAuth } from '../contexts/AuthContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
+import { useAuth } from '../contexts/useAuth'
 import { getSettingsService } from '../lib/services/settings'
 
 // ─── Inline List Manager Component ─────────────────────────
@@ -225,7 +225,7 @@ function VatRateListManager({
 // ─── Page Component ──────────────────────────────────────────
 export default function ConfigurableListsPage() {
   const { t } = useLanguage()
-  const { currentCompany } = useCompany()
+  const { currentCompany, permissions } = useCompany()
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -259,7 +259,7 @@ export default function ConfigurableListsPage() {
     const ctx = {
       userId: user.id,
       companyId: currentCompany.id,
-      permissions: {},
+      permissions: permissions?.permissions || {},
       isSystemAdmin: user.isSystemAdmin || false,
     }
     const settingsService = getSettingsService()
@@ -280,24 +280,24 @@ export default function ConfigurableListsPage() {
           .catch(() => { /* keep defaults */ })
       )
     ).finally(() => setLoading(false))
-  }, [currentCompany?.id, user])
+  }, [currentCompany?.id, user, permissions])
 
   // ─── DB persistence helpers ───────────────────────────────
   const persistConfigAdd = useCallback(async (listName: string, itemValue: string) => {
     if (!currentCompany?.id || !user) return
-    const ctx = { userId: user.id, companyId: currentCompany.id, permissions: {}, isSystemAdmin: user.isSystemAdmin || false }
+    const ctx = { userId: user.id, companyId: currentCompany.id, permissions: permissions?.permissions || {}, isSystemAdmin: user.isSystemAdmin || false }
     try {
       await getSettingsService().addConfigListItem(currentCompany.id, listName, itemValue, false, ctx)
     } catch { /* non-critical */ }
-  }, [currentCompany?.id, user])
+  }, [currentCompany?.id, user, permissions])
 
   const persistConfigRemove = useCallback(async (listName: string, itemValue: string) => {
     if (!currentCompany?.id || !user) return
-    const ctx = { userId: user.id, companyId: currentCompany.id, permissions: {}, isSystemAdmin: user.isSystemAdmin || false }
+    const ctx = { userId: user.id, companyId: currentCompany.id, permissions: permissions?.permissions || {}, isSystemAdmin: user.isSystemAdmin || false }
     try {
       await getSettingsService().removeConfigListItem(currentCompany.id, listName, itemValue, ctx)
     } catch { /* non-critical */ }
-  }, [currentCompany?.id, user])
+  }, [currentCompany?.id, user, permissions])
 
   // ─── Section definitions ──────────────────────────────────
   const sections = [

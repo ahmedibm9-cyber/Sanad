@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { useLanguage } from '../../contexts/LanguageContext'
+import { useLanguage } from '../../contexts/useLanguage'
 import Modal from '../common/Modal'
 import FormSection from '../common/FormSection'
 import type { Material } from '../../types'
 import { Upload, FileText, X } from 'lucide-react'
 import { generateMaterialKey, uploadToR2 } from '../../lib/r2Client'
-import { useCompany } from '../../contexts/CompanyContext'
+import { useCompany } from '../../contexts/useCompany'
 import { appLogger } from '../../lib/logger'
 
 interface MaterialFormModalProps {

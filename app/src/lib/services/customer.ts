@@ -321,15 +321,21 @@ export class CustomerService {
     }
 
     // Create trash entry
-    await (this.supabase as any)
+    const { error: trashError } = await (this.supabase as any)
       .from('trash_entries')
       .insert({
         entity_type: 'customer',
         entity_id: id,
+        entity_name: customer.name,
         company_id: customer.company_id,
         deleted_by: context.userId,
         deleted_at: new Date().toISOString(),
       })
+
+    if (trashError) {
+      await (this.supabase as any).from('customers').update({ deleted_at: null }).eq('id', id).eq('company_id', customer.company_id)
+      throw handleSupabaseError(trashError)
+    }
 
     appLogger.info('Customer moved to trash', { customerId: id })
   }

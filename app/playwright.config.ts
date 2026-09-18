@@ -13,18 +13,24 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 2 : 4,
+  workers: process.env.CI ? 2 : 24,
   reporter: 'list',
-  timeout: 60_000,
+  timeout: 120_000,
   globalSetup: './e2e/global-setup',
   globalTeardown: './e2e/global-teardown',
+  webServer: {
+    command: 'npm run dev -- --host 127.0.0.1',
+    url: 'http://127.0.0.1:5173',
+    reuseExistingServer: true,
+    timeout: 120_000,
+  },
   use: {
     baseURL: e2eEnvironment.stagingUrl,
     storageState: AUTH_FILE,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    actionTimeout: 10_000,
-    navigationTimeout: 15_000,
+    actionTimeout: 15_000,
+    navigationTimeout: 30_000,
   },
   projects: [
     {

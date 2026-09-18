@@ -259,15 +259,21 @@ export class DocumentService {
       throw handleSupabaseError(error)
     }
 
-    await (this.supabase as any)
+    const { error: trashError } = await (this.supabase as any)
       .from('trash_entries')
       .insert({
         entity_type: 'document',
         entity_id: id,
+        entity_name: document.document_number || id,
         company_id: document.company_id,
         deleted_by: context.userId,
         deleted_at: new Date().toISOString(),
       })
+
+    if (trashError) {
+      await (this.supabase as any).from('documents').update({ deleted_at: null }).eq('id', id).eq('company_id', document.company_id)
+      throw handleSupabaseError(trashError)
+    }
 
     appLogger.info('Document moved to trash', { documentId: id })
   }

@@ -308,7 +308,7 @@ describe('SANAD Application - End-to-End Verification', () => {
       const service = new TemplateService()
       
       const templates = service.getTemplates()
-      expect(templates).toHaveLength(9)
+      expect(templates).toHaveLength(10)
       expect(templates.map((t: any) => t.key)).toContain('template-a')
       expect(templates.map((t: any) => t.key)).toContain('template-b')
       expect(templates.map((t: any) => t.key)).toContain('fulla-packing-list-680')
@@ -432,11 +432,13 @@ describe('SANAD Application - End-to-End Verification', () => {
     it('should have all context providers', async () => {
       const auth = await import('@/contexts/AuthContext')
       const company = await import('@/contexts/CompanyContext')
+      const { useAuth } = await import('@/contexts/useAuth')
+      const { useCompany } = await import('@/contexts/useCompany')
       
       expect(auth.AuthProvider).toBeDefined()
-      expect(auth.useAuth).toBeDefined()
+      expect(useAuth).toBeDefined()
       expect(company.CompanyProvider).toBeDefined()
-      expect(company.useCompany).toBeDefined()
+      expect(useCompany).toBeDefined()
     })
   })
 

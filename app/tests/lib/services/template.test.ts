@@ -20,7 +20,7 @@ describe('TemplateService', () => {
   describe('Template Definitions', () => {
     it('should have 9 templates defined (2 original + 7 native Fulla)', () => {
       const templates = service.getTemplates()
-      expect(templates).toHaveLength(9)
+      expect(templates).toHaveLength(10)
     })
 
     it('should have template-a, template-b, and all 7 native Fulla templates', () => {
@@ -34,6 +34,7 @@ describe('TemplateService', () => {
       expect(keys).toContain('fulla-commercial-invoice-680')
       expect(keys).toContain('fulla-tax-invoice-b-680')
       expect(keys).toContain('fulla-proforma-invoice-680')
+      expect(keys).toContain('fulla-bill-of-lading-680')
     })
 
     it('should return correct template by key', () => {

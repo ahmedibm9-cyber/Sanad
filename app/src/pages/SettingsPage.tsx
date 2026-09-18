@@ -26,10 +26,10 @@ import {
   ClipboardCheck,
   Settings,
 } from 'lucide-react'
-import { useLanguage } from '../contexts/LanguageContext'
-import { useCompany } from '../contexts/CompanyContext'
-import { useApp } from '../contexts/AppContext'
-import { useAuth } from '../contexts/AuthContext'
+import { useLanguage } from '../contexts/useLanguage'
+import { useCompany } from '../contexts/useCompany'
+import { useApp } from '../contexts/useApp'
+import { useAuth } from '../contexts/useAuth'
 import ConfirmModal from '../components/common/ConfirmModal'
 import Modal from '../components/common/Modal'
 import { getSettingsService } from '../lib/services/settings'
@@ -87,7 +87,7 @@ interface BankAccount {
 
 export default function SettingsPage() {
   const { t, dir } = useLanguage()
-  const { currentCompany } = useCompany()
+  const { currentCompany, permissions } = useCompany()
   const { currentUser } = useApp()
   const { user, licenseInfo } = useAuth()
   const [activeTab, setActiveTab] = useState<SettingsTab>('identity')
@@ -123,7 +123,7 @@ export default function SettingsPage() {
     const ctx = {
       userId: user.id,
       companyId: currentCompany.id,
-      permissions: {},
+      permissions: permissions?.permissions || {},
       isSystemAdmin: user.isSystemAdmin || false,
     }
     const settingsService = getSettingsService()
@@ -163,7 +163,7 @@ export default function SettingsPage() {
     backupService.getBackupHistory(ctx, 10)
       .then((history) => setBackupHistory(history))
       .catch(() => { /* non-critical */ })
-  }, [currentCompany?.id, user])
+  }, [currentCompany?.id, user, permissions])
 
   // ─── Load bankAccounts from company_settings on mount ─────
   useEffect(() => {
@@ -171,7 +171,7 @@ export default function SettingsPage() {
     const ctx = {
       userId: user.id,
       companyId: currentCompany.id,
-      permissions: {},
+      permissions: permissions?.permissions || {},
       isSystemAdmin: user.isSystemAdmin || false,
     }
     getSettingsService().getCompanySettings(currentCompany.id, ctx)
@@ -190,24 +190,24 @@ export default function SettingsPage() {
         }
       })
       .catch(() => { /* keep defaults */ })
-  }, [currentCompany?.id, user])
+  }, [currentCompany?.id, user, permissions])
 
   // ─── Config list DB persistence helpers ────────────────────
   const persistConfigAdd = useCallback(async (listName: string, itemValue: string) => {
     if (!currentCompany?.id || !user) return
-    const ctx = { userId: user.id, companyId: currentCompany.id, permissions: {}, isSystemAdmin: user.isSystemAdmin || false }
+    const ctx = { userId: user.id, companyId: currentCompany.id, permissions: permissions?.permissions || {}, isSystemAdmin: user.isSystemAdmin || false }
     try {
       await getSettingsService().addConfigListItem(currentCompany.id, listName, itemValue, false, ctx)
     } catch { /* non-critical */ }
-  }, [currentCompany?.id, user])
+  }, [currentCompany?.id, user, permissions])
 
   const persistConfigRemove = useCallback(async (listName: string, itemValue: string) => {
     if (!currentCompany?.id || !user) return
-    const ctx = { userId: user.id, companyId: currentCompany.id, permissions: {}, isSystemAdmin: user.isSystemAdmin || false }
+    const ctx = { userId: user.id, companyId: currentCompany.id, permissions: permissions?.permissions || {}, isSystemAdmin: user.isSystemAdmin || false }
     try {
       await getSettingsService().removeConfigListItem(currentCompany.id, listName, itemValue, ctx)
     } catch { /* non-critical */ }
-  }, [currentCompany?.id, user])
+  }, [currentCompany?.id, user, permissions])
 
   // ─── Banking: Multiple accounts state ──────────────────────
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(() => {
@@ -311,7 +311,7 @@ export default function SettingsPage() {
     autoBackup: true,
     backupSchedule: 'daily',
     retentionDays: 30,
-    lastBackup: '2024-11-24T03:00:00Z',
+    lastBackup: '',
   })
 
   const handleChange = (field: string, value: string | number | boolean) => {
@@ -350,7 +350,7 @@ export default function SettingsPage() {
       const ctx = {
         userId: user.id,
         companyId: currentCompany.id,
-        permissions: {},
+        permissions: permissions?.permissions || {},
         isSystemAdmin: user.isSystemAdmin || false,
       }
 
@@ -446,7 +446,7 @@ export default function SettingsPage() {
     } finally {
       setSaving(false)
     }
-  }, [currentCompany?.id, user, form, bankAccounts])
+  }, [currentCompany?.id, user, form, bankAccounts, permissions?.permissions])
 
   // ─── Toggle Switch Component ──────────────────────────────
   const Toggle = ({ checked, onChange, disabled = false }: { checked: boolean; onChange: () => void; disabled?: boolean }) => (
@@ -1476,7 +1476,7 @@ export default function SettingsPage() {
                   const ctx = {
                     userId: user.id,
                     companyId: currentCompany.id,
-                    permissions: {},
+                    permissions: permissions?.permissions || {},
                     isSystemAdmin: user.isSystemAdmin || false,
                   }
                   await backupService.createManualBackup(ctx)
@@ -1520,7 +1520,7 @@ export default function SettingsPage() {
                   const ctx = {
                     userId: user.id,
                     companyId: currentCompany.id,
-                    permissions: {},
+                    permissions: permissions?.permissions || {},
                     isSystemAdmin: user.isSystemAdmin || false,
                   }
                   // Restore from the most recent completed backup

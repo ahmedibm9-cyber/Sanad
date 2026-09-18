@@ -8,7 +8,7 @@ const TEST_PASSWORD = e2eEnvironment.password
 async function login(page: import('@playwright/test').Page) {
   await page.goto('/login')
   try {
-    await page.waitForURL('**/dashboard', { timeout: 5_000 })
+    await page.waitForURL('**/dashboard', { timeout: 10_000 })
     return
   } catch {
     // Not redirected — need to fill the login form
@@ -16,14 +16,14 @@ async function login(page: import('@playwright/test').Page) {
   await page.getByRole('textbox', { name: 'Email' }).fill(TEST_EMAIL)
   await page.getByRole('textbox', { name: 'Password' }).fill(TEST_PASSWORD)
   const signInBtn = page.getByRole('button', { name: 'Sign In' })
-  await signInBtn.waitFor({ state: 'visible', timeout: 10_000 })
-  for (let i = 0; i < 20; i++) {
+  await signInBtn.waitFor({ state: 'visible', timeout: 15_000 })
+  for (let i = 0; i < 30; i++) {
     const disabled = await signInBtn.evaluate((el: HTMLButtonElement) => el.disabled)
     if (!disabled) break
     await page.waitForTimeout(500)
   }
   await signInBtn.click()
-  await page.waitForURL('**/dashboard', { timeout: 20_000 })
+  await page.waitForURL('**/dashboard', { timeout: 30_000 })
 }
 
 const test = base.extend<{ authenticatedPage: import('@playwright/test').Page }>({

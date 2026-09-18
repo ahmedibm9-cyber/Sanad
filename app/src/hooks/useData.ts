@@ -5,9 +5,9 @@
  * to pages while routing through the full service layer (auth, validation, audit).
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useAuth } from '../contexts/AuthContext'
-import { useCompany } from '../contexts/CompanyContext'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useAuth } from '../contexts/useAuth'
+import { useCompany } from '../contexts/useCompany'
 import { type RequestContext } from '../lib/api'
 import { getCustomerService, type Customer } from '../lib/services/customer'
 import { getMaterialService, type Material } from '../lib/services/material'
@@ -50,13 +50,19 @@ function useFetch<T>(fetcher: () => Promise<T>, deps: unknown[]) {
   const [data, setData] = useState<T | null>()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const fetcherRef = useRef(fetcher)
+  fetcherRef.current = fetcher
+
+  const dependencyKey = deps
+    .map((dependency) => dependency === undefined ? 'undefined' : JSON.stringify(dependency) ?? String(dependency))
+    .join('|')
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
 
-    fetcher()
+    fetcherRef.current()
       .then(result => {
         if (!cancelled) setData(result)
       })
@@ -68,16 +74,16 @@ function useFetch<T>(fetcher: () => Promise<T>, deps: unknown[]) {
       })
 
     return () => { cancelled = true }
-  }, deps)
+  }, [dependencyKey])
 
   const refetch = useCallback(() => {
     setLoading(true)
     setError(null)
-    fetcher()
+    fetcherRef.current()
       .then(result => setData(result))
       .catch(err => setError(err.message || 'Failed to load data'))
       .finally(() => setLoading(false))
-  }, deps)
+  }, [])
 
   return { data, loading, error, refetch }
 }
@@ -90,7 +96,7 @@ export function useCompanies() {
   return useFetch(async () => {
     if (!ctx) return []
     return await service.getUserCompanies(ctx)
-  }, [ctx?.userId])
+  }, [ctx])
 }
 
 export function useCompanyById(id: string | undefined) {
@@ -119,7 +125,7 @@ export function useCustomerById(id: string | undefined) {
   return useFetch(async () => {
     if (!id || !ctx) return null
     return await service.getCustomerById(id, ctx)
-  }, [id, ctx?.userId])
+  }, [id, ctx])
 }
 
 export function useCreateCustomer() {
@@ -152,7 +158,7 @@ export function useCreateCustomer() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { create, loading }
 }
@@ -187,7 +193,7 @@ export function useUpdateCustomer() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { update, loading }
 }
@@ -220,7 +226,7 @@ export function useDeleteCustomer() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { remove, loading }
 }
@@ -234,7 +240,7 @@ export function useMaterials(companyId: string | undefined) {
     if (!companyId || !ctx) return []
     const result = await service.getMaterials(ctx)
     return result.data
-  }, [companyId, ctx?.userId])
+  }, [companyId, ctx])
 }
 
 export function useMaterialById(id: string | undefined) {
@@ -243,7 +249,7 @@ export function useMaterialById(id: string | undefined) {
   return useFetch(async () => {
     if (!id || !ctx) return null
     return await service.getMaterialById(id, ctx)
-  }, [id, ctx?.userId])
+  }, [id, ctx])
 }
 
 export function useCreateMaterial() {
@@ -276,7 +282,7 @@ export function useCreateMaterial() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { create, loading }
 }
@@ -311,7 +317,7 @@ export function useUpdateMaterial() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { update, loading }
 }
@@ -344,7 +350,7 @@ export function useDeleteMaterial() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { remove, loading }
 }
@@ -358,7 +364,7 @@ export function useWorkItems(companyId: string | undefined, type?: string) {
     if (!companyId || !ctx) return []
     const result = await service.getWorkItems(companyId, ctx, { type: type as any })
     return result.data
-  }, [companyId, type, ctx?.userId])
+  }, [companyId, type, ctx])
 }
 
 export function useWorkItemById(id: string | undefined) {
@@ -367,7 +373,7 @@ export function useWorkItemById(id: string | undefined) {
   return useFetch(async () => {
     if (!id || !ctx) return null
     return await service.getWorkItemById(id, ctx)
-  }, [id, ctx?.userId])
+  }, [id, ctx])
 }
 
 export function useWorkItemMaterials(workItemId: string | undefined) {
@@ -376,7 +382,7 @@ export function useWorkItemMaterials(workItemId: string | undefined) {
   return useFetch(async () => {
     if (!workItemId || !ctx) return []
     return await service.getWorkItemMaterials(workItemId, ctx)
-  }, [workItemId, ctx?.userId])
+  }, [workItemId, ctx])
 }
 
 export function useCreateWorkItem() {
@@ -425,7 +431,7 @@ export function useCreateWorkItem() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { create, loading }
 }
@@ -460,7 +466,7 @@ export function useUpdateWorkItem() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { update, loading }
 }
@@ -495,7 +501,7 @@ export function useConvertTaskToProject() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { convert, loading }
 }
@@ -528,7 +534,7 @@ export function useDeleteWorkItem() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { remove, loading }
 }
@@ -542,7 +548,7 @@ export function useDocuments(workItemId: string | undefined) {
     if (!workItemId || !ctx) return []
     // getDocuments returns Document[] directly
     return await service.getDocuments(workItemId, ctx)
-  }, [workItemId, ctx?.userId])
+  }, [workItemId, ctx])
 }
 
 export function useCompanyDocuments(companyId: string | undefined) {
@@ -552,7 +558,7 @@ export function useCompanyDocuments(companyId: string | undefined) {
     if (!companyId || !ctx) return []
     const result = await service.getCompanyDocuments(ctx)
     return result.data
-  }, [companyId, ctx?.userId])
+  }, [companyId, ctx])
 }
 
 export function useCreateDocument() {
@@ -600,7 +606,7 @@ export function useCreateDocument() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { create, loading }
 }
@@ -635,7 +641,7 @@ export function useUpdateDocument() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { update, loading }
 }
@@ -655,7 +661,7 @@ export function useUpdateMaterialLastPrice() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { updateLastPrice, loading }
 }
@@ -669,7 +675,7 @@ export function useTodos(userId: string | undefined) {
     if (!userId || !ctx) return []
     const result = await service.getTodos(userId, ctx)
     return result.data
-  }, [userId, ctx?.userId])
+  }, [userId, ctx])
 }
 
 export function useCreateTodo() {
@@ -689,7 +695,7 @@ export function useCreateTodo() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { create, loading }
 }
@@ -711,7 +717,7 @@ export function useUpdateTodo() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { update, loading }
 }
@@ -733,7 +739,7 @@ export function useDeleteTodo() {
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, service])
 
   return { remove, loading }
 }
@@ -764,7 +770,7 @@ export function useMarkNotificationRead() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [service])
 
   return { markRead, loading }
 }
@@ -784,7 +790,7 @@ export function useMarkAllNotificationsRead() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [service])
 
   return { markAllRead, loading }
 }
@@ -798,7 +804,7 @@ export function useNotes(workItemId: string | undefined) {
     if (!workItemId || !ctx) return []
     // getNotes returns Note[] directly
     return await service.getNotes(workItemId, ctx)
-  }, [workItemId, ctx?.userId])
+  }, [workItemId, ctx])
 }
 
 // ─── Report Issues ────────────────────────────────────
@@ -810,7 +816,7 @@ export function useReportIssues(workItemId: string | undefined) {
     if (!workItemId || !ctx) return []
     // getIssues returns ReportIssue[] directly
     return await service.getIssues(workItemId, ctx)
-  }, [workItemId, ctx?.userId])
+  }, [workItemId, ctx])
 }
 
 export function useCompanyReportIssues(companyId: string | undefined) {
@@ -828,7 +834,7 @@ export function useCompanyReportIssues(companyId: string | undefined) {
       .limit(200)
     if (error) throw error
     return data || []
-  }, [companyId, ctx?.userId])
+  }, [companyId, ctx])
 }
 
 // ─── Attachments ──────────────────────────────────────
@@ -840,7 +846,7 @@ export function useAttachments(workItemId: string | undefined) {
     if (!workItemId || !ctx) return []
     // getAttachments returns Attachment[] directly
     return await service.getAttachments(workItemId, ctx)
-  }, [workItemId, ctx?.userId])
+  }, [workItemId, ctx])
 }
 
 // ─── Audit ────────────────────────────────────────────
@@ -857,7 +863,7 @@ export function useAuditEvents(companyId: string | undefined) {
     } catch {
       return []
     }
-  }, [companyId, ctx?.userId])
+  }, [companyId, ctx])
 }
 
 // ─── Factory Code ─────────────────────────────────────
@@ -873,7 +879,7 @@ export function useFactoryCodeSearch(query: string) {
     } catch {
       return []
     }
-  }, [query, ctx?.userId])
+  }, [query, ctx])
 }
 
 /**
@@ -887,7 +893,7 @@ export function useFactoryCodeAll() {
     if (!ctx) return []
     const result = await service.search('', ctx, { pageSize: 50000 })
     return result.data
-  }, [ctx?.userId])
+  }, [ctx])
 }
 
 // ─── Trash Entries ────────────────────────────────────
@@ -905,7 +911,7 @@ export function useTrashEntries(companyId: string | undefined) {
       .order('deleted_at', { ascending: false })
     if (error) throw error
     return data || []
-  }, [companyId, ctx?.userId])
+  }, [companyId, ctx])
 }
 
 export function useRestoreTrashEntry() {
@@ -918,17 +924,6 @@ export function useRestoreTrashEntry() {
     try {
       const { getSupabase } = await import('../lib/supabase')
       const sb = getSupabase()
-      // Remove trash entry (scoped to company)
-      const deleteQuery = (sb as any)
-        .from('trash_entries')
-        .delete()
-        .eq('entity_type', entityType)
-        .eq('entity_id', entityId)
-      if (ctx.companyId) {
-        deleteQuery.eq('company_id', ctx.companyId)
-      }
-      await deleteQuery
-      // Restore entity by clearing deleted_at
       const tableMap: Record<string, string> = {
         project: 'work_items',
         task: 'work_items',
@@ -938,14 +933,27 @@ export function useRestoreTrashEntry() {
         attachment: 'attachments',
       }
       const table = tableMap[entityType] || entityType + 's'
+      const updateValues = entityType === 'attachment'
+        ? { active: true, updated_at: new Date().toISOString() }
+        : { deleted_at: null, updated_at: new Date().toISOString() }
       const updateQuery = (sb as any)
         .from(table)
-        .update({ deleted_at: null, updated_at: new Date().toISOString() })
+        .update(updateValues)
         .eq('id', entityId)
       if (ctx.companyId) {
         updateQuery.eq('company_id', ctx.companyId)
       }
-      await updateQuery
+      const { error: restoreError } = await updateQuery
+      if (restoreError) throw restoreError
+
+      const deleteQuery = (sb as any)
+        .from('trash_entries')
+        .delete()
+        .eq('entity_type', entityType)
+        .eq('entity_id', entityId)
+      if (ctx.companyId) deleteQuery.eq('company_id', ctx.companyId)
+      const { error: trashError } = await deleteQuery
+      if (trashError) throw trashError
       return true
     } catch (err) {
       appLogger.error('Failed to restore trash entry', err)
@@ -967,7 +975,7 @@ export function useCompanyMemberships(companyId: string | undefined) {
     if (!companyId || !ctx) return []
     // getCompanyMemberships returns MembershipWithUser[] directly
     return await service.getCompanyMemberships(companyId, ctx)
-  }, [companyId, ctx?.userId])
+  }, [companyId, ctx])
 }
 
 // ─── Users (company members) ──────────────────────────
@@ -990,5 +998,5 @@ export function useCompanyUsers(companyId: string | undefined) {
       base_role: m.base_role,
       company_id: m.company_id,
     }))
-  }, [companyId, ctx?.userId])
+  }, [companyId, ctx])
 }

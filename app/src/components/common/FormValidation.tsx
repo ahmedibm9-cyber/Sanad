@@ -1,4 +1,3 @@
-import { useState, useCallback } from 'react'
 import { AlertCircle } from 'lucide-react'
 
 // ── RequiredMark ────────────────────────────────────────────────
@@ -7,7 +6,6 @@ import { AlertCircle } from 'lucide-react'
 export function RequiredMark() {
   return <span className="text-red-600 ml-0.5" aria-hidden="true">*</span>
 }
-
 // ── FormError ───────────────────────────────────────────────────
 
 interface FormErrorProps {
@@ -25,7 +23,6 @@ export function FormError({ message, className = '' }: FormErrorProps) {
     </p>
   )
 }
-
 // ── FormErrorSummary ────────────────────────────────────────────
 
 interface FormErrorSummaryProps {
@@ -62,66 +59,4 @@ export function FormErrorSummary({ errors, className = '' }: FormErrorSummaryPro
       </div>
     </div>
   )
-}
-
-// ── useFormValidation ───────────────────────────────────────────
-
-type ValidationErrors = Record<string, string>
-type Validator = () => ValidationErrors | null
-
-interface UseFormValidationReturn {
-  errors: ValidationErrors
-  hasErrors: boolean
-  validate: (validator: Validator) => boolean
-  clearError: (field: string) => void
-  clearErrors: () => void
-  setError: (field: string, message: string) => void
-}
-
-/**
- * Hook that manages form-level validation state.
- *
- * Usage:
- * ```tsx
- * const { errors, hasErrors, validate, clearError, setError } = useFormValidation()
- *
- * const handleSubmit = () => {
- *   const ok = validate(() => {
- *     const errs: ValidationErrors = {}
- *     if (!name) errs.name = 'Name is required'
- *     return Object.keys(errs).length ? errs : null
- *   })
- *   if (!ok) return
- *   // submit
- * }
- * ```
- */
-export function useFormValidation(): UseFormValidationReturn {
-  const [errors, setErrors] = useState<ValidationErrors>({})
-
-  const validate = useCallback((validator: Validator): boolean => {
-    const result = validator()
-    setErrors(result ?? {})
-    return !result
-  }, [])
-
-  const clearError = useCallback((field: string) => {
-    setErrors((prev) => {
-      const next = { ...prev }
-      delete next[field]
-      return next
-    })
-  }, [])
-
-  const clearErrors = useCallback(() => {
-    setErrors({})
-  }, [])
-
-  const setError = useCallback((field: string, message: string) => {
-    setErrors((prev) => ({ ...prev, [field]: message }))
-  }, [])
-
-  const hasErrors = Object.values(errors).some(Boolean)
-
-  return { errors, hasErrors, validate, clearError, clearErrors, setError }
 }

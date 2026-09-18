@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { AlertTriangle, Check, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react'
-import { useLanguage } from '../../contexts/LanguageContext'
+import { useLanguage } from '../../contexts/useLanguage'
 import type { SharedDataConflict } from '../../lib/services/sharedData'
 
 export type ConflictChoice = 'keep_project' | 'keep_document'

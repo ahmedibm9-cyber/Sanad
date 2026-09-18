@@ -5,7 +5,7 @@
 -- 1. Trash Entries
 -- ===========================================
 CREATE TABLE IF NOT EXISTS trash_entries (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   entity_type TEXT NOT NULL CHECK (entity_type IN ('project', 'task', 'document', 'customer', 'material', 'attachment')),
   entity_id UUID NOT NULL,

@@ -4,8 +4,8 @@
 
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
-import { useLanguage } from '../contexts/LanguageContext'
+import { useAuth } from '../contexts/useAuth'
+import { useLanguage } from '../contexts/useLanguage'
 import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
@@ -50,7 +50,7 @@ export default function LoginPage() {
             <span className="text-white font-bold text-2xl">S</span>
           </div>
           <h1 className="text-2xl font-bold text-brand-900">SANAD</h1>
-          <p className="text-sm text-gray-500 mt-1">{t('Export & Shipping Operations', 'عمليات التصدير والشحن')}</p>
+          <p className="text-sm text-gray-600 mt-1">{t('Export & Shipping Operations', 'عمليات التصدير والشحن')}</p>
         </div>
 
         {/* Login Form */}
@@ -69,11 +69,11 @@ export default function LoginPage() {
             <div>
               <label htmlFor="email" className="label-field">{t('Email', 'البريد الإلكتروني')}</label>
               <div className="relative">
-                <Mail size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <Mail size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
                 <input
                   id="email"
                   type="email"
-                  className="input-field pl-10 placeholder:text-gray-500"
+                  className="input-field pl-10 placeholder:text-gray-600"
                   placeholder={t('Enter your email', 'أدخل بريدك الإلكتروني')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -90,11 +90,11 @@ export default function LoginPage() {
             <div>
               <label htmlFor="password" className="label-field">{t('Password', 'كلمة المرور')}</label>
               <div className="relative">
-                <Lock size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <Lock size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  className="input-field pl-10 pr-10 placeholder:text-gray-500"
+                  className="input-field pl-10 pr-10 placeholder:text-gray-600"
                   placeholder={t('Enter your password', 'أدخل كلمة المرور')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

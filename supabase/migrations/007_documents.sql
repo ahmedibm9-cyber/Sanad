@@ -5,7 +5,7 @@
 -- 1. Documents
 -- ===========================================
 CREATE TABLE IF NOT EXISTS documents (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   work_item_id UUID NOT NULL REFERENCES work_items(id) ON DELETE CASCADE,
   

@@ -4,7 +4,7 @@
  * Displays license status and allows verification.
  */
 
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '../../contexts/useAuth'
 import { Shield, RefreshCw, AlertTriangle, CheckCircle, Clock, Key } from 'lucide-react'
 
 export function LicensingSettings() {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
-import { useLanguage } from '../../contexts/LanguageContext'
+import { useLanguage } from '../../contexts/useLanguage'
 import { useSpeechRecognition } from '../../hooks/useSpeechRecognition'
 import { Mic } from 'lucide-react'
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle, X, AlertTriangle, Info } from 'lucide-react'
-import { useLanguage } from '../../contexts/LanguageContext'
+import { useLanguage } from '../../contexts/useLanguage'
 
 interface ToastProps {
   message: string

@@ -2,14 +2,15 @@
  * SANAD R2 Client Proxy
  *
  * Browser-safe module for R2 file operations.
- * ALL operations go through the Supabase Edge Function (r2-proxy).
+ * ALL operations go through the Cloudflare Worker (r2-proxy).
  * R2 credentials NEVER reach the browser.
  *
  * Architecture:
- *   Browser → r2Client.ts → Edge Function (r2-proxy) → Cloudflare R2
+ *   Browser → r2Client.ts → Cloudflare Worker (r2-proxy) → Cloudflare R2
  */
 
 import { getSupabase } from './supabase'
+import { env } from './env'
 
 // ===========================================
 // Types
@@ -19,12 +20,6 @@ export interface R2UploadResult {
   key: string
   size: number
   contentType: string
-}
-
-export interface R2DownloadResult {
-  url: string
-  key: string
-  expiresIn: number
 }
 
 function encodeBase64(bytes: Uint8Array): string {
@@ -114,7 +109,7 @@ async function callR2Proxy(
   action: string,
   payload: Record<string, unknown>,
   companyId: string
-): Promise<unknown> {
+): Promise<Response> {
   const supabase = getSupabase()
   const { data: { session } } = await supabase.auth.getSession()
 
@@ -122,14 +117,14 @@ async function callR2Proxy(
     throw new Error('Not authenticated')
   }
 
-  const { supabaseUrl } = await import('./env').then(m => ({ supabaseUrl: m.env.supabaseUrl }))
+  const baseUrl = env.r2ProxyUrl || `${(await import('./env')).env.supabaseUrl}/functions/v1/r2-proxy`
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/r2-proxy/${action}`, {
+  const response = await fetch(`${baseUrl}/${action}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${session.access_token}`,
-      'apikey': (await import('./env')).env.supabaseAnonKey,
+      'apikey': env.supabaseAnonKey,
     },
     body: JSON.stringify({ ...payload, companyId }),
   })
@@ -139,7 +134,7 @@ async function callR2Proxy(
     throw new Error(error.error || `R2 proxy error: ${response.status}`)
   }
 
-  return response.json()
+  return response
 }
 
 // ===========================================
@@ -161,14 +156,14 @@ export async function uploadToR2(
   const bytes = body instanceof Uint8Array ? body : new Uint8Array(body)
   const base64 = encodeBase64(bytes)
 
-  const result = await callR2Proxy('upload', {
+  const response = await callR2Proxy('upload', {
     key,
     fileBase64: base64,
     contentType,
     metadata,
-  }, companyId) as R2UploadResult
+  }, companyId)
 
-  return result
+  return response.json() as Promise<R2UploadResult>
 }
 
 // ===========================================
@@ -176,19 +171,20 @@ export async function uploadToR2(
 // ===========================================
 
 /**
- * Get a presigned download URL for a file in R2.
+ * Download an R2 object through the authenticated Worker.
  */
-export async function getPresignedDownloadUrl(
+export async function downloadFromR2(
   key: string,
-  companyId: string,
-  expiresIn?: number
-): Promise<string> {
-  const result = await callR2Proxy('download', {
+  companyId: string
+): Promise<{ body: Uint8Array; contentType: string }> {
+  const response = await callR2Proxy('download', {
     key,
-    expiresIn: expiresIn || 3600,
-  }, companyId) as R2DownloadResult
+  }, companyId)
 
-  return result.url
+  return {
+    body: new Uint8Array(await response.arrayBuffer()),
+    contentType: response.headers.get('Content-Type') || 'application/octet-stream',
+  }
 }
 
 /**
@@ -202,13 +198,16 @@ export async function downloadAttachment(
   if (!r2Key) {
     throw new Error('No R2 key provided for download')
   }
-  const url = await getPresignedDownloadUrl(r2Key, companyId, 3600)
+  const { body, contentType } = await downloadFromR2(r2Key, companyId)
+  const bytes = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer
+  const url = URL.createObjectURL(new Blob([bytes], { type: contentType }))
   const a = document.createElement('a')
   a.href = url
   a.download = fileName || 'download'
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 // ===========================================
