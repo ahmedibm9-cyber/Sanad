@@ -343,15 +343,21 @@ export class WorkItemService {
     const existing = await this.getWorkItemById(id, context)
     requirePermission(context, 'projects.pin')
 
+    const currentVersion = (existing as any).version ?? 1
+
     const { data, error } = await (this.supabase as any)
       .from('work_items')
-      .update({ pinned: !existing.pinned, updated_by: context.userId })
+      .update({ pinned: !existing.pinned, updated_by: context.userId, version: currentVersion + 1 })
       .eq('id', id)
       .eq('company_id', context.companyId)
+      .eq('version', currentVersion)
       .select()
       .single()
 
     if (error) {
+      if (error.code === 'PGRST116' || error.message?.includes('No rows')) {
+        throw new Error('Conflict: Record was modified by another user. Please reload and try again.')
+      }
       throw handleSupabaseError(error)
     }
 
@@ -366,19 +372,26 @@ export class WorkItemService {
     const existing = await this.getWorkItemById(id, context)
     requirePermission(context, 'projects.archive')
 
+    const currentVersion = (existing as any).version ?? 1
+
     const { data, error } = await (this.supabase as any)
       .from('work_items')
       .update({
         status: 'archived',
         archived_at: new Date().toISOString(),
         updated_by: context.userId,
+        version: currentVersion + 1,
       })
       .eq('id', id)
       .eq('company_id', context.companyId)
+      .eq('version', currentVersion)
       .select()
       .single()
 
     if (error) {
+      if (error.code === 'PGRST116' || error.message?.includes('No rows')) {
+        throw new Error('Conflict: Record was modified by another user. Please reload and try again.')
+      }
       throw handleSupabaseError(error)
     }
 
@@ -393,19 +406,26 @@ export class WorkItemService {
     const existing = await this.getWorkItemById(id, context)
     requirePermission(context, 'projects.reopen')
 
+    const currentVersion = (existing as any).version ?? 1
+
     const { data, error } = await (this.supabase as any)
       .from('work_items')
       .update({
         status: 'in_progress',
         archived_at: null,
         updated_by: context.userId,
+        version: currentVersion + 1,
       })
       .eq('id', id)
       .eq('company_id', context.companyId)
+      .eq('version', currentVersion)
       .select()
       .single()
 
     if (error) {
+      if (error.code === 'PGRST116' || error.message?.includes('No rows')) {
+        throw new Error('Conflict: Record was modified by another user. Please reload and try again.')
+      }
       throw handleSupabaseError(error)
     }
 
@@ -426,18 +446,25 @@ export class WorkItemService {
 
     requirePermission(context, 'tasks.convert_to_project')
 
+    const currentVersion = (existing as any).version ?? 1
+
     const { data, error } = await (this.supabase as any)
       .from('work_items')
       .update({
         type: 'project',
         updated_by: context.userId,
+        version: currentVersion + 1,
       })
       .eq('id', id)
       .eq('company_id', context.companyId)
+      .eq('version', currentVersion)
       .select()
       .single()
 
     if (error) {
+      if (error.code === 'PGRST116' || error.message?.includes('No rows')) {
+        throw new Error('Conflict: Record was modified by another user. Please reload and try again.')
+      }
       appLogger.error('Error converting task to project', error)
       throw handleSupabaseError(error)
     }

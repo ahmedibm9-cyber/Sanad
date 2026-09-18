@@ -177,6 +177,7 @@ export interface WorkItem {
   customerName?: string
   status: WorkItemStatus
   isPinned?: boolean
+  version?: number
   materials: ProjectMaterial[]
   destinationCountry?: string
   destinationCity?: string
