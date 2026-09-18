@@ -189,7 +189,7 @@ export function useUpdateCustomer() {
       return result
     } catch (err) {
       appLogger.error('Failed to update customer', err)
-      return null
+      throw err
     } finally {
       setLoading(false)
     }
@@ -313,7 +313,7 @@ export function useUpdateMaterial() {
       return result
     } catch (err) {
       appLogger.error('Failed to update material', err)
-      return null
+      throw err
     } finally {
       setLoading(false)
     }
@@ -427,7 +427,7 @@ export function useCreateWorkItem() {
       return result
     } catch (err) {
       appLogger.error('Failed to create work item', err)
-      return null
+      throw err
     } finally {
       setLoading(false)
     }
@@ -462,7 +462,7 @@ export function useUpdateWorkItem() {
       return result
     } catch (err) {
       appLogger.error('Failed to update work item', err)
-      return null
+      throw err
     } finally {
       setLoading(false)
     }
@@ -497,7 +497,7 @@ export function useConvertTaskToProject() {
       return result
     } catch (err) {
       appLogger.error('Failed to convert task to project', err)
-      return null
+      throw err
     } finally {
       setLoading(false)
     }
@@ -602,7 +602,7 @@ export function useCreateDocument() {
       return result
     } catch (err) {
       appLogger.error('Failed to create document', err)
-      return null
+      throw err
     } finally {
       setLoading(false)
     }
@@ -637,7 +637,7 @@ export function useUpdateDocument() {
       return result
     } catch (err) {
       appLogger.error('Failed to update document', err)
-      return null
+      throw err
     } finally {
       setLoading(false)
     }
@@ -713,7 +713,7 @@ export function useUpdateTodo() {
       return result
     } catch (err) {
       appLogger.error('Failed to update todo', err)
-      return null
+      throw err
     } finally {
       setLoading(false)
     }
@@ -918,8 +918,14 @@ export function useRestoreTrashEntry() {
   const ctx = useRequestContext()
   const [loading, setLoading] = useState(false)
 
+  const VALID_ENTITY_TYPES = ['customer', 'material', 'project', 'task', 'document', 'attachment', 'user', 'todo', 'company']
+
   const restore = useCallback(async (entityType: string, entityId: string) => {
     if (!ctx) return false
+    if (!VALID_ENTITY_TYPES.includes(entityType)) {
+      appLogger.error('Invalid entity type for restore', { entityType })
+      return false
+    }
     setLoading(true)
     try {
       const { getSupabase } = await import('../lib/supabase')

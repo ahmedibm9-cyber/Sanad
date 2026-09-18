@@ -308,7 +308,7 @@ const [docLanguage, setDocLanguage] = useState<'en' | 'ar'>(
 
   const recalcSubtotal = useCallback(() => {
     const sum = items.reduce((s, item) => s + item.quantity * item.unitPrice, 0)
-    setSubtotal(sum)
+    setSubtotal(Math.round(sum * 100) / 100)
   }, [items])
 
   const addItem = () => {
@@ -884,13 +884,13 @@ const [docLanguage, setDocLanguage] = useState<'en' | 'ar'>(
                       )}
                       {/* Total */}
                       <td className="py-2 px-1 font-medium text-end whitespace-nowrap">
-                        {(item.quantity * item.unitPrice).toLocaleString()} {item.currency}
+                        {(Math.round(item.quantity * item.unitPrice * 100) / 100).toLocaleString()} {item.currency}
                       </td>
                       {/* VAT fields for TINV */}
                       {docType === 'TINV' && (
                         <>
                           <td className="py-2 px-1">
-                            <input className="input-field text-xs py-1.5 w-24" type="number" value={item.quantity * item.unitPrice} readOnly />
+                            <input className="input-field text-xs py-1.5 w-24" type="number" value={Math.round(item.quantity * item.unitPrice * 100) / 100} readOnly />
                           </td>
                           <td className="py-2 px-1">
                             <select className="select-field text-xs py-1.5 w-20" value={vatRate} onChange={e => setVatRate(Number(e.target.value))}>
@@ -902,7 +902,7 @@ const [docLanguage, setDocLanguage] = useState<'en' | 'ar'>(
                             <input className="input-field text-xs py-1.5 w-24" type="number" value={Math.round(item.quantity * item.unitPrice * (vatRate / 100) * 100) / 100} readOnly />
                           </td>
                           <td className="py-2 px-1 font-medium text-end whitespace-nowrap">
-                            {(item.quantity * item.unitPrice * (1 + vatRate / 100)).toLocaleString()} {item.currency}
+                            {(Math.round(item.quantity * item.unitPrice * (1 + vatRate / 100) * 100) / 100).toLocaleString()} {item.currency}
                           </td>
                         </>
                       )}

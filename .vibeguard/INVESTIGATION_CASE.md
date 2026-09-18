@@ -1,127 +1,142 @@
-# Investigation Case #002: Full Forensic Security Audit
+# SANAD Production Defect & Gap Hunt — Case File
 
 ## Case Statement
 
-Complete forensic investigation across 8 parallel lanes covering auth/RPC, migrations, edge functions, frontend, dependencies, service layer, git state, and export/import. Goal: find all hidden defects, latent risks, and unknown-unknowns.
+Systematic forensic hunt for latent bugs, security gaps, data integrity issues, architectural risks, and error handling gaps in the SANAD production application.
 
-**Mode:** Parallel multi-lane forensic investigation + remediation
-**Date:** 2026-09-15
-**Investigator:** opencode (mimo-v2.5-free)
-
----
-
-## Lane Results Summary
-
-| Lane | Focus | Findings | Critical/High |
-|------|-------|----------|---------------|
-| 1 | Auth & RPC | 11 | 0 (exec_transaction fixed pre-investigation) |
-| 2 | Migrations | 14 | 1 (exec_transaction — pre-existing fix) |
-| 3 | Edge Functions | 9 | 0 |
-| 4 | Frontend Security | 20 | 0 (XSS false positives) |
-| 5 | Dependencies & Build | 11 | 0 |
-| 6 | Service Layer | 31 | 5 |
-| 7 | Git & Uncommitted | 20 | 0 (security-positive changes) |
-| 8 | Export/Import & Files | 19 | 0 |
-| **Total** | | **135** | **6** |
+**Mode:** Defect Hunt + Gap Hunt  
+**Date:** 2026-09-18  
+**Repository:** `D:\SANAD`  
+**Branch:** `main`  
+**Commit:** `2274f09`  
+**Worktree:** Clean  
+**Environment:** Production at `https://sanad-etl.pages.dev`
 
 ---
 
-## Remediated HIGH Findings
+## Findings Summary
 
-### F-H1: Cross-tenant reads via caller-supplied companyId
-- **Files:** `customer.ts:126`, `material.ts:94`, `document.ts:278`
-- **Risk:** Service methods accepted `companyId` as a parameter, allowing any caller to pass a different company's ID
-- **Fix:** Removed `companyId` parameter from `getCustomers()`, `getMaterials()`, `getCompanyDocuments()`. Now derives company from `context.companyId`
-- **Updated callers:** `useData.ts` (3 hooks updated)
+### CRITICAL (3 findings)
 
-### F-H2: getLatestPrice() / getPriceHistory() no company isolation
-- **Files:** `material.ts:461`, `material.ts:483`
-- **Risk:** Any authenticated user could read price data for any material by UUID
-- **Fix:** Added `context: RequestContext` parameter and `.eq('company_id', context.companyId)` filter to both methods
+| # | Finding | Evidence Grade | File |
+|---|---------|---------------|------|
+| C1 | `restoreDocument` calls `getDocumentById` which filters `deleted_at IS NULL` — deleted documents cannot be restored | **Confirmed** | `document.ts:332-362` |
+| C2 | `document_data` JSONB has ZERO app-level schema validation — any arbitrary JSON can be stored | **Confirmed** | `DocumentFormPage.tsx:361`, `document.ts:163` |
+| C3 | Dual `Document` type definitions divergent (camelCase in `types/index.ts` vs snake_case in `services/document.ts`) — massive `as any` bridge needed | **Confirmed** | `types/index.ts:205-224`, `document.ts:19-40` |
 
-### F-H3: Filter injection in findAll()/count()
-- **File:** `base.ts:96`
-- **Risk:** Arbitrary column filtering could bypass company isolation
-- **Fix:** Added `ALLOWED_FILTER_KEYS` whitelist. Only `active`, `deleted_at`, `status`, `document_type`, `created_by`, `updated_by`, `category`, `file_type`, `entity_type`, `entity_id`, `company_id` are permitted as filter keys
+### HIGH (12 findings)
 
-### F-H4: Arbitrary R2 key injection via uploadAttachment()
-- **File:** `attachment.ts:120`
-- **Risk:** Client could supply an R2 key pointing to another company's files
-- **Fix:** Added validation: `input.r2_object_key.startsWith('companies/${context.companyId}/')` — rejects keys outside company namespace
+| # | Finding | Evidence Grade | File |
+|---|---------|---------------|------|
+| H1 | Update hooks return `null` instead of throwing — callers can't distinguish success from failure | **Confirmed** | `useData.ts:190,315,464,499,639,715` |
+| H2 | No toast/notification system exists — failed operations silently disappear | **Confirmed** | (systemic) |
+| H3 | CustomerFormModal and UserFormModal swallow save errors — modal closes on failure | **Confirmed** | `CustomerFormModal.tsx:119-126`, `UserFormModal.tsx:415-416` |
+| H4 | Single root ErrorBoundary — one page crash takes down entire app | **Confirmed** | `App.tsx:41-72` |
+| H5 | Money amounts use JavaScript floating-point arithmetic — precision loss for decimals | **Confirmed** | `DocumentPreviewPage.tsx:173,193` |
+| H6 | `sharedData.ts` synchronization is NOT atomic — concurrent reads see inconsistent data | **Confirmed** | `sharedData.ts:199-371` |
+| H7 | `restoreWorkItem` sets `deleted_at=null` but not `active=true` — restored items invisible | **Confirmed** | `workItem.ts:492-528` |
+| H8 | ProjectsPage archive/trash/pin/reopen have no user-facing error feedback | **Confirmed** | `ProjectsPage.tsx:165,181,194,203` |
+| H9 | No timeout/AbortController on Supabase queries — indefinite hangs on slow networks | **Confirmed** | (systemic) |
+| H10 | `company_memberships` has no INSERT/UPDATE/DELETE RLS policies — membership services are broken code paths | **Confirmed** | `001_initial_schema.sql:210-224` |
+| H11 | Material table has duplicate price columns (`last_selling_price` and `latest_selling_price`) — app writes to old columns | **Confirmed** | `material.ts:27-29`, `migration 20260916000001` |
+| H12 | Document uniqueness check-then-act is not atomic — two concurrent requests could both pass | **Confirmed** | `document.ts:137-147` |
 
-### F-H5: .env.local secrets on disk
-- **Status:** Documented as production secret exposure risk. Secrets present on disk (R2 keys, VERCEL_OIDC_TOKEN). Must be managed via deployment environment variables only, never committed.
+### MEDIUM (15 findings)
 
-### F-H6: @types/jspdf v3 vs jspdf v4 mismatch
-- **Status:** Documented. Low runtime risk (types only), but should be resolved.
+| # | Finding | Evidence Grade | File |
+|---|---------|---------------|------|
+| M1 | `entityType` in `useRestoreTrashEntry` not validated against enum | **Hypothesized** | `useData.ts:935` |
+| M2 | `contacts` field untyped `any` in Customer service | **Confirmed** | `customer.ts:25,75` |
+| M3 | `currency` defaults silently everywhere — should be required | **Confirmed** | `workItem.ts:247,278` |
+| M4 | `work_item_id` nullable on documents but DB is NOT NULL | **Confirmed** | `document.ts:43` |
+| M5 | `togglePin` bypasses optimistic locking | **Confirmed** | `workItem.ts:342-360` |
+| M6 | No CHECK constraint on `work_items.version` | **Confirmed** | `017_optimistic_locking.sql:5` |
+| M7 | Date creation drops timezone — UTC date used instead of local | **Confirmed** | `document.ts:156` |
+| M8 | Settings persistence failures silently swallowed | **Confirmed** | `SettingsPage.tsx:201,209` |
+| M9 | R2 proxy calls have no timeout or retry | **Confirmed** | `r2Client.ts:108-138` |
+| M10 | DocumentFormPage has no loading state during hydration | **Confirmed** | `DocumentFormPage.tsx:160-238` |
+| M11 | OfflineBanner is display-only — no action prevention | **Confirmed** | `OfflineBanner.tsx:7` |
+| M12 | `sharedData.ts` compares values as strings — floating-point JSONB values may mismatch | **Confirmed** | `sharedData.ts:96-137` |
+| M13 | R2 upload errors lose context in MaterialFormModal | **Confirmed** | `MaterialFormModal.tsx:73-108` |
+| M14 | No global `unhandledrejection` handler | **Confirmed** | (missing) |
+| M15 | No ErrorBoundary around lazy-loaded page imports | **Confirmed** | `App.tsx:8-29` |
 
----
+### LOW (10 findings)
 
-## Remediated MEDIUM Findings
+| # | Finding | Evidence Grade | File |
+|---|---------|---------------|------|
+| L1 | `document_number` default is incomplete prefix (e.g. `QUOT-2026-`) | **Confirmed** | `DocumentFormPage.tsx:32-36` |
+| L2 | `trash_entries.entity_id` has no FK constraint | **Confirmed** | `011_trash_entries.sql:12` |
+| L3 | `formatDate` doesn't handle timezone-aware display | **Confirmed** | `format.ts:14-21` |
+| L4 | TodosPage form has no double-submit guard | **Confirmed** | `TodosPage.tsx:201` |
+| L5 | `getAttachmentCount` returns 0 on error — caller thinks no attachments | **Confirmed** | `attachment.ts:284-286` |
+| L6 | DocumentsPage uses `console.error` instead of `appLogger` | **Confirmed** | `DocumentsPage.tsx:93` |
+| L7 | Error details hidden in production ErrorBoundary | **Confirmed** | `ErrorBoundary.tsx:78` |
+| L8 | `getUnreadCount` returns 0 on error — misleading badge | **Confirmed** | `notification.ts:138-139` |
+| L9 | Due date comparison ignores time components | **Confirmed** | `Dashboard.tsx:79` |
+| L10 | `material_price_events.work_item_id` added without ON DELETE | **Confirmed** | `migration 20260916000001:182-186` |
 
-### F-M3/F-M4: Missing company_id on softDelete/restore UPDATE
-- **File:** `base.ts:250`, `base.ts:283`
-- **Fix:** Added `.eq('company_id', context.companyId)` to all softDelete UPDATE, restore UPDATE, and trash entry cleanup DELETE operations in base service
+### POSITIVE FINDINGS (18 items — well-defended areas)
 
-### F-M5: Unscoped count functions
-- **Files:** `customer.ts:372`, `material.ts:507`, `attachment.ts:235`
-- **Fix:** Added `context: RequestContext` parameter and `company_id` filter to `getCustomerCount()`, `getMaterialCount()`, `getAttachmentCount()`
-
-### F-M9: Trash entry cleanup not company-scoped
-- **Files:** `customer.ts:359`, `material.ts:293`, `document.ts:348`
-- **Fix:** Added `.eq('company_id', context.companyId)` to all trash_entries DELETE operations in customer, material, and document restore methods
-
----
-
-## False Positives (Investigated and Dismissed)
-
-### F-M1/M2: XSS via dangerouslySetInnerHTML in templates
-- **Templates use `el.textContent = text(val)`** (`fullaTemplateRenderer.ts:236`), NOT `innerHTML`. User data is never injected as HTML.
-- **pdfExport.ts Arabic path** constructs HTML from the safe renderer output. The `container.innerHTML = fullHtml` sets the template structure, not user data.
-- **Verdict:** No XSS vulnerability. Templates are safe by construction.
-
-### F-M10: document_data accepts arbitrary JSON
-- **Status:** By design. The JSON is stored in the database and rendered via `textContent` in templates. No HTML injection vector.
-
----
-
-## Remaining Open Items (Low/Info)
-
-| # | Issue | Severity | Action Required |
-|---|-------|----------|-----------------|
-| 1 | No CSP headers on frontend | Low | Add Content-Security-Policy header |
-| 2 | TOCTOU in base update/restore | Low | Optimistic locking present, defense-in-depth gap only |
-| 3 | Factory import race condition | Low | Unique constraint on `stable_source_key` prevents duplicates |
-| 4 | Orphaned R2 objects on soft-delete | Low | Add background cleanup job |
-| 5 | document_data arbitrary JSON | Info | By design, no action needed |
-| 6 | create() company_id override order | Info | Currently safe (override after spread) |
-| 7 | .env.local secrets on disk | Medium | Rotate secrets, remove from disk |
-| 8 | @types/jspdf version mismatch | Low | Update to @types/jspdf@4 |
-| 9 | No DOWN migrations | Low | Add rollback scripts for future migrations |
-
----
-
-## Verification
-
-- **TypeScript:** `npx tsc --noEmit` — clean, 0 errors
-- **Test suite:** 374/374 tests pass across 28 files
-- **Build:** Passes
-
----
-
-## Files Modified
-
-| File | Changes |
-|------|---------|
-| `app/src/lib/services/base.ts` | Added ALLOWED_FILTER_KEYS whitelist; company_id on softDelete/restore/trash cleanup |
-| `app/src/lib/services/customer.ts` | Removed companyId param from getCustomers/getCustomerCount; company_id on trash cleanup |
-| `app/src/lib/services/material.ts` | Removed companyId param from getMaterials/getMaterialCount; added context to getLatestPrice/getPriceHistory; company_id on price queries and trash cleanup |
-| `app/src/lib/services/document.ts` | Removed companyId param from getCompanyDocuments; company_id on restore/trash cleanup |
-| `app/src/lib/services/attachment.ts` | Added context to getAttachmentCount; R2 key namespace validation |
-| `app/src/hooks/useData.ts` | Updated 3 hook callers to match new service signatures |
+- All 47 tables have RLS enabled
+- Service role key is server-side only
+- `check_user_permission` self-identity check prevents escalation
+- `handle_new_user` trigger hardcodes `is_system_admin=false`
+- `exec_transaction` revoked from all roles
+- All SECURITY DEFINER functions have restricted `search_path`
+- CORS restricted on r2-proxy
+- Audit events are append-only and company-scoped
+- Views use `security_invoker=true`
+- Frontend permission checks are advisory; RLS enforces at DB level
+- Company isolation enforced at both app and DB layers
+- Filter key whitelisting in `BaseService.findAll()`
+- Search input sanitization via `escapeILike()`
+- No raw SQL anywhere in frontend codebase
+- DocumentFormPage has explicit double-submit guard
+- Attachment upload cleans up orphaned R2 objects on failure
+- `users_update_own` prevents self-promotion to admin
+- `create-admin` edge function is properly retired (410 Gone)
 
 ---
 
-**Status:** Completed
-**Investigator:** opencode (mimo-v2.5-free)
-**Date:** 2026-09-15
+## Recommended Priority Actions
+
+### Immediate (Before Next Deploy)
+
+1. **Fix `restoreDocument`** — it is currently broken (C1)
+2. **Fix `restoreWorkItem` to set `active: true`** — restored items invisible (H7)
+3. **Fix update hooks to throw or return error objects** — callers can't detect failures (H1)
+
+### Short-Term (This Sprint)
+
+4. **Add toast/notification system** — silent failures across entire app (H2)
+5. **Fix CustomerFormModal and UserFormModal error swallowing** — users see success on failure (H3)
+6. **Add per-route ErrorBoundaries** — one crash takes down entire app (H4)
+7. **Validate `entityType` enum in `useRestoreTrashEntry`** — defense-in-depth (M1)
+8. **Add timeout/AbortController to Supabase and R2 fetches** — indefinite hangs (H9)
+
+### Medium-Term
+
+9. **Unify Document type definitions** — eliminate massive `as any` bridge (C3)
+10. **Add JSONB schema validation for `document_data`** — any garbage stored (C2)
+11. **Fix money calculations to use integer arithmetic** — floating-point precision (H5)
+12. **Make shared data synchronization atomic** — race condition (H6)
+13. **Clean up duplicate material price columns** — H11
+14. **Add missing RLS policies for `company_memberships`** — H10
+15. **Make document uniqueness check atomic** — H12
+
+---
+
+## Investigation Metadata
+
+**Investigation Mode:** Defect Hunt + Gap Hunt  
+**Status:** completed_with_warnings  
+**Completion Protocol:** All four evidence lanes completed. Findings graded using Confirmed/Hypothesized/Disproved framework. No speculative fixes applied during investigation.
+
+**Evidence Lanes:**
+1. SQL Injection Analysis — 0 confirmed, 4 hypothesized (very low severity)
+2. Auth & Permission Audit — 18 confirmed positive, 2 confirmed gaps
+3. Data Integrity Audit — 3 critical, 8 high, 10 medium, 4 low
+4. Error Handling Audit — 7 high, 12 medium, 10 low
+
+**Recommended Next Skill:** `ai-systematic-debugging` for the CRITICAL `restoreDocument` bug (C1)

@@ -234,7 +234,7 @@ export class TodoService {
     dueToday: number
     highPriority: number
   }> {
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toLocaleDateString('en-CA')
 
     const { count: total } = await (this.supabase as any)
       .from('todos')
@@ -281,7 +281,7 @@ export class TodoService {
    * Get overdue to-dos for dashboard display.
    */
   async getOverdueTodos(userId: string, limit: number = 5): Promise<ToDo[]> {
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toLocaleDateString('en-CA')
 
     const { data, error } = await (this.supabase as any)
       .from('todos')

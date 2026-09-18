@@ -507,6 +507,7 @@ export class WorkItemService {
       .from('work_items')
       .update({
         deleted_at: null,
+        active: true,
         updated_by: context.userId,
       })
       .eq('id', id)

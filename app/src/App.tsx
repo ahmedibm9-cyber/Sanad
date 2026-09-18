@@ -42,30 +42,30 @@ export default function App() {
       <OfflineBanner />
       <Suspense fallback={<PageSpinner />}>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<ErrorBoundary><LoginPage /></ErrorBoundary>} />
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/projects/:id" element={<ProjectDetailPage />} />
-            <Route path="/tasks" element={<TasksPage />} />
-            <Route path="/tasks/:id" element={<TaskDetailPage />} />
-            <Route path="/todos" element={<TodosPage />} />
-            <Route path="/customers" element={<CustomersPage />} />
-            <Route path="/customers/:id" element={<CustomerDetailPage />} />
-            <Route path="/materials" element={<MaterialsPage />} />
-            <Route path="/materials/:id" element={<MaterialDetailPage />} />
-            <Route path="/factory" element={<FactoryCodePage />} />
-            <Route path="/reports" element={<ReportsPage />} />
-            <Route path="/activity" element={<ActivityPage />} />
-            <Route path="/trash" element={<TrashPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/settings/lists" element={<ConfigurableListsPage />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/users" element={<UsersPage />} />
-            <Route path="/documents" element={<DocumentsPage />} />
-            <Route path="/documents/:id/form" element={<DocumentFormPage />} />
-            <Route path="/documents/:id/preview" element={<DocumentPreviewPage />} />
+            <Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
+            <Route path="/projects" element={<ErrorBoundary><ProjectsPage /></ErrorBoundary>} />
+            <Route path="/projects/:id" element={<ErrorBoundary><ProjectDetailPage /></ErrorBoundary>} />
+            <Route path="/tasks" element={<ErrorBoundary><TasksPage /></ErrorBoundary>} />
+            <Route path="/tasks/:id" element={<ErrorBoundary><TaskDetailPage /></ErrorBoundary>} />
+            <Route path="/todos" element={<ErrorBoundary><TodosPage /></ErrorBoundary>} />
+            <Route path="/customers" element={<ErrorBoundary><CustomersPage /></ErrorBoundary>} />
+            <Route path="/customers/:id" element={<ErrorBoundary><CustomerDetailPage /></ErrorBoundary>} />
+            <Route path="/materials" element={<ErrorBoundary><MaterialsPage /></ErrorBoundary>} />
+            <Route path="/materials/:id" element={<ErrorBoundary><MaterialDetailPage /></ErrorBoundary>} />
+            <Route path="/factory" element={<ErrorBoundary><FactoryCodePage /></ErrorBoundary>} />
+            <Route path="/reports" element={<ErrorBoundary><ReportsPage /></ErrorBoundary>} />
+            <Route path="/activity" element={<ErrorBoundary><ActivityPage /></ErrorBoundary>} />
+            <Route path="/trash" element={<ErrorBoundary><TrashPage /></ErrorBoundary>} />
+            <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
+            <Route path="/settings/lists" element={<ErrorBoundary><ConfigurableListsPage /></ErrorBoundary>} />
+            <Route path="/notifications" element={<ErrorBoundary><NotificationsPage /></ErrorBoundary>} />
+            <Route path="/users" element={<ErrorBoundary><UsersPage /></ErrorBoundary>} />
+            <Route path="/documents" element={<ErrorBoundary><DocumentsPage /></ErrorBoundary>} />
+            <Route path="/documents/:id/form" element={<ErrorBoundary><DocumentFormPage /></ErrorBoundary>} />
+            <Route path="/documents/:id/preview" element={<ErrorBoundary><DocumentPreviewPage /></ErrorBoundary>} />
           </Route>
         </Routes>
       </Suspense>

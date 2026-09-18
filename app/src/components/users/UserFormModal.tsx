@@ -184,7 +184,7 @@ const ALL_PERMISSION_KEYS = PERMISSION_GROUPS.flatMap((g) => g.permissions.map((
 interface UserFormModalProps {
   open: boolean
   onClose: () => void
-  onSave: (user: User) => void
+  onSave: (user: User) => void | Promise<void>
   user?: User | null
 }
 
@@ -341,12 +341,14 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
   }, [name, email, companyAccess, companies])
 
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const { user: authUser } = useAuth()
   const { currentCompany } = useCompany()
 
   const handleSave = async () => {
     if (!canSave) return
     setSaving(true)
+    setError(null)
     try {
       const memberships: CompanyMembership[] = (companies || [])
         .filter((c) => companyAccess[c.id])
@@ -412,8 +414,9 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
         onSave(savedUser)
       }
       onClose()
-    } catch (err) {
+    } catch (err: any) {
       appLogger.error('Failed to save user', err)
+      setError(err?.message || 'Failed to save user. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -450,6 +453,12 @@ export default function UserFormModal({ open, onClose, onSave, user }: UserFormM
       }
     >
       <div className="space-y-6">
+        {/* Error display */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm" role="alert">
+            {error}
+          </div>
+        )}
         {/* ═══ Section 1: User Information ═══════════════════ */}
         <div>
           <h3 className="text-sm font-semibold text-brand-900 mb-3 flex items-center gap-2">

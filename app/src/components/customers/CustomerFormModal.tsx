@@ -8,7 +8,7 @@ import { Plus, Trash2 } from 'lucide-react'
 interface CustomerFormModalProps {
   open: boolean
   onClose: () => void
-  onSave: (customer: Partial<Customer>) => void
+  onSave: (customer: Partial<Customer>) => void | Promise<void>
   customer?: Customer | null
 }
 
@@ -42,6 +42,7 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
   const initialFormRef = useRef(EMPTY_FORM)
   const initialContactsRef = useRef<ContactEntry[]>([])
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (customer) {
@@ -116,11 +117,12 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
 
   const handleSave = async () => {
     setSaving(true)
+    setError(null)
     try {
       await onSave({ ...form, contacts: contacts.length > 0 ? contacts : undefined, id: customer?.id, companyId: customer?.companyId })
       onClose()
-    } catch {
-      // error already surfaced by caller
+    } catch (err: any) {
+      setError(err?.message || 'Failed to save customer. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -181,6 +183,11 @@ export default function CustomerFormModal({ open, onClose, onSave, customer }: C
       }
     >
       <div className="space-y-5">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm" role="alert">
+            {error}
+          </div>
+        )}
         <FormSection title="Basic Information" titleAr="المعلومات الأساسية">
           <div className="grid grid-cols-2 gap-4">
             {field('Customer Name', 'name', { required: true })}

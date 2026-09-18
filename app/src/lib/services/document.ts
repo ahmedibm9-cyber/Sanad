@@ -153,7 +153,7 @@ export class DocumentService {
         work_item_id: input.work_item_id,
         document_type: input.document_type,
         document_number: input.document_number,
-        created_date: new Date().toISOString().split('T')[0],
+        created_date: new Date().toLocaleDateString('en-CA'),
         language: input.language || 'en',
         template_key: input.template_key || 'template-a',
         prepared_by: input.prepared_by || null,
@@ -327,12 +327,35 @@ export class DocumentService {
   }
 
   /**
+   * Get a document by ID including deleted records (for restore operations).
+   */
+  private async getDocumentByIdIncludingDeleted(id: string, context: RequestContext): Promise<Document> {
+    if (!hasPermission(context, 'documents.view')) {
+      throw new Error('Permission denied: documents.view')
+    }
+
+    const query = (this.supabase as any)
+      .from('documents')
+      .select('*')
+      .eq('id', id)
+      .eq('company_id', context.companyId)
+
+    const { data, error } = await query.single()
+
+    if (error || !data) {
+      throw new NotFoundError('Document', id)
+    }
+
+    return data
+  }
+
+  /**
    * Restore a document from trash.
    */
   async restoreDocument(id: string, context: RequestContext): Promise<Document> {
     requirePermission(context, 'trash.restore')
 
-    const doc = await this.getDocumentById(id, context)
+    const doc = await this.getDocumentByIdIncludingDeleted(id, context)
 
     if (context.companyId && doc.company_id !== context.companyId) {
       throw new Error('Permission denied: company mismatch')

@@ -6,6 +6,7 @@ import { useCompanyDocuments } from '../hooks/useData'
 import { useAuth } from '../contexts/useAuth'
 import { useApp } from '../contexts/useApp'
 import { getDocumentService } from '../lib/services/document'
+import { appLogger } from '../lib/logger'
 import ConfirmModal from '../components/common/ConfirmModal'
 import Pagination from '../components/common/Pagination'
 import type { DocumentType } from '../types'
@@ -90,7 +91,7 @@ export default function DocumentsPage() {
       setDeleteTarget(null)
       refetch()
     } catch (err) {
-      console.error('Delete failed:', err)
+      appLogger.error('Document delete failed', err)
     } finally {
       setDeleting(false)
     }

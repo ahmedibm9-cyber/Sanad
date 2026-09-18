@@ -190,7 +190,7 @@ export default function DocumentPreviewPage() {
             unit: mat.default_weight_unit || m.weight_unit || m.weightUnit || 'MT',
             unitPrice: Number(m.unit_price || m.unitPrice) || 0,
             currency: m.currency || 'SAR',
-            total: (Number(m.quantity) || 0) * (Number(m.unit_price || m.unitPrice) || 0),
+            total: Math.round(((Number(m.quantity) || 0) * (Number(m.unit_price || m.unitPrice) || 0)) * 100) / 100,
             packages: Number(m.packages) || 0,
             netWeight: Number(m.net_weight || m.netWeight) || 0,
             grossWeight: Number(m.gross_weight || m.grossWeight) || 0,
